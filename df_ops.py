@@ -487,8 +487,10 @@ class DF_OT_df_initialize(bpy.types.Operator):
                 else:
                     df_lib.call_df_weak_unstash_volume_local()
                         
+                start_time = time.time()
                 initialize_return = df_lib.call_df_initialize_volume(ctypes.pointer(verts_buffer), ctypes.c_float(df.df_distance), ctypes.c_ushort(df.df_cmprt_size), ctypes.c_double(df.df_grid_spacing), ctypes.c_bool(False))
-                t_start = time.time()
+                end_time = time.time()
+                print("25/8/20201 INITIALIZE VOLUME TIME: ", (end_time - start_time))
                 
                 incrmt_undo_step(context)
                 
@@ -499,9 +501,6 @@ class DF_OT_df_initialize(bpy.types.Operator):
                     df_lib.call_df_weak_stash_volume_local()
                         
                     df.df_state_stashed = False
-                    
-                t_end = time.time()
-                print("Initialize stashing Time: ", (t_end - t_start))
                 
                 #If the function returns 0, was successful
                 if (initialize_return == 0):
@@ -717,13 +716,13 @@ class DF_OT_df_update(bpy.types.Operator):
                     
                     df_lib.call_df_add_dfc_to_cache(ctypes.pointer(verts_buffer), ctypes.byref(vert_amount), ctypes.pointer(tris_buffer), ctypes.byref(tri_amount), ctypes.pointer(bounds_buffer), ctypes.byref(dfc_index), ctypes.byref(ctypes.c_bool(False)))
                     print("DB 2")
-                    t_start = time.time()
+                    time_start = time.time()
 
                     #Calls function "call_df_update" in dynamic library
                     df_lib.call_df_update(ctypes.byref(ctypes.c_ulong(obj.dfc_id)), ctypes.byref(dfc_index))
                     print("DB 3")
-                    t_end = time.time()
-                    print("call_df_update time: ", (t_end - t_start))
+                    time_end = time.time()
+                    print("25/8/2021 UPDATE TIME: ", (time_end - time_start))
                     
                     #If the object's mode was switched, switches it back to what it was origionally set to
                     if (switched_mode == True):
