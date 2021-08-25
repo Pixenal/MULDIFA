@@ -98,16 +98,12 @@ thread_pool_type::~thread_pool_type()
 	wakeup = true;
 	terminate = true;
 
-	std::cout << "JOINING THREADS" << std::endl;
 	for (unsigned int a = 0; a < intern_thread_count; ++a)
 	{
 		threads[a].join();
 	}
-	std::cout << "FINISHED JOINING THREADS" << std::endl;
 
 	delete[] threads;
-
-	std::cout << "DELETED THREADS" << std::endl;
 }
 
 
