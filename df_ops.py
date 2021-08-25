@@ -25,6 +25,11 @@ elif ((current_platform == "linux") or (current_platform == "linux2")):
 
     current_dir += "/lib/df_linux/"
     lib_file_name = "df_linux.so"
+    
+elif (current_platform == "darwin"):
+
+    current_dir += "/lib/df_macos/"
+    lib_file_name = "df_macos.dylib"
 
 #Loads "dynamic library"
 df_lib = ctypes.cdll.LoadLibrary(current_dir + lib_file_name)
@@ -2163,7 +2168,8 @@ def register():
 
     if ((current_platform == "win32") or
     	(current_platform == "linux") or
-    	(current_platform == "linux2")):
+    	(current_platform == "linux2") or
+        (current_platform == "darwin")):
     
         for cls in classes:
             bpy.utils.register_class(cls)
@@ -2183,7 +2189,8 @@ def unregister():
 
     if ((current_platform == "win32") or
     	(current_platform == "linux") or
-    	(current_platform == "linux2")):
+    	(current_platform == "linux2") or
+        (current_platform == "darwin")):
     
         del bpy.types.Object.dfc_id
     

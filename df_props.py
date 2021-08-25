@@ -112,7 +112,8 @@ def register():
 
     if 	((current_platform == "win32") or
     	(current_platform == "linux") or
-    	(current_platform == "linux2")):
+    	(current_platform == "linux2") or
+        (current_platform == "darwin")):
     
         for cls in classes:
         

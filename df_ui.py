@@ -76,7 +76,8 @@ class DF_PT_df(df_parent_panel, bpy.types.Panel):
         #Checks if current platform is Windows
         if ((current_platform == "win32") or
             (current_platform == "linux") or
-            (current_platform == "linux2")):
+            (current_platform == "linux2") or
+            (current_platform == "darwin")):
         
             #If so, behave as normal
         
@@ -417,7 +418,8 @@ class DF_PT_df_memory(df_parent_panel, bpy.types.Panel):
            
 if 	((current_platform == "win32") or
 	(current_platform == "linux") or
-	(current_platform == "linux2")):
+	(current_platform == "linux2") or
+    (current_platform == "darwin")):
 
     classes = ( DF_PT_df,
                 DF_PT_df_layers,
