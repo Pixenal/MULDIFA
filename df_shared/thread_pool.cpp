@@ -95,6 +95,7 @@ thread_pool_type::thread_pool_type()
 
 thread_pool_type::~thread_pool_type()
 {
+	wakeup = true;
 	terminate = true;
 
 	std::cout << "JOINING THREADS" << std::endl;
