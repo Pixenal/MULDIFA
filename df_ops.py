@@ -7,6 +7,7 @@ import bmesh
 import mathutils
 import numpy
 from bpy.app.handlers import persistent
+import atexit
     
 current_platform = sys.platform
 
