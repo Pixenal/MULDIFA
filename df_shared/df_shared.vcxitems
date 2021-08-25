@@ -15,7 +15,6 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)concepts.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)df_lib.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)dummy.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)thread_pool.h" />

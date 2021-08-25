@@ -3,7 +3,7 @@
 #include <mutex>
 #include <vector>
 #include <iostream>
-#include "../df_shared/concepts.h"
+//#include "../df_shared/concepts.h"
 #include <bitset>
 #include <fstream>
 #include <random>
@@ -417,7 +417,7 @@ public:
 	};
 
 
-	template<convertible_to_int Tintegral_type>
+	template<typename Tintegral_type>
 	class overflow_integral_type
 	{
 	private:
@@ -441,7 +441,7 @@ public:
 		/*__forceinline*/ void decrmt(const Tintegral_type& decrmt_amount);
 	};
 
-	template<typename Tvector_type, convertible_to_int Tindex_type>
+	template<typename Tvector_type, typename Tindex_type>
 	struct invrse_jenga_type
 	{
 		/*Data Members*/
@@ -1512,7 +1512,7 @@ extern "C"
 /*-------------------------------------------------------------------------------------------------------------*/
 
 
-template<typename Tvector_type, convertible_to_int Tindex_type>
+template<typename Tvector_type, typename Tindex_type>
 inline Tvector_type* shared_type::invrse_jenga_type<Tvector_type, Tindex_type>::remove_element(const Tindex_type& index)
 {
 	Tindex_type last_index = vector.size() - 1;
@@ -1533,14 +1533,14 @@ inline Tvector_type* shared_type::invrse_jenga_type<Tvector_type, Tindex_type>::
 }
 
 
-template<typename Tvector_type, convertible_to_int Tindex_type>
+template<typename Tvector_type, typename Tindex_type>
 inline void shared_type::invrse_jenga_type<Tvector_type, Tindex_type>::calc_size()
 {
 	size = vector.size();
 }
 
 
-template<convertible_to_int Tintegral_type>
+template<typename Tintegral_type>
 inline shared_type::overflow_integral_type<Tintegral_type>::overflow_integral_type(const Tintegral_type& initial_value, const Tintegral_type& max_value, const Tintegral_type& min_value)
 {
 	integer = initial_value;
@@ -1549,7 +1549,7 @@ inline shared_type::overflow_integral_type<Tintegral_type>::overflow_integral_ty
 }
 
 
-template<convertible_to_int Tintegral_type>
+template<typename Tintegral_type>
 /*__forceinline*/ void shared_type::overflow_integral_type<Tintegral_type>::incrmt(const Tintegral_type& incrmt_amount)
 {
 	integer += incrmt_amount;
@@ -1565,7 +1565,7 @@ template<convertible_to_int Tintegral_type>
 }
 
 
-template<convertible_to_int Tintegral_type>
+template<typename Tintegral_type>
 /*__forceinline*/ void shared_type::overflow_integral_type<Tintegral_type>::decrmt(const Tintegral_type& decrmt_amount)
 {
 	integer -= decrmt_amount;
