@@ -1257,9 +1257,10 @@ has_changed:
 							unsigned short f_r = f - cmprt_slice_first_index.z;
 
 							/*Converts the the index of the last grid point enclosed within the current compartment*/
-							shared_type::index_xyz_type cmprt_slice_last_index_r = { cmprt_slice_last_index.x - cmprt_slice_first_index.x,
-																		cmprt_slice_last_index.y - cmprt_slice_first_index.y,
-																		cmprt_slice_last_index.z - cmprt_slice_first_index.z, };
+							shared_type::index_xyz_type cmprt_slice_last_index_r;
+							cmprt_slice_last_index_r.x = cmprt_slice_last_index.x - cmprt_slice_first_index.x;
+							cmprt_slice_last_index_r.y = cmprt_slice_last_index.y - cmprt_slice_first_index.y;
+							cmprt_slice_last_index_r.z = cmprt_slice_last_index.z - cmprt_slice_first_index.z;
 
 							/*The conversions to relative space are needed for the below calculation to work*/
 							/*	V		V		V		V		V		V		V		V		V		V	*/
