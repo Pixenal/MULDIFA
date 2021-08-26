@@ -1,12 +1,12 @@
 DF_SHARED_PATH = ../df_shared
 INTERMEDIATES_PATH = ../intermediates
-INTERMEDIATES_SUBPATH = $(INTERMEDIATES_PATH)/df_win
+INTERMEDIATES_SUBPATH = $(INTERMEDIATES_PATH)/df_linux
 LIB_PATH = ../lib
-TARGET_PATH = $(LIB_PATH)/df_win
-GOAL = $(TARGET_PATH)/df_win.dll
+TARGET_PATH = $(LIB_PATH)/df_linux
+GOAL = $(TARGET_PATH)/df_linux.so
 COMPILER = clang++
-COMP_ARGS = $(COMPILER) -D WINDOWS -D PCH_INCLUDE="\"../df_shared/dummy.h\"" -D EXPORT=__declspec(dllexport) -std=c++2a -ffast-math -O3 -DNDEBUG -flto -c
-LINK_ARGS = $(COMPILER) -fuse-ld=lld -shared -flto -pthread
+COMP_ARGS = $(COMPILER) -D LINUX -D PCH_INCLUDE="\"../df_shared/dummy.h\"" -D EXPORT="" -std=c++2a -ffast-math -O3 -DNDEBUG -fPIC -c
+LINK_ARGS = $(COMPILER) -shared -pthread
 OBJECTS = $(INTERMEDIATES_SUBPATH)/df_lib.o $(INTERMEDIATES_SUBPATH)/df_loader.o $(INTERMEDIATES_SUBPATH)/df_regions_buffer.o $(INTERMEDIATES_SUBPATH)/df_writer.o \
 $(INTERMEDIATES_SUBPATH)/distance_field.o $(INTERMEDIATES_SUBPATH)/shared.o $(INTERMEDIATES_SUBPATH)/thread_pool.o
 
@@ -16,7 +16,7 @@ $(INTERMEDIATES_SUBPATH)/distance_field.o $(INTERMEDIATES_SUBPATH)/shared.o $(IN
 #BINARY
 $(GOAL) : validate_dir $(OBJECTS)
 	$(LINK_ARGS) -o $(GOAL) $(OBJECTS)
-	
+
 #VALIDATE DIR
 validate_dir:
 	-mkdir "$(INTERMEDIATES_PATH)"
