@@ -4,15 +4,15 @@ TARGET_PATH = ../lib/df_macos
 GOAL = $(TARGET_PATH)/df_macos.dylib
 COMPILER = /usr/local/opt/llvm/bin/clang++
 LINKER =  /usr/local/opt/llvm/bin/llvm-libtool-darwin
-COMP_ARGS = $(COMPILER) -D MACOS -D PCH_INCLUDE="\"../df_shared/dummy.h\"" -D EXPORT="" -std=c++2a -ffast-math -ofast -c
-LINK_ARGS = $(COMPILER) -dynamiclib -pthread -o
+COMP_ARGS = $(COMPILER) -D MACOS -D PCH_INCLUDE="\"../df_shared/dummy.h\"" -D EXPORT="" -std=c++2a -ffast-math -O3 -DNDEBUG -flto -c
+LINK_ARGS = $(COMPILER) -dynamiclib -flto -pthread
 OBJECTS = $(INTERMEDIATES_PATH)/df_lib.o $(INTERMEDIATES_PATH)/df_loader.o $(INTERMEDIATES_PATH)/df_regions_buffer.o $(INTERMEDIATES_PATH)/df_writer.o \
 $(INTERMEDIATES_PATH)/distance_field.o $(INTERMEDIATES_PATH)/shared.o $(INTERMEDIATES_PATH)/thread_pool.o
 
 
 #BINARY
 $(GOAL) : $(OBJECTS)
-	$(LINK_ARGS) $(GOAL) $(OBJECTS)
+	$(LINK_ARGS) -o $(GOAL) $(OBJECTS)
 
 
 #INTERMEDIATES
