@@ -1,4 +1,5 @@
 #File Extensions
+*.DS_Store
 
 #Directories
 __pycache__/
