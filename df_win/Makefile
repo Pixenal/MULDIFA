@@ -5,7 +5,7 @@ LIB_PATH = ../lib
 TARGET_PATH = $(LIB_PATH)/df_win
 GOAL = $(TARGET_PATH)/df_win.dll
 COMPILER = clang++
-COMP_ARGS = $(COMPILER) -D WINDOWS -D PCH_INCLUDE="\"../df_shared/dummy.h\"" -D EXPORT=__declspec(dllexport) -std=c++2a -ffast-math -O3 -DNDEBUG -flto -c
+COMP_ARGS = $(COMPILER) -D WINDOWS -D PCH_INCLUDE="\"../df_shared/dummy.h\"" -D EXPORT=__declspec(dllexport) -std=c++2a -stdlib=libc++ -ffast-math -O3 -DNDEBUG -flto -c
 LINK_ARGS = $(COMPILER) -fuse-ld=lld -shared -flto
 OBJECTS = $(INTERMEDIATES_SUBPATH)/df_lib.o $(INTERMEDIATES_SUBPATH)/df_loader.o $(INTERMEDIATES_SUBPATH)/df_regions_buffer.o $(INTERMEDIATES_SUBPATH)/df_writer.o \
 $(INTERMEDIATES_SUBPATH)/distance_field.o $(INTERMEDIATES_SUBPATH)/shared.o $(INTERMEDIATES_SUBPATH)/thread_pool.o

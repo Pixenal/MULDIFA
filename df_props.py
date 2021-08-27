@@ -11,9 +11,8 @@ current_platform = sys.platform
 #current_platform = "linux"
 
 
-################################################################################################################
 # Handler Functions
-################################################################################################################
+#-------------------------------------------------------------------------------------------------------------#
 
 def df_cache_dir_update(self, context):
 
@@ -24,9 +23,8 @@ def df_cache_dir_update(self, context):
         df.df_cache_dir_is_rel = False
 
 
-################################################################################################################
 # PROPERTY GROUP
-################################################################################################################
+#-------------------------------------------------------------------------------------------------------------#
 
 
 class df_dfc_id(bpy.types.PropertyGroup):
@@ -95,19 +93,19 @@ class df_properties(bpy.types.PropertyGroup):
     df_undo_index : bpy.props.IntProperty(default = 0)
 
 
-################################################################################################################
-# REGISTRATION
-################################################################################################################
+
+# Registration
+#-------------------------------------------------------------------------------------------------------------#
 
 
-classes = ( df_dfc_id,
+classes = [ df_dfc_id,
             df_dfr_id,
             df_dfc_layer_properties,
             df_dfr_layer_properties,
             df_dfr_layer_dfc_layer_properties,
-            df_properties)
+            df_properties]
 
-
+#Register
 def register():
 
     if 	((current_platform == "win32") or
@@ -131,6 +129,8 @@ def register():
         df_dfr_layer_properties.dfc_layers = bpy.props.CollectionProperty(type = df_dfr_layer_dfc_layer_properties)
         bpy.types.Scene.df = bpy.props.PointerProperty(type = df_properties)
     
+    
+#Unregister
 def unregister():
 
     if 	((current_platform == "win32") or
@@ -138,7 +138,7 @@ def unregister():
     	(current_platform == "linux2")):
     
         for cls in classes:
-
-            bpy.utils.unregister_class(df_properties)
+        
+            bpy.utils.unregister_class(cls)
             
         del bpy.types.Scene.df

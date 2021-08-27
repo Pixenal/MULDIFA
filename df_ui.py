@@ -5,13 +5,9 @@ import bmesh
 
 current_platform = sys.platform
 
-#Is just for testing
-#current_platform = "linux"
 
-
-################################################################################################################
 # UI
-################################################################################################################
+#-------------------------------------------------------------------------------------------------------------#
     
     
 #dfc_layers_uilist
@@ -58,12 +54,14 @@ class DF_UL_df_dfr_layers(bpy.types.UIList):
             col0 = layout.column(align = True)
             col0.prop(item, "name", text = "", emboss = False, icon = 'NODE_TEXTURE')
 
+
 #Parent panel for the below sub panels
 class df_parent_panel(bpy.types.Panel):
 
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "DF Tools"
+
 
 #Main Distance Field sub Panel
 class DF_PT_df(df_parent_panel, bpy.types.Panel):
@@ -219,9 +217,8 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
         volume_button_op = ""
         
         
-        ########################################################
         # CHECKS VOLUME VALIDITY
-        ########################################################
+        #-------------------------------------------------------------------------------------------------------------#
         
         
         df_volume_8_verts = True
@@ -254,15 +251,15 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
                 volume_amount += 1
         
         
-        ########################################################
         # LAYOUT CONDITIONS
-        ########################################################
+        #-------------------------------------------------------------------------------------------------------------#
         
         
         
         
         
-        ######################################################## IF ESTIMATED MEMORY USEAGE EXCEEDED HARD CODED MAX
+        # IF ESTIMATED MEMORY USEAGE EXCEEDED HARD CODED MAX
+        #-------------------------------------------------------------------------------------------------------------#
         
         
         if (df.df_init_returned_error == True):
@@ -277,7 +274,8 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
                 col0.label(text = "operation was aborted.")
                 col0.label(text = "Please adjust settings") 
             
-            ######################################################## IF VOLUME IS TOO SMALL
+            # IF VOLUME IS TOO SMALL
+            #-------------------------------------------------------------------------------------------------------------#
             
             #If volume is too small, set label and icon accordingly
             elif (df.df_volume_too_small == True):
@@ -290,7 +288,8 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
         
         else:
             
-            ######################################################## IF MORE THAN 1 VOLUME EXISTS
+            # IF MORE THAN 1 VOLUME EXISTS
+            #-------------------------------------------------------------------------------------------------------------#
             
             #If more than 1 volume exists, grey out volume button and display error message
             if (volume_amount > 1):
@@ -307,7 +306,8 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
                 volume_button_op = "df.df_initialize"
             
             
-            ######################################################## ELSE IF VOLUME AMOUNT == 1 AND VOLUME DOESN'T HAVE 8 VERTS
+            # ELSE IF VOLUME AMOUNT == 1 AND VOLUME DOESN'T HAVE 8 VERTS
+            #-------------------------------------------------------------------------------------------------------------#
             
             #If volume doesn't have 8 verts, grey out volume button and display error message
             elif ((volume_amount == 1) and (df_volume_8_verts == False)):
@@ -323,7 +323,8 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
                 volume_button_text = "Invalid Volume"
                 volume_button_op = "df.df_initialize"
                 
-            ######################################################## ELSE IF VOLUME AMOUNT == 1
+            # ELSE IF VOLUME AMOUNT == 1
+            #-------------------------------------------------------------------------------------------------------------#
             
             #If 1 volume exists, display volume button based on below conditions
             elif(volume_amount == 1):
@@ -339,13 +340,15 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
                         volume_button_icon = 'CUBE'
 
 
-                ######################################################## SUB-CONDITION # ELSE
+                # SUB-CONDITION # ELSE
+                #-------------------------------------------------------------------------------------------------------------#
 
 
                 else:
                     
                     
-                    ######################################################## SUB-SUB-CONDITION # IF VOLUME IS UP TO DATE
+                    # SUB-SUB-CONDITION # IF VOLUME IS UP TO DATE
+                    #-------------------------------------------------------------------------------------------------------------#
                     
                     
                     #If volume initialized, check if the current volume in scene matches the distance field structure currently in memory
@@ -356,7 +359,8 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
                         volume_button_icon = 'SNAP_VOLUME'
                         
                         
-                    ######################################################## SUB-SUB-CONDITION # IF VOLUME IS OUTDATED
+                    # SUB-SUB-CONDITION # IF VOLUME IS OUTDATED
+                    #-------------------------------------------------------------------------------------------------------------#
                         
                         
                     else:
@@ -372,7 +376,8 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
                 volume_button_text = "Initialize Volume"
                 volume_button_op = "df.df_initialize"
                 
-            ######################################################## ELSE ( OCCURS IF VOLUME AMOUNT == 0 )
+            # ELSE ( OCCURS IF VOLUME AMOUNT == 0 )
+            #-------------------------------------------------------------------------------------------------------------#
                 
             else:
             
@@ -411,9 +416,8 @@ class DF_PT_df_memory(df_parent_panel, bpy.types.Panel):
         col0.prop(df, "df_stashing_enabled")
 
 
-################################################################################################################
-# REGISTRATION
-################################################################################################################
+# Registration and Unregistration
+#-------------------------------------------------------------------------------------------------------------#
 
            
 if 	((current_platform == "win32") or
@@ -421,23 +425,32 @@ if 	((current_platform == "win32") or
 	(current_platform == "linux2") or
     (current_platform == "darwin")):
 
-    classes = ( DF_PT_df,
+    classes = [ DF_PT_df,
                 DF_PT_df_layers,
                 DF_UL_df_dfc_layers,
                 DF_UL_df_dfr_layer_dfc_layers,
                 DF_UL_df_dfr_layers,
                 DF_PT_df_volume,
-                DF_PT_df_cache)
+                DF_PT_df_cache]
                 
            
 else:
-
-    classes = (DF_PT_df,)
-
+    
+    classes = [df_PT_df]
+    
+#Register
 def register():
-    for cls in classes:
-        bpy.utils.register_class(cls)
 
-def unregister():
     for cls in classes:
+    
+        bpy.utils.register_class(cls)
+        
+
+#Unregister
+def unregister():
+
+    for cls in classes:
+    
         bpy.utils.unregister_class(cls)
+    
+    

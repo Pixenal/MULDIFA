@@ -36,9 +36,9 @@ elif (current_platform == "darwin"):
 df_lib = ctypes.cdll.LoadLibrary(current_dir + lib_file_name)
 df_lib.pass_lib_dir(ctypes.c_char_p(bytes(current_dir, 'utf-8')))
 
-################################################################################################################
-# MISC FUNCTIONS
-################################################################################################################
+
+# Misc functions
+#-------------------------------------------------------------------------------------------------------------#
 
 
 def get_name_dup_num(name):
@@ -298,9 +298,9 @@ def incrmt_undo_step(context):
     df.df_undo_index += 1
     df_lib.call_df_incrmt_undo_step(ctypes.c_int(df.df_undo_index))
 
-################################################################################################################
-# CTYPES PSEUDO-STRUCTS
-################################################################################################################
+
+# Ctypes psuedo structs
+#-------------------------------------------------------------------------------------------------------------#
 
 
 class coord_xyz_type(ctypes.Structure):
@@ -337,9 +337,8 @@ class write_id_type(ctypes.Structure):
                 ("rand", ctypes.c_int)]
 
 
-################################################################################################################
-# OPERATORS
-################################################################################################################
+# Operators
+#-------------------------------------------------------------------------------------------------------------#
                                                         
 
 class DF_OT_df_create_volume(bpy.types.Operator):
@@ -628,9 +627,8 @@ class DF_OT_df_update(bpy.types.Operator):
             df_lib.call_df_pre_update(ctypes.pointer(dfc_ids), ctypes.byref(dfc_amount), ctypes.byref(dfc_vert_amount_total), ctypes.pointer(ignored_dfcs), ctypes.c_ulong(ignored_dfcs_nxt_indx))
             print("DB 1")
             
-            ########################################################
-            # UPDATES DISTANCE FIELD STRUCTURE
-            ########################################################
+            # Updates distance field structures
+            #-------------------------------------------------------------------------------------------------------------#
             
             dfc_index = ctypes.c_ulong(0)
             for obj in context.scene.objects:
@@ -862,7 +860,8 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                         
                                 
                             
-                            ######################################################## SETS UP STRUCTURES
+                            # Sets up structures
+                            #-------------------------------------------------------------------------------------------------------------#
                             
                             
                             #Creates alias
@@ -988,14 +987,16 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 
                                 dfc_layer_indx += 1
                             
-                            ######################################################## GETS VALUES OF VERTS FROM DISTANCE FIELD STRUCTURE
+                            # Gets values of verts from distance field structure
+                            #-------------------------------------------------------------------------------------------------------------#
                             
                             """ Calls function "call_df_get_vert_value" in df_lib, this writes a value to each vert in "verts_buffer" lerped from the values of  
                                 the grid points surrounding said vert, more precisely the 8 grid points that make up the vertices of the grid cell that the vert sits within """
                             df_lib.call_df_update_recipient(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), ctypes.byref(vert_amount), ctypes.pointer(height_values_buffer), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma))
                             
                             
-                            ######################################################## UPDATES VERTEX COLORS
+                            # Updates vertex colors
+                            #-------------------------------------------------------------------------------------------------------------#
                             
                             #First checks if updating vertex colors is enabled
                             if ((df.df_update_vertex_colors == True) and (self.ground_only == False)):
@@ -1028,7 +1029,8 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                         loop_index += 1
                             
                              
-                            ######################################################## UPDATES VERTEX GROUPS
+                            # Updates vertex groups
+                            #-------------------------------------------------------------------------------------------------------------#
                             
                             
                             #First checks if updating vertex groups is enabled
@@ -1065,7 +1067,8 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                     vert[df_deform][df_vert_group.index] = verts_buffer[vert.index].value
                                 
                                 
-                            ######################################################## CLEAN UP
+                            # Clean up
+                            #-------------------------------------------------------------------------------------------------------------#
                             
                             #Checks which mode is the current mode, and updates mesh accordingly
                             if (obj.mode == 'EDIT'):
@@ -1818,9 +1821,9 @@ class DF_OT_df_make_df_cache_dir_rel(bpy.types.Operator):
             
         return {'FINISHED'}
 
-################################################################################################################
-# TIMER FUNCTIONS
-################################################################################################################
+
+# Timer Functions
+#-------------------------------------------------------------------------------------------------------------#
 
 
 """ Periodically checks if the volume exists, as well as if the positions of it's vertices are different from
@@ -1903,9 +1906,9 @@ def periodical_volume_check():
     return .1
     
 
-################################################################################################################
-# HANDLERS
-################################################################################################################
+
+# Handlers
+#-------------------------------------------------------------------------------------------------------------#
 
 
 """ The persistent function decorator prevents the handlers from being removed from the list of handler functions upon the loading
@@ -2137,12 +2140,11 @@ def df_save_post_handler(dummy):
     
                         
         
-################################################################################################################
-# REGISTRATION
-################################################################################################################
+# Registration
+#-------------------------------------------------------------------------------------------------------------#
 
 
-classes = ( DF_OT_df_create_volume,
+classes = [ DF_OT_df_create_volume,
             DF_OT_df_toggle_init_returned_error,
             DF_OT_df_initialize,
             DF_OT_df_update,
@@ -2161,9 +2163,10 @@ classes = ( DF_OT_df_create_volume,
             DF_OT_df_remove_dfr_layer,
             DF_OT_df_add_dfr_layer_dfc_layer,
             DF_OT_df_remove_dfr_layer_dfc_layer,
-            DF_OT_df_make_df_cache_dir_rel)
+            DF_OT_df_make_df_cache_dir_rel]
            
 
+#Register
 def register():
 
     if ((current_platform == "win32") or
@@ -2172,6 +2175,7 @@ def register():
         (current_platform == "darwin")):
     
         for cls in classes:
+        
             bpy.utils.register_class(cls)
             
         bpy.app.handlers.depsgraph_update_post.append(df_depsgraph_update_post_handler)
@@ -2184,7 +2188,7 @@ def register():
         
 
 
-
+#Unregister
 def unregister():
 
     if ((current_platform == "win32") or
@@ -2195,6 +2199,7 @@ def unregister():
         del bpy.types.Object.dfc_id
     
         for cls in classes:
+        
             bpy.utils.unregister_class(cls)
             
         bpy.app.handlers.depsgraph_update_post.remove(df_depsgraph_update_post_handler)

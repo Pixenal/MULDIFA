@@ -2,7 +2,7 @@ bl_info = {
             "name": "DF_Tool",
             "description" : "A distance field implementation",
             "author": "Pixenal",
-            "bersion": (1, 0),
+            "version": (1, 0),
             "blender": (2, 91, 0),
             "location": "View3D > Sidebar > DF_Tool",
             "category": "3D View"
@@ -25,12 +25,14 @@ else:
 import bpy
 
 
+#Register
 def register():
 
     df_props.register()
     df_ops.register()
     df_ui.register()
-    
+
+#Unregister
 def unregister():
 
     df_props.unregister()
