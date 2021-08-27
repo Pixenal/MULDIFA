@@ -17,7 +17,7 @@
 	along with blend_df_tool.  If not, see <https://www.gnu.org/licenses/>. \
 
 
-DF_SHARED_PATH = ../df_shared
+DF_COMMON_PATH = ../df_common
 INTERMEDIATES_PATH = ../intermediates
 INTERMEDIATES_SUBPATH = $(INTERMEDIATES_PATH)/df_linux
 LIB_PATH = ../lib
@@ -44,26 +44,26 @@ validate_dir:
 	-mkdir "$(TARGET_PATH)"
 
 #INTERMEDIATES
-$(INTERMEDIATES_SUBPATH)/df_lib.o : $(DF_SHARED_PATH)/df_lib.cpp $(DF_SHARED_PATH)/df_lib.h $(DF_SHARED_PATH)/thread_pool.h
-	$(COMP_ARGS) $(DF_SHARED_PATH)/df_lib.cpp -o $(INTERMEDIATES_SUBPATH)/df_lib.o
+$(INTERMEDIATES_SUBPATH)/df_lib.o : $(DF_COMMON_PATH)/df_lib.cpp $(DF_COMMON_PATH)/df_lib.h $(DF_COMMON_PATH)/thread_pool.h
+	$(COMP_ARGS) $(DF_COMMON_PATH)/df_lib.cpp -o $(INTERMEDIATES_SUBPATH)/df_lib.o
 
-$(INTERMEDIATES_SUBPATH)/df_loader.o : $(DF_SHARED_PATH)/df_loader.cpp $(DF_SHARED_PATH)/df_lib.h
-	$(COMP_ARGS) $(DF_SHARED_PATH)/df_loader.cpp -o $(INTERMEDIATES_SUBPATH)/df_loader.o
+$(INTERMEDIATES_SUBPATH)/df_loader.o : $(DF_COMMON_PATH)/df_loader.cpp $(DF_COMMON_PATH)/df_lib.h
+	$(COMP_ARGS) $(DF_COMMON_PATH)/df_loader.cpp -o $(INTERMEDIATES_SUBPATH)/df_loader.o
 
-$(INTERMEDIATES_SUBPATH)/df_regions_buffer.o : $(DF_SHARED_PATH)/df_regions_buffer.cpp $(DF_SHARED_PATH)/df_lib.h
-	$(COMP_ARGS) $(DF_SHARED_PATH)/df_regions_buffer.cpp -o $(INTERMEDIATES_SUBPATH)/df_regions_buffer.o
+$(INTERMEDIATES_SUBPATH)/df_regions_buffer.o : $(DF_COMMON_PATH)/df_regions_buffer.cpp $(DF_COMMON_PATH)/df_lib.h
+	$(COMP_ARGS) $(DF_COMMON_PATH)/df_regions_buffer.cpp -o $(INTERMEDIATES_SUBPATH)/df_regions_buffer.o
 
-$(INTERMEDIATES_SUBPATH)/df_writer.o : $(DF_SHARED_PATH)/df_writer.cpp $(DF_SHARED_PATH)/df_lib.h
-	$(COMP_ARGS) $(DF_SHARED_PATH)/df_writer.cpp -o $(INTERMEDIATES_SUBPATH)/df_writer.o
+$(INTERMEDIATES_SUBPATH)/df_writer.o : $(DF_COMMON_PATH)/df_writer.cpp $(DF_COMMON_PATH)/df_lib.h
+	$(COMP_ARGS) $(DF_COMMON_PATH)/df_writer.cpp -o $(INTERMEDIATES_SUBPATH)/df_writer.o
 
-$(INTERMEDIATES_SUBPATH)/distance_field.o : $(DF_SHARED_PATH)/distance_field.cpp $(DF_SHARED_PATH)/df_lib.h $(DF_SHARED_PATH)/thread_pool.h
-	$(COMP_ARGS) $(DF_SHARED_PATH)/distance_field.cpp -o $(INTERMEDIATES_SUBPATH)/distance_field.o
+$(INTERMEDIATES_SUBPATH)/distance_field.o : $(DF_COMMON_PATH)/distance_field.cpp $(DF_COMMON_PATH)/df_lib.h $(DF_COMMON_PATH)/thread_pool.h
+	$(COMP_ARGS) $(DF_COMMON_PATH)/distance_field.cpp -o $(INTERMEDIATES_SUBPATH)/distance_field.o
 
-$(INTERMEDIATES_SUBPATH)/shared.o : $(DF_SHARED_PATH)/shared.cpp $(DF_SHARED_PATH)/df_lib.h
-	$(COMP_ARGS) $(DF_SHARED_PATH)/shared.cpp -o $(INTERMEDIATES_SUBPATH)/shared.o
+$(INTERMEDIATES_SUBPATH)/shared.o : $(DF_COMMON_PATH)/shared.cpp $(DF_COMMON_PATH)/df_lib.h
+	$(COMP_ARGS) $(DF_COMMON_PATH)/shared.cpp -o $(INTERMEDIATES_SUBPATH)/shared.o
 
-$(INTERMEDIATES_SUBPATH)/thread_pool.o : $(DF_SHARED_PATH)/thread_pool.cpp $(DF_SHARED_PATH)/thread_pool.h
-	$(COMP_ARGS) $(DF_SHARED_PATH)/thread_pool.cpp -o $(INTERMEDIATES_SUBPATH)/thread_pool.o
+$(INTERMEDIATES_SUBPATH)/thread_pool.o : $(DF_COMMON_PATH)/thread_pool.cpp $(DF_COMMON_PATH)/thread_pool.h
+	$(COMP_ARGS) $(DF_COMMON_PATH)/thread_pool.cpp -o $(INTERMEDIATES_SUBPATH)/thread_pool.o
 
 #CLEAN
 clean : 

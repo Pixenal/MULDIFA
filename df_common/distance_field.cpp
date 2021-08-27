@@ -21,8 +21,8 @@
 */
 
 
-#include "../df_shared/df_lib.h"
-#include "../df_shared/thread_pool.h"
+#include "../df_common/df_lib.h"
+#include "../df_common/thread_pool.h"
 #include <chrono>
 
 extern shared_type shared;
