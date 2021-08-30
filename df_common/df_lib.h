@@ -1374,7 +1374,7 @@ private:
 							const unsigned short intern_df_cmprt_size,
 							const double intern_grid_spacing,
 							const int undo_index	);
-		int jump_to_closest_undo_step(const int undo_index);
+		int jump_to_closest_undo_step(const int undo_index, const bool delete_further_steps);
 		void clean();
 	};
 
@@ -1428,7 +1428,6 @@ public:
 	int update_per_tri(const unsigned long& dfc_id, const unsigned long& dfc_index);
 	int pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount, const bool ground_only, const unsigned short ground_amount);
 	shared_type::coord_xyz_type wrld_space_to_grid_indx_space(const shared_type::coord_xyz_type coord);
-	float get_lerped_point_value(const shared_type::coord_xyz_type& vert_coord);
 	float get_lerped_point_value(const shared_type::coord_xyz_type& vert_coord, const std::vector<unsigned long>& dfc_ids, const char mode, std::vector<shared_type::ncspline_type>& zaligned_splines, const int local_spline_length);
 	bool grid_bounds_check(const shared_type::coord_xyz_type& coord);
 	shared_type::index_xyz_type get_enclsing_cmprt(const shared_type::coord_xyz_type& coord);
@@ -1438,8 +1437,8 @@ public:
 	int clean();
 	int clean_special();
 	int check_volume(const shared_type::coord_xyz_type* volume_verts);
-	int defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount);
-	int defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount);
+	int defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount, int& greatest_id);
+	int defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount, int& greatest_id);
 	unsigned long get_dfc_id_size();
 	unsigned long get_dfr_id_size();
 	unsigned long get_dfc_layer_size(const unsigned long& layer_indx);
@@ -1454,6 +1453,8 @@ public:
 	int remove_dfrs_from_dfr_layer(const unsigned long& layer_indx, unsigned long* dfrs, unsigned long& dfrs_nxt_indx, const bool enable_expel);
 	int get_all_dfcs_in_dfc_layer(const unsigned long& layer_indx, unsigned long* dfc_ids);
 	int get_all_dfrs_in_dfr_layer(const unsigned long& layer_indx, unsigned long* dfr_ids);
+	int get_all_layers_with_dfc(const unsigned long dfc_id, unsigned long* layers, unsigned long& layers_nxt_indx);
+	int get_all_layers_with_dfr(const unsigned long dfr_id, unsigned long* layers, unsigned long& layers_nxt_indx);
 	int load_dfc_dfr_layers_from_buffer(std::vector<shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>>& dfc_layers, std::vector<shared_type::invrse_jenga_type<dfr_id_indx_type*, unsigned long>>& dfr_layers);
 	int copy_to_buffer();
 	int get_write_id_index();
@@ -1466,7 +1467,7 @@ public:
 	int weak_stash_volume_local();
 	int weak_unstash_volume_local();
 	int delete_rlvncy_buffers(void* args_ptr, unsigned short job_index);
-	int validate_undo_step(const int python_index);
+	int validate_undo_step(const int python_index, const bool delete_further_steps);
 	int incrmt_undo_step(const int python_index);
 
 	template <typename T>
@@ -1501,8 +1502,8 @@ extern "C"
 	EXPORT int call_df_update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const float* height_verts_buffer, const int interp_mode, const float gamma);
 	EXPORT int call_df_post_update_recipients();
 	EXPORT int call_df_check_volume(shared_type::coord_xyz_type* verts_buffer);
-	EXPORT int call_df_defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount);
-	EXPORT int call_df_defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount);
+	EXPORT int call_df_defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount, int& greatest_id);
+	EXPORT int call_df_defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount, int& greatest_id);
 	EXPORT unsigned long call_df_get_dfc_ids_size();
 	EXPORT unsigned long call_df_get_dfr_ids_size();
 	EXPORT unsigned long call_df_get_dfc_layer_size(const unsigned long& layer_indx);
@@ -1517,6 +1518,8 @@ extern "C"
 	EXPORT int call_df_remove_dfrs_from_dfr_layer(const unsigned long& layer_indx, unsigned long* dfrs, unsigned long& dfrs_nxt_indx);
 	EXPORT int call_df_get_all_dfcs_in_dfc_layer(const unsigned long& layer_indx, unsigned long* dfc_ids);
 	EXPORT int call_df_get_all_dfrs_in_dfr_layer(const unsigned long& layer_indx, unsigned long* dfr_ids);
+	EXPORT int call_df_get_all_layers_with_dfc(const unsigned long dfc_id, unsigned long* layers, unsigned long& layers_nxt_indx);
+	EXPORT int call_df_get_all_layers_with_dfr(const unsigned long dfr_id, unsigned long* layers, unsigned long& layers_nxt_indx);
 	EXPORT int call_df_copy_to_buffer();
 	EXPORT int call_df_get_write_id_index();
 	EXPORT int call_df_get_write_id_rand();
@@ -1525,7 +1528,7 @@ extern "C"
 	EXPORT int call_df_new_blend_handler(const char* dir, const char* file_name, const shared_type::write_id_type& write_id, const int** dfc_layers, const int** dfr_layers, const bool df_cache_enabled);
 	EXPORT int call_df_weak_stash_volume_local();
 	EXPORT int call_df_weak_unstash_volume_local();
-	EXPORT int call_df_validate_undo_step(const int python_index);
+	EXPORT int call_df_validate_undo_step(const int python_index, const bool delete_further_steps);
 	EXPORT int call_df_incrmt_undo_step(const int python_index);
 }
 

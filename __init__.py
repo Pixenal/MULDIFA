@@ -24,7 +24,7 @@ bl_info = {
             "description" : "A distance field implementation",
             "author": "Pixenal",
             "version": (1, 0),
-            "blender": (2, 91, 0),
+            "blender": (2, 93, 0),
             "location": "View3D > Sidebar > DF_Tool",
             "category": "3D View"
 }
@@ -33,7 +33,7 @@ import importlib
 
 if ("bpy" in locals()):
 
-    importlib.reload(df_preop)
+    importlib.reload(df_props)
     importlib.reload(df_ops)
     importlib.reload(df_ui)
     

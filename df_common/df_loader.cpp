@@ -794,7 +794,8 @@ void df_type::df_loader_type::director_type::buffers_type::buffer_dfc_layers()
 		for (unsigned long b = 0u; b < dfc_amount; ++b)
 		{
 			unsigned long dfc_id = get_ulong();
-			for (unsigned long c = 0u; c < update_local.dfc_amount; ++c)
+			update_local.dfc_ids.calc_size();
+			for (unsigned long c = 0u; c < update_local.dfc_ids.size; ++c)
 			{
 				if (update_local.dfc_ids.vector[c]->id == dfc_id)
 				{

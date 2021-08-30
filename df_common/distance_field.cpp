@@ -2663,76 +2663,7 @@ shared_type::coord_xyz_type df_type::wrld_space_to_grid_indx_space(const shared_
 }
 
 
-/*	This function returns the lerped distance value of a point (this function overload doesn't take df_ids, and as such doesn't take into 
-	account layers, the returned value is simply the greatest value in all layers)	*/
-float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_coord)
-{
-	grid_type***& grid = volume_local.grid;
-
-	shared_type::coord_xyz_type current_vert_indx_space = wrld_space_to_grid_indx_space(vert_coord);
-
-	/*	| "gp" here refers to grid point |	*/
-	/*	V								 V	*/
-
-	shared_type::index_xyz_type max_cell_gp;
-	shared_type::index_xyz_type min_cell_gp;
-
-	min_cell_gp.x = (unsigned short)current_vert_indx_space.x;
-	min_cell_gp.y = (unsigned short)current_vert_indx_space.y;
-	min_cell_gp.z = (unsigned short)current_vert_indx_space.z;
-
-	max_cell_gp.x = min_cell_gp.x + 1;
-	max_cell_gp.y = min_cell_gp.y + 1;
-	max_cell_gp.z = min_cell_gp.z + 1;
-
-	shared_type::coord_xyz_type current_vert_lerp_alpha;
-
-	current_vert_lerp_alpha.x = current_vert_indx_space.x - min_cell_gp.x;
-	current_vert_lerp_alpha.y = current_vert_indx_space.y - min_cell_gp.y;
-	current_vert_lerp_alpha.z = current_vert_indx_space.z - min_cell_gp.z;
-
-	grid_cell_value_type enclosing_cell_values;
-
-
-	/*       mxx o                    o mmx
-				  \		     x_z       \
-		   mxx_xxx o__________o_________o mmx_xmx
-					\	      |	         \
-					 \	      | 	      \
-				  xxx o       |      	   o xmx
-							  |
-							  o	final
-							  |
-			 mxm o            |        o mmm
-				  \		      |	        \
-		   mxm_xxm o__________o__________o mmm_xmm
-					\	     m_z 	      \
-					 \	    	           \
-				  xxm o 	  		        o xmm
-
-	mmm is first lerped with xmm to get mmm_xmm, then mxm is lerped with xxm to get mxm_xxm,
-	then mmm_xmm is lerp with mxm_xxm to get m_z,
-	then mmx is lerped with xmx to get mmx_xmx, then mxx is lerped with xxx to get mxx_xxx,
-	Then mmx_xmx is lerped with mxx_xxx to get x_z,
-	The m_z is lerped with x_z to get the final value
-	*/
-
-	float mmm_xmm_value = lerp_btwn_grid_points_values(min_cell_gp.x, grid[min_cell_gp.x][min_cell_gp.y][min_cell_gp.z].get_max_value(), max_cell_gp.x, grid[max_cell_gp.x][min_cell_gp.y][min_cell_gp.z].get_max_value(), current_vert_lerp_alpha.x);
-	float mxm_xxm_value = lerp_btwn_grid_points_values(min_cell_gp.x, grid[min_cell_gp.x][max_cell_gp.y][min_cell_gp.z].get_max_value(), max_cell_gp.x, grid[max_cell_gp.x][max_cell_gp.y][min_cell_gp.z].get_max_value(), current_vert_lerp_alpha.x);
-
-	float m_z_value = lerp_btwn_grid_points_values(min_cell_gp.y, mmm_xmm_value, max_cell_gp.y, mxm_xxm_value, current_vert_lerp_alpha.y);
-
-	float mmx_xmx_value = lerp_btwn_grid_points_values(min_cell_gp.x, grid[min_cell_gp.x][min_cell_gp.y][max_cell_gp.z].get_max_value(), max_cell_gp.x, grid[max_cell_gp.x][min_cell_gp.y][max_cell_gp.z].get_max_value(), current_vert_lerp_alpha.x);
-	float mxx_xxx_value = lerp_btwn_grid_points_values(min_cell_gp.x, grid[min_cell_gp.x][max_cell_gp.y][max_cell_gp.z].get_max_value(), max_cell_gp.x, grid[max_cell_gp.x][max_cell_gp.y][max_cell_gp.z].get_max_value(), current_vert_lerp_alpha.x);
-
-	float x_z_value = lerp_btwn_grid_points_values(min_cell_gp.y, mmx_xmx_value, max_cell_gp.y, mxx_xxx_value, current_vert_lerp_alpha.y);
-
-	return lerp_btwn_grid_points_values(min_cell_gp.z, m_z_value, max_cell_gp.z, x_z_value, current_vert_lerp_alpha.z);
-}
-
-
-/*	This function overload does the same as the above, but takes dfc_ids as parameters, and will return the greatest value of layers belonging
-	to the dfcs passed to it, ignoring those dfcs not listed	*/
+/*	This function will return the greatest interpolated value of layers belonging to the dfcs passed to it, ignoring those dfcs not listed	*/
 float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_coord, const std::vector<unsigned long>& dfc_ids, const char mode, std::vector<shared_type::ncspline_type>& zaligned_splines, const int local_spline_length)
 {
 	grid_type***& grid = volume_local.grid;
@@ -2951,10 +2882,8 @@ float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_co
 
 		std::cout << std::endl;
 
-		break;
+		return .0f;
 	}
-
-	
 }
 
 
@@ -3359,48 +3288,68 @@ int df_type::check_volume(const shared_type::coord_xyz_type* volume_verts)
 	This becomes an issue when you then try to go about determining which id to assign to a new dfc, as the current implementation just assigns the next id in a counter, which in the
 	above case would still be 100, even though there are only 10 dfcs. To avoid this the below function derfags the dfc_ids, though it should only be called every so often (such as
 	once the next index counter exceeds a certain threshold) to avoid a perf hit */
-int df_type::defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount)
+int df_type::defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount, int& greatest_id)
 {
+	greatest_id = 0;
+
 	for (unsigned long a = 0; a < dfc_amount; ++a)
 	{
-		update_local.dfc_cache.dfc_ids.calc_size();
-		for (unsigned long b = 0; b < update_local.dfc_cache.dfc_ids.size; ++b)
+		if (dfc_ids[a] > 0)
 		{
-			if (update_local.dfc_cache.dfc_ids.vector[b] != nullptr)
+			update_local.dfc_cache.dfc_ids.calc_size();
+			for (unsigned long b = 0; b < update_local.dfc_cache.dfc_ids.size; ++b)
 			{
-				if (dfc_ids[a] == update_local.dfc_cache.dfc_ids.vector[b]->id)
+				if (update_local.dfc_cache.dfc_ids.vector[b] != nullptr)
 				{
-					update_local.dfc_cache.dfc_ids.vector[b]->id = a;
-					break;
+					if (dfc_ids[a] == update_local.dfc_cache.dfc_ids.vector[b]->id)
+					{
+						update_local.dfc_cache.dfc_ids.vector[b]->id = (a + 1);
+						break;
+					}
 				}
 			}
-		}
 
-		dfc_ids[a] = a;
+			dfc_ids[a] = (a + 1);
+			if (dfc_ids[a] > greatest_id)
+			{
+				greatest_id = dfc_ids[a];
+			}	
+		}	
 	}
+
 	return 0;
 }
 
 /*	Same as above function, but for dfr_ids instead of dfc_ids (probably look into merging these into a single "index_defragment" function to avoid code repitition)	*/
-int df_type::defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount)
+int df_type::defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount, int& greatest_id)
 {
+	greatest_id = 0;
+
 	for (unsigned long a = 0; a < dfr_amount; ++a)
 	{
-		update_local.dfr_cache.dfr_ids.calc_size();
-		for (unsigned long b = 0; b < update_local.dfr_cache.dfr_ids.size; ++b)
+		if (dfr_ids[a] > 0)
 		{
-			if (update_local.dfr_cache.dfr_ids.vector[b] != nullptr)
+			update_local.dfr_cache.dfr_ids.calc_size();
+			for (unsigned long b = 0; b < update_local.dfr_cache.dfr_ids.size; ++b)
 			{
-				if (dfr_ids[a] == update_local.dfr_cache.dfr_ids.vector[b]->id)
+				if (update_local.dfr_cache.dfr_ids.vector[b] != nullptr)
 				{
-					update_local.dfr_cache.dfr_ids.vector[b]->id = a;
-					break;
+					if (dfr_ids[a] == update_local.dfr_cache.dfr_ids.vector[b]->id)
+					{
+						update_local.dfr_cache.dfr_ids.vector[b]->id = (a + 1);
+						break;
+					}
 				}
 			}
+
+			dfr_ids[a] = (a + 1);
+			if (dfr_ids[a] > greatest_id)
+			{
+				greatest_id = dfr_ids[a];
+			}
 		}
-		
-		dfr_ids[a] = a;
 	}
+
 	return 0;
 }
 
@@ -3785,6 +3734,52 @@ int df_type::get_all_dfrs_in_dfr_layer(const unsigned long& layer_indx, unsigned
 	{
 		dfr_ids[a] = dfr_layers[layer_indx].vector[a]->id;
 	}
+	return 0;
+}
+
+
+int df_type::get_all_layers_with_dfc(const unsigned long dfc_id, unsigned long* layers, unsigned long& layers_nxt_indx)
+{
+	unsigned long dfc_layer_amount = dfc_layers.size();
+	for (unsigned long a = 0u; a < dfc_layer_amount; ++a)
+	{
+		dfc_layers[a].calc_size();
+		for (unsigned long b = 0u; b < dfc_layers[a].size; ++b)
+		{
+			if (dfc_layers[a].vector[b] != nullptr)
+			{
+				if (dfc_id == dfc_layers[a].vector[b]->id)
+				{
+					layers[layers_nxt_indx] = a;
+					++layers_nxt_indx;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+
+int df_type::get_all_layers_with_dfr(const unsigned long dfr_id, unsigned long* layers, unsigned long& layers_nxt_indx)
+{
+	unsigned long dfr_layer_amount = dfr_layers.size();
+	for (unsigned long a = 0u; a < dfr_layer_amount; ++a)
+	{
+		dfr_layers[a].calc_size();
+		for (unsigned long b = 0u; b < dfr_layers[a].size; ++b)
+		{
+			if (dfr_layers[a].vector[b] != nullptr)
+			{
+				if (dfr_id == dfr_layers[a].vector[b]->id)
+				{
+					layers[layers_nxt_indx] = a;
+					++layers_nxt_indx;
+				}
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -4192,7 +4187,7 @@ void df_type::clean_df_layers()
 }
 
 
-int df_type::validate_undo_step(const int python_index)
+int df_type::validate_undo_step(const int python_index, const bool delete_further_steps)
 {
 	if (python_index == undo_history.active_undo_step->undo_index)
 	{
@@ -4200,7 +4195,7 @@ int df_type::validate_undo_step(const int python_index)
 	}
 	else
 	{
-		undo_history.jump_to_closest_undo_step(python_index);
+		undo_history.jump_to_closest_undo_step(python_index, delete_further_steps);
 		undo_step_type temp(*undo_history.active_undo_step);
 
 		/*	Update state	*/
@@ -6350,7 +6345,7 @@ void df_type::undo_history_type::add_undo_step(const shared_type::invrse_jenga_t
 }
 
 
-int df_type::undo_history_type::jump_to_closest_undo_step(const int undo_index)
+int df_type::undo_history_type::jump_to_closest_undo_step(const int undo_index, const bool delete_further_steps)
 {
 	int undo_history_size = this->intern_undo_history.size();
 	for (int a = 0u; a < undo_history_size; ++a)
@@ -6358,7 +6353,10 @@ int df_type::undo_history_type::jump_to_closest_undo_step(const int undo_index)
 		if (this->intern_undo_history[a].undo_index >= undo_index)
 		{
 			this->intern_active_undo_step = &this->intern_undo_history[a];
-			this->intern_undo_history.erase(this->intern_undo_history.begin() + (a + 1), this->intern_undo_history.begin() + undo_history_size);
+			if (delete_further_steps)
+			{
+				this->intern_undo_history.erase(this->intern_undo_history.begin() + (a + 1), this->intern_undo_history.begin() + undo_history_size);
+			}
 			if (this->intern_undo_history.size() > 1)
 			{
 				this->intern_previous_undo_step = &this->intern_undo_history[this->intern_undo_history.size() - 2];

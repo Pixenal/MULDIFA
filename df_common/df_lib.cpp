@@ -131,20 +131,20 @@ extern "C"
 	}
 
 
-	EXPORT int call_df_defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount)
+	EXPORT int call_df_defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount, int& greatest_id)
 	{
 		
-		df.defrag_dfc_ids(dfc_ids, dfc_amount);
+		df.defrag_dfc_ids(dfc_ids, dfc_amount, greatest_id);
 		
 
 		return 0;
 	}
 
 
-	EXPORT int call_df_defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount)
+	EXPORT int call_df_defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount, int& greatest_id)
 	{
 		
-		df.defrag_dfr_ids(dfr_ids, dfr_amount);
+		df.defrag_dfr_ids(dfr_ids, dfr_amount, greatest_id);
 		
 
 		return 0;
@@ -268,6 +268,18 @@ extern "C"
 	}
 
 
+	EXPORT int call_df_get_all_layers_with_dfc(const unsigned long dfc_id, unsigned long* layers, unsigned long& layers_nxt_indx)
+	{
+		return df.get_all_layers_with_dfc(dfc_id, layers, layers_nxt_indx);
+	}
+
+
+	EXPORT int call_df_get_all_layers_with_dfr(const unsigned long dfr_id, unsigned long* layers, unsigned long& layers_nxt_indx)
+	{
+		return df.get_all_layers_with_dfr(dfr_id, layers, layers_nxt_indx);
+	}
+
+
 	EXPORT int call_df_copy_to_buffer()
 	{
 
@@ -316,9 +328,9 @@ extern "C"
 		return df.weak_unstash_volume_local();
 	}
 
-	int call_df_validate_undo_step(const int python_index)
+	int call_df_validate_undo_step(const int python_index, const bool delete_further_steps)
 	{
-		df.validate_undo_step(python_index);
+		df.validate_undo_step(python_index, delete_further_steps);
 		return 0;
 	}
 
