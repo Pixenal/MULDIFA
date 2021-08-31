@@ -1455,6 +1455,8 @@ public:
 	int get_all_dfrs_in_dfr_layer(const unsigned long& layer_indx, unsigned long* dfr_ids);
 	int get_all_layers_with_dfc(const unsigned long dfc_id, unsigned long* layers, unsigned long& layers_nxt_indx);
 	int get_all_layers_with_dfr(const unsigned long dfr_id, unsigned long* layers, unsigned long& layers_nxt_indx);
+	int expel_nonexistant_dfcs_from_layers(const unsigned long* dfc_ids, const unsigned long dfc_amount);
+	int expel_nonexistant_dfrs_from_layers(const unsigned long* dfr_ids, const unsigned long dfr_amount);
 	int load_dfc_dfr_layers_from_buffer(std::vector<shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>>& dfc_layers, std::vector<shared_type::invrse_jenga_type<dfr_id_indx_type*, unsigned long>>& dfr_layers);
 	int copy_to_buffer();
 	int get_write_id_index();
@@ -1520,6 +1522,8 @@ extern "C"
 	EXPORT int call_df_get_all_dfrs_in_dfr_layer(const unsigned long& layer_indx, unsigned long* dfr_ids);
 	EXPORT int call_df_get_all_layers_with_dfc(const unsigned long dfc_id, unsigned long* layers, unsigned long& layers_nxt_indx);
 	EXPORT int call_df_get_all_layers_with_dfr(const unsigned long dfr_id, unsigned long* layers, unsigned long& layers_nxt_indx);
+	EXPORT int call_df_expel_nonexistant_dfcs_from_layers(const unsigned long* dfc_ids, const unsigned long dfc_amount);
+	EXPORT int call_df_expel_nonexistant_dfrs_from_layers(const unsigned long* dfr_ids, const unsigned long dfr_amount);
 	EXPORT int call_df_copy_to_buffer();
 	EXPORT int call_df_get_write_id_index();
 	EXPORT int call_df_get_write_id_rand();

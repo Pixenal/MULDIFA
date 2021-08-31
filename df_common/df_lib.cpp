@@ -280,6 +280,18 @@ extern "C"
 	}
 
 
+	EXPORT int call_df_expel_nonexistant_dfcs_from_layers(const unsigned long* dfc_ids, const unsigned long dfc_amount)
+	{
+		return df.expel_nonexistant_dfcs_from_layers(dfc_ids, dfc_amount);
+	}
+
+
+	EXPORT int call_df_expel_nonexistant_dfrs_from_layers(const unsigned long* dfr_ids, const unsigned long dfr_amount)
+	{
+		return df.expel_nonexistant_dfrs_from_layers(dfr_ids, dfr_amount);
+	}
+
+
 	EXPORT int call_df_copy_to_buffer()
 	{
 

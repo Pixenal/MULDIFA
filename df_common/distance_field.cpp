@@ -3784,6 +3784,72 @@ int df_type::get_all_layers_with_dfr(const unsigned long dfr_id, unsigned long* 
 }
 
 
+int df_type::expel_nonexistant_dfcs_from_layers(const unsigned long* dfc_ids, const unsigned long dfc_amount)
+{
+	unsigned long layers_size = dfc_layers.size();
+	for (unsigned long a = 0ul; a < layers_size; ++a)
+	{
+		dfc_layers[a].calc_size();
+		for (unsigned long b = 0ul; b < dfc_layers[a].vector.size(); ++b)
+		{
+			for (unsigned long c = 0u; c < dfc_amount; ++c)
+			{
+				if (dfc_layers[a].vector[b]->id == dfc_ids[c])
+				{
+					goto exists;
+				}
+			}
+			goto doesnt_exist;
+
+		exists:
+
+			continue;
+
+		doesnt_exist:
+
+			unsigned long dfc_array_wrapper[1] = { dfc_layers[a].vector[b]->id };
+			unsigned long dfc_array_wrapper_size = 1ul;
+			remove_dfcs_from_dfc_layer(a, dfc_array_wrapper, dfc_array_wrapper_size, true);
+		}
+	}
+
+	return 0;
+}
+
+
+int df_type::expel_nonexistant_dfrs_from_layers(const unsigned long* dfr_ids, const unsigned long dfr_amount)
+{
+	unsigned long layers_size = dfr_layers.size();
+	for (unsigned long a = 0ul; a < layers_size; ++a)
+	{
+		dfr_layers[a].calc_size();
+		for (unsigned long b = 0ul; b < dfr_layers[a].vector.size(); ++b)
+		{
+			for (unsigned long c = 0u; c < dfr_amount; ++c)
+			{
+				if (dfr_layers[a].vector[b]->id == dfr_ids[c])
+				{
+					goto exists;
+				}
+			}
+			goto doesnt_exist;
+
+		exists:
+
+			continue;
+
+		doesnt_exist:
+
+			unsigned long dfr_array_wrapper[1] = { dfr_layers[a].vector[b]->id };
+			unsigned long dfr_array_wrapper_size = 1ul;
+			remove_dfrs_from_dfr_layer(a, dfr_array_wrapper, dfr_array_wrapper_size, true);
+		}
+	}
+
+	return 0;
+}
+
+
 /*	This doesn't seem to be called anywhere, can't recall what it was for exactly	*/
 int df_type::load_dfc_dfr_layers_from_buffer(std::vector<shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>>& dfc_layers, std::vector<shared_type::invrse_jenga_type<dfr_id_indx_type*, unsigned long>>& dfr_layers)
 {
