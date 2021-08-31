@@ -7,6 +7,7 @@
 #Directories
 __pycache__/
 .vs/
+.vscode/
 intermediates/
 lib/Debug/
 lib/df_linux
