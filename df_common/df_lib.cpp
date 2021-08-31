@@ -330,23 +330,23 @@ extern "C"
 		return return_value;
 	}
 
-	int call_df_weak_stash_volume_local()
+	EXPORT int call_df_weak_stash_volume_local()
 	{
 		return df.weak_stash_volume_local();
 	}
 
-	int call_df_weak_unstash_volume_local()
+	EXPORT int call_df_weak_unstash_volume_local()
 	{
 		return df.weak_unstash_volume_local();
 	}
 
-	int call_df_validate_undo_step(const int python_index, const bool delete_further_steps)
+	EXPORT int call_df_validate_undo_step(const int python_index, const bool delete_further_steps)
 	{
 		df.validate_undo_step(python_index, delete_further_steps);
 		return 0;
 	}
 
-	int call_df_incrmt_undo_step(const int python_index)
+	EXPORT int call_df_incrmt_undo_step(const int python_index)
 	{
 		df.incrmt_undo_step(python_index);
 		return 0;
@@ -357,6 +357,12 @@ extern "C"
 		shared_type::write_id_type test;
 		test.index = 1056;
 		return test;
+	}
+
+	EXPORT int print_bazingo()
+	{
+		std::cout << "BAZINGO FROM WITHIN C++ !!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+		return 0;
 	}
 }
 

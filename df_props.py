@@ -99,7 +99,8 @@ class df_properties(bpy.types.PropertyGroup):
     df_volume_too_small : bpy.props.BoolProperty(default = False)
     df_mem_est_exceeded_max : bpy.props.BoolProperty(default = False)
     df_next_dfc_id : bpy.props.IntProperty(default = 1)
-    df_max_id : bpy.props.IntProperty(default = 2147483647)
+    #2147483647
+    df_max_id : bpy.props.IntProperty(default = 10)
     df_next_dfr_id : bpy.props.IntProperty(default = 1)
     df_write_id_index : bpy.props.IntProperty(default = 0)
     df_write_id_rand : bpy.props.IntProperty(default = 0)

@@ -60,45 +60,218 @@ df_lib = ctypes.cdll.LoadLibrary(current_dir + lib_file_name)
 df_lib.pass_lib_dir(ctypes.c_char_p(bytes(current_dir, 'utf-8')))
 
 
+# Classes
+#-------------------------------------------------------------------------------------------------------------#
+
+
+class id_abstractor_type():
+
+    id_type = 0
+    layers_col = None
+
+    def __init__(self, context, id_type):
+
+        self.id_type = id_type
+        if (id_type == 0):
+            
+            self.layers_col = context.scene.df_dfc_layers
+
+        else:
+
+            self.layers_col = context.scene.df_dfr_layers
+
+    def get_ids_col_in_layer(self, context, layer):
+
+        if (self.id_type == 0):
+
+            return layer.dfc_ids
+
+        else:
+
+            return layer.dfr_ids
+
+
+    def set_ids_indx_in_layer(self, context, layer, index):
+
+        if (self.id_type == 0):
+
+            layer.dfc_ids_indx = index
+
+        else:
+
+            layer.dfr_ids_indx = index
+
+
+    def add_item_to_ids_col_in_layer(self, context, layer, id):
+
+        if (self.id_type == 0):
+            
+            layer.dfc_ids_indx = len(layer.dfc_ids)
+            layer.dfc_ids.add()
+            layer.dfc_ids[layer.dfc_ids_indx].id = id
+        
+        elif (self.id_type == 1):
+
+            layer.dfr_ids_indx = len(layer.dfr_ids)
+            layer.dfr_ids.add()
+            layer.dfr_ids[layer.dfr_ids_indx].id = id
+
+
+    def get_id_in_obj(self, context, obj):
+
+        if (self.id_type == 0):
+
+            return obj.dfc_id
+
+        else:
+
+            return obj.dfr_id
+
+
+
+    def set_id_in_obj(self, context, obj, id):
+
+        if (self.id_type == 0):
+
+            obj.dfc_id = id
+
+        else:
+
+            obj.dfr_id = id
+
+
+    def get_next_id(self, context):
+
+        df = context.scene.df
+
+        if (self.id_type == 0):
+
+            return df.df_next_dfc_id
+
+        else:
+
+            return df.df_next_dfr_id
+
+
+    def set_next_id(self, context, id):
+
+        df = context.scene.df
+
+        if (self.id_type == 0):
+
+            df.df_next_dfc_id = id
+
+        else:
+
+            df.df_next_dfr_id = id
+
+    
+    def set_ids_col_indx_to_end(self, context, layer):
+
+        if (self.id_type == 0):
+
+            layer.dfc_ids_indx = (len(layer.dfc_ids) - 1)
+
+        else:
+
+            layer.dfr_ids_indx = (len(layer.dfr_ids) - 1)
+
+
+class rerun_item_type:
+
+    sercher = None
+    serchee = None
+    serchee_layers = []
+
+
+# Ctypes psuedo structs
+#-------------------------------------------------------------------------------------------------------------#
+
+
+class coord_xyz_type(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_double),
+                ("y", ctypes.c_double),
+                ("z", ctypes.c_double)]
+
+
+class tri_info_type(ctypes.Structure):
+    _fields_ = [("vert_0", ctypes.c_ulong),
+                ("vert_1", ctypes.c_ulong),
+                ("vert_2", ctypes.c_ulong),
+                ("normal", coord_xyz_type),
+                ("d", ctypes.c_double)]
+
+
+class vert_info_type(ctypes.Structure):
+    _fields_ = [("coord", coord_xyz_type),
+                ("value", ctypes.c_float)]
+
+
+class loop_info_type(ctypes.Structure):
+    _fields_ = [("vert_index", ctypes.c_ulong),] 
+
+
+class concave_entity_type(ctypes.Structure):
+    _fields_ = [("coord", coord_xyz_type),
+                ("rot", coord_xyz_type),
+                ("scale", coord_xyz_type)]
+                
+
+class write_id_type(ctypes.Structure):
+    _fields_ = [("index", ctypes.c_int),
+                ("rand", ctypes.c_int)]
+
+
 # Misc functions
 #-------------------------------------------------------------------------------------------------------------#
 
 
-def assign_dfcs_to_dfc_layer(context, objects, layer_indx):
+def assign_ids_to_layer(context, objects, layer_indx, id_type):
 
     df = context.scene.df
 
-    dfc_ids_type = ctypes.c_ulong * len(objects)
-    dfc_ids = dfc_ids_type()
-    dfc_ids_nxt_indx = ctypes.c_ulong(0)
+    id_abstractor = id_abstractor_type(context, id_type)
+
+    if (id_type == 0):
+
+        assign_libfunc = df_lib.call_df_assign_dfcs_to_dfc_layer
+
+    elif (id_type == 1):
+
+        assign_libfunc = df_lib.call_df_assign_dfrs_to_dfr_layer
+
+    else:
+
+        return
+
+    ids_type = ctypes.c_ulong * len(objects)
+    ids = ids_type()
+    ids_nxt_indx = ctypes.c_ulong(0)
 
     for obj in objects:
 
-        if (obj.dfc_id == 0):
+        if (id_abstractor.get_id_in_obj(context, obj) == 0):
 
-            obj.dfc_id = df.df_next_dfc_id
-            df.df_next_dfc_id += 1
+            id_abstractor.set_id_in_obj(context, obj, id_abstractor.get_next_id(context)) 
+            id_abstractor.set_next_id(context, (id_abstractor.get_next_id(context) + 1))
         
         exists = False
-        for dfc_id in context.scene.df_dfc_layers[layer_indx].dfc_ids:
+        for id in id_abstractor.get_ids_col_in_layer(context, id_abstractor.layers_col[layer_indx]):
 
-            if (dfc_id.id == obj.dfc_id):
+            if (id.id == id_abstractor.get_id_in_obj(context, obj)):
 
                 exists = True
                 
         if (exists == False):
 
-            context.scene.df_dfc_layers[layer_indx].dfc_ids_indx = len(context.scene.df_dfc_layers[layer_indx].dfc_ids)
-            context.scene.df_dfc_layers[layer_indx].dfc_ids.add()
-            context.scene.df_dfc_layers[layer_indx].dfc_ids[context.scene.df_dfc_layers[layer_indx].dfc_ids_indx].id = obj.dfc_id
-        
-            dfc_ids[dfc_ids_nxt_indx.value] = obj.dfc_id
-            dfc_ids_nxt_indx.value += 1
+            id_abstractor.add_item_to_ids_col_in_layer(context, id_abstractor.layers_col[layer_indx], id_abstractor.get_id_in_obj(context, obj))
+            ids[ids_nxt_indx.value] = id_abstractor.get_id_in_obj(context, obj)
+            ids_nxt_indx.value += 1
 
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
-    df_lib.call_df_assign_dfcs_to_dfc_layer(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(dfc_ids), ctypes.byref(dfc_ids_nxt_indx))
+    assign_libfunc(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(ids), ctypes.byref(ids_nxt_indx))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
         df.df_state_stashed = True
@@ -106,67 +279,39 @@ def assign_dfcs_to_dfc_layer(context, objects, layer_indx):
         df.df_state_stashed = False
 
 
-def assign_dfrs_to_dfr_layer(context, objects, layer_indx):
+def remove_ids_from_layer(context, objects, layer_indx, id_type):
 
     df = context.scene.df
 
-    dfr_ids_type = ctypes.c_ulong * len(objects)
-    dfr_ids = dfr_ids_type()
-    dfr_ids_nxt_indx = ctypes.c_ulong(0)
+    id_abstractor = id_abstractor_type(context, id_type)
 
-    for obj in objects:
+    if (id_type == 0):
 
-        if (obj.dfr_id == 0):
+        remove_libfunc = df_lib.call_df_remove_dfcs_from_dfc_layer
 
-            obj.dfr_id = df.df_next_dfr_id
-            df.df_next_dfr_id += 1
-        
-        exists = False
-        for dfr_id in context.scene.df_dfr_layers[layer_indx].dfr_ids:
+    elif (id_type == 1):
 
-            if (dfr_id.id == obj.dfr_id):
+        remove_libfunc = df_lib.call_df_remove_dfrs_from_dfr_layer
 
-                exists = True
-                
-        if (exists == False):
-
-            context.scene.df_dfr_layers[layer_indx].dfr_ids_indx = len(context.scene.df_dfr_layers[layer_indx].dfr_ids)
-            context.scene.df_dfr_layers[layer_indx].dfr_ids.add()
-            context.scene.df_dfr_layers[layer_indx].dfr_ids[context.scene.df_dfr_layers[layer_indx].dfr_ids_indx].id = obj.dfr_id
-        
-            dfr_ids[dfr_ids_nxt_indx.value] = obj.dfr_id
-            dfr_ids_nxt_indx.value += 1
-
-    if (df.df_state_stashed):
-        df_lib.call_df_unstash_state()
-        df.df_state_stashed = False
-    df_lib.call_df_assign_dfrs_to_dfr_layer(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(dfr_ids), ctypes.byref(dfr_ids_nxt_indx))
-    if (df.df_stashing_enabled):
-        df_lib.call_df_stash_state()
-        df.df_state_stashed = True
     else:
-        df.df_state_stashed = False
 
-
-def remove_dfcs_from_dfc_layer(context, objects, layer_indx):
-
-    df = context.scene.df
+        return
 
     slcted_obj_amount = len(objects)
-    dfcs_type = ctypes.c_ulong * slcted_obj_amount
-    dfcs = dfcs_type()
-    dfcs_nxt_indx = ctypes.c_ulong(0)
+    ids_type = ctypes.c_ulong * slcted_obj_amount
+    ids = ids_type()
+    ids_nxt_indx = ctypes.c_ulong(0)
 
     for obj in objects:
             
-        dfcs[dfcs_nxt_indx.value] = obj.dfc_id
-        dfcs_nxt_indx.value += 1
-        
+        ids[ids_nxt_indx.value] = id_abstractor.get_id_in_obj(context, obj)
+        ids_nxt_indx.value += 1
         index = -1
         counter = 0
-        for dfc_id in context.scene.df_dfc_layers[layer_indx].dfc_ids:
+        layer_ids = id_abstractor.get_ids_col_in_layer(context, id_abstractor.layers_col[layer_indx])
+        for id in layer_ids:
         
-            if (dfc_id.id == obj.dfc_id):
+            if (id.id == id_abstractor.get_id_in_obj(context, obj)):
                 
                 index = counter
                 break
@@ -175,12 +320,12 @@ def remove_dfcs_from_dfc_layer(context, objects, layer_indx):
                 
         if (index != -1):
             
-            context.scene.df_dfc_layers[layer_indx].dfc_ids.remove(index)
+            layer_ids.remove(index)
             
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
-    df_lib.call_df_remove_dfcs_from_dfc_layer(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(dfcs), ctypes.byref(dfcs_nxt_indx))
+    remove_libfunc(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(ids), ctypes.byref(ids_nxt_indx))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
         df.df_state_stashed = True
@@ -188,57 +333,9 @@ def remove_dfcs_from_dfc_layer(context, objects, layer_indx):
         df.df_state_stashed = False
     
     indx_counter = 0
-    while (indx_counter < dfcs_nxt_indx.value):
+    while (indx_counter < ids_nxt_indx.value):
 
-        objects[dfcs[indx_counter]].dfc_id = 0
-        
-        indx_counter += 1
-
-
-def remove_dfrs_from_dfr_layer(context, objects, layer_indx):
-
-    df = context.scene.df
-
-    slcted_obj_amount = len(objects)
-    dfrs_type = ctypes.c_ulong * slcted_obj_amount
-    dfrs = dfrs_type()
-    dfrs_nxt_indx = ctypes.c_ulong(0)
-
-    for obj in objects:
-            
-        dfrs[dfrs_nxt_indx.value] = obj.dfr_id
-        dfrs_nxt_indx.value += 1
-        
-        index = -1
-        counter = 0
-        for dfr_id in context.scene.df_dfr_layers[layer_indx].dfr_ids:
-        
-            if (dfr_id.id == obj.dfr_id):
-                
-                index = counter
-                break
-                
-            counter += 1
-                
-        if (index != -1):
-            
-            context.scene.df_dfr_layers[layer_indx].dfr_ids.remove(index)
-            
-    if (df.df_state_stashed):
-        df_lib.call_df_unstash_state()
-        df.df_state_stashed = False
-    df_lib.call_df_remove_dfrs_from_dfr_layer(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(dfrs), ctypes.byref(dfrs_nxt_indx))
-    if (df.df_stashing_enabled):
-        df_lib.call_df_stash_state()
-        df.df_state_stashed = True
-    else:
-        df.df_state_stashed = False
-    
-    indx_counter = 0
-    while (indx_counter < dfrs_nxt_indx.value):
-
-        objects[dfrs[indx_counter]].dfr_id = 0
-        
+        id_abstractor.set_id_in_obj(context, objects[ids[indx_counter]], 0)
         indx_counter += 1
 
 
@@ -304,163 +401,133 @@ def generate_uniq_dup_name(collection, base_name):
             return base_name
 
 
-def defrag_dfc_ids(context, existing_dfcs, existing_dfc_ids, existing_dfc_ids_next_index):
+def expel_nonexistant_ids_python(context, id_type):
 
     df = context.scene.df
 
-    validate_undo_step(context)
+    id_abstractor = id_abstractor_type(context, id_type)
 
-    existing_dfc_ids_buffer = existing_dfc_ids.ctypes.data_as(ctypes.POINTER(ctypes.c_ulong))
-    greatest_id = ctypes.c_int(0)
-    if (df.df_state_stashed):
-        df_lib.call_df_unstash_state()
-        df.df_state_stashed = False
-    df_lib.call_df_expel_nonexistant_dfcs_from_layers(existing_dfc_ids_buffer, ctypes.c_ulong(existing_dfc_ids_next_index))
-    df_lib.call_df_defrag_dfc_ids(existing_dfc_ids_buffer, ctypes.byref(ctypes.c_ulong(existing_dfc_ids_next_index)), ctypes.byref(greatest_id))
-    if (df.df_stashing_enabled):
-        df_lib.call_df_stash_state()
-        df.df_state_stashed = True
-    else:
-        df.df_state_stashed = False
-    
-    layer_indx = 0
-    for layer in context.scene.df_dfc_layers:
-        id_indx = 0
-        for id in layer.dfc_ids:
-            id_indx += 1
-        layer_indx += 1
+    def check_against_ids(context, id):
 
-    index_counter  = 0
-    while (index_counter < existing_dfc_ids_next_index):
+        for obj in context.scene.objects:
 
-        layer_indx = 0
-        for dfc_layer in context.scene.df_dfc_layers:
-            id_indx = 0
-            for dfc_id in dfc_layer.dfc_ids:
+            obj_id = id_abstractor.get_id_in_obj(context, obj)
+            if (obj_id == id.id):
 
-                if (dfc_id.id == existing_dfcs[index_counter].dfc_id):
+                return True
 
-                    dfc_id.id = existing_dfc_ids_buffer[index_counter]
-                    break
-                id_indx += 1
-            layer_indx += 1
+        return False
 
-        existing_dfcs[index_counter].dfc_id = existing_dfc_ids_buffer[index_counter]
-        index_counter += 1
-
-    layer_indx = 0
-    for layer in context.scene.df_dfc_layers:
-        id_indx = 0
-        for id in layer.dfc_ids:
-            id_indx += 1
-        layer_indx += 1
-
-    if (greatest_id.value < df.df_max_id):
-
-        df.df_next_dfc_id = (greatest_id.value + 1)
-
-    incrmt_undo_step(context)
-    
-    
-def defrag_dfr_ids(context, existing_dfrs, existing_dfr_ids, existing_dfr_ids_next_index):
-
-    df = context.scene.df
-
-    validate_undo_step(context)
-
-    existing_dfr_ids_buffer = existing_dfr_ids.ctypes.data_as(ctypes.POINTER(ctypes.c_ulong))
-    greatest_id = ctypes.c_int(0)
-    if (df.df_state_stashed):
-        df_lib.call_df_unstash_state()
-        df.df_state_stashed = False
-    df_lib.call_df_expel_nonexistant_dfrs_from_layers(existing_dfr_ids_buffer, ctypes.c_ulong(existing_dfr_ids_next_index))
-    df_lib.call_df_defrag_dfr_ids(existing_dfr_ids_buffer, ctypes.byref(ctypes.c_ulong(existing_dfr_ids_next_index)), ctypes.byref(greatest_id))
-    if (df.df_stashing_enabled):
-        df_lib.call_df_stash_state()
-        df.df_state_stashed = True
-    else:
-        df.df_state_stashed = False
-    
-    layer_indx = 0
-    for layer in context.scene.df_dfr_layers:
-        id_indx = 0
-        for id in layer.dfr_ids:
-            id_indx += 1
-        layer_indx += 1
-
-    index_counter  = 0
-    while (index_counter < existing_dfr_ids_next_index):
-
-        layer_indx = 0
-        for dfr_layer in context.scene.df_dfr_layers:
-            id_indx = 0
-            for dfr_id in dfr_layer.dfr_ids:
-
-                if (dfr_id.id == existing_dfrs[index_counter].dfr_id):
-
-                    dfr_id.id = existing_dfr_ids_buffer[index_counter]
-                    break
-                id_indx += 1
-            layer_indx += 1
-
-        existing_dfrs[index_counter].dfr_id = existing_dfr_ids_buffer[index_counter]
-        index_counter += 1
-
-    layer_indx = 0
-    for layer in context.scene.df_dfr_layers:
-        id_indx = 0
-        for id in layer.dfr_ids:
-            id_indx += 1
-        layer_indx += 1
-
-    if (greatest_id.value < df.df_max_id):
-
-        df.df_next_dfr_id = (greatest_id.value + 1)
-
-    incrmt_undo_step(context)
-    
-
-def get_dfc_dup_serchee_layers(context, serchee_id):
-
-    df = context.scene.df
-
-    serchee_layers_type = ctypes.c_ulong * len(context.scene.df_dfc_layers)
-    serchee_layers = serchee_layers_type()
-    serchee_layers_nxt_indx = ctypes.c_ulong(0)
-
-    if (df.df_state_stashed):
-        df_lib.call_df_unstash_state()
-        df.df_state_stashed = False
-    df_lib.call_df_get_all_layers_with_dfc(serchee_id, ctypes.pointer(serchee_layers), ctypes.byref(serchee_layers_nxt_indx))
-    if (df.df_stashing_enabled):
-        df_lib.call_df_stash_state()
-        df.df_state_stashed = True
-    else:
-        df.df_state_stashed = False
-
-    trimmed_serchee_layers_type = ctypes.c_ulong * serchee_layers_nxt_indx.value
-    trimmed_serchee_layers = trimmed_serchee_layers_type()
     counter = 0
-    while (counter < serchee_layers_nxt_indx.value):
+    for layer in id_abstractor.layers_col:
+        counter1 = 0
+        layer_ids = id_abstractor.get_ids_col_in_layer(context, layer)
+        while (counter1 < len(layer_ids)):
 
-        trimmed_serchee_layers[counter] = serchee_layers[counter]
+            if (not check_against_ids(context, layer_ids[counter1])):
+
+                layer_ids.remove(counter1)
+                id_abstractor.set_ids_col_indx_to_end(context, layer)
+                counter1 -= 1
+
+            counter1 += 1
+                
         counter += 1
 
-    return trimmed_serchee_layers
 
-
-def get_dfr_dup_serchee_layers(context, serchee_id):
+def defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_index, layers_col, id_type):
 
     df = context.scene.df
 
-    serchee_layers_type = ctypes.c_ulong * len(context.scene.df_dfr_layers)
+    id_abstractor = id_abstractor_type(context, id_type)
+
+    if (id_type == 0):
+
+        expel_libfunc = df_lib.call_df_expel_nonexistant_dfcs_from_layers
+        defrag_libfunc = df_lib.call_df_defrag_dfc_ids
+
+    else:
+
+        expel_libfunc = df_lib.call_df_expel_nonexistant_dfrs_from_layers
+        defrag_libfunc = df_lib.call_df_defrag_dfr_ids
+
+    validate_undo_step(context)
+
+    existing_obj_ids_buffer = existing_obj_ids.ctypes.data_as(ctypes.POINTER(ctypes.c_ulong))
+    greatest_id = ctypes.c_int(0)
+    if (df.df_state_stashed):
+        df_lib.call_df_unstash_state()
+        df.df_state_stashed = False
+    expel_libfunc(existing_obj_ids_buffer, ctypes.c_ulong(existing_obj_ids_next_index))
+    expel_nonexistant_ids_python(context, id_type)
+    defrag_libfunc(existing_obj_ids_buffer, ctypes.byref(ctypes.c_ulong(existing_obj_ids_next_index)), ctypes.byref(greatest_id))
+    if (df.df_stashing_enabled):
+        df_lib.call_df_stash_state()
+        df.df_state_stashed = True
+    else:
+        df.df_state_stashed = False
+
+    layer_indx = 0
+    for layer in layers_col:
+        id_indx = 0
+        layer_ids = id_abstractor.get_ids_col_in_layer(context, layer)
+        for id in layer_ids:
+            id_indx += 1
+        layer_indx += 1
+
+    index_counter  = 0
+    while (index_counter < existing_obj_ids_next_index):
+
+        layer_indx = 0
+        for layer in layers_col:
+            id_indx = 0
+            layer_ids = id_abstractor.get_ids_col_in_layer(context, layer)
+            for id in layer_ids:
+
+                if (id.id == id_abstractor.get_id_in_obj(context, existing_objs[index_counter])):
+                    
+                    id.id = existing_obj_ids_buffer[index_counter]
+                    break
+                id_indx += 1
+            layer_indx += 1
+        id_abstractor.set_id_in_obj(context, existing_objs[index_counter], existing_obj_ids_buffer[index_counter])
+        index_counter += 1
+
+    layer_indx = 0
+    for layer in layers_col:
+        id_indx = 0
+        layer_ids = id_abstractor.get_ids_col_in_layer(context, layer)
+        for id in layer_ids:
+            id_indx += 1
+        layer_indx += 1
+
+    if (greatest_id.value < df.df_max_id):
+
+        id_abstractor.set_next_id(context, (greatest_id.value + 1))
+
+    incrmt_undo_step(context)
+
+
+def get_id_dup_serchee_layers(context, serchee_id, layers_col, id_type):
+
+    df = context.scene.df
+
+    if (id_type == 0):
+
+        get_serchee_layers_lib_func = df_lib.call_df_get_all_layers_with_dfc
+
+    else:
+
+        get_serchee_layers_lib_func = df_lib.call_df_get_all_layers_with_dfr
+
+    serchee_layers_type = ctypes.c_ulong * len(layers_col)
     serchee_layers = serchee_layers_type()
     serchee_layers_nxt_indx = ctypes.c_ulong(0)
 
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
-    df_lib.call_df_get_all_layers_with_dfr(serchee_id, ctypes.pointer(serchee_layers), ctypes.byref(serchee_layers_nxt_indx))
+    get_serchee_layers_lib_func(serchee_id, ctypes.pointer(serchee_layers), ctypes.byref(serchee_layers_nxt_indx))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
         df.df_state_stashed = True
@@ -484,9 +551,12 @@ class rerun_item_type:
     serchee = None
     serchee_layers = []
 
-def validate_dfc_ids(context, rerun_items):
+
+def validate_ids(context, rerun_items, id_type):
 
     df = bpy.context.scene.df
+
+    id_abstractor = id_abstractor_type(context, id_type)
 
     rerun_items_size = len(rerun_items)
     if (rerun_items_size > 0):
@@ -495,15 +565,15 @@ def validate_dfc_ids(context, rerun_items):
         counter = 0
         while (counter < rerun_items_size):
 
-            rerun_items[counter].sercher.dfc_id = df.df_next_dfc_id
-            rerun_items[counter].serchee.dfc_id = df.df_next_dfc_id
-            df.df_next_dfc_id += 1
+            id_abstractor.set_id_in_obj(context, rerun_items[counter].sercher, df.df_next_dfc_id)
+            id_abstractor.set_id_in_obj(context, rerun_items[counter].serchee, df.df_next_dfc_id)
+            id_abstractor.set_next_id(context, (id_abstractor.get_next_id(context) + 1))
             obj_list_wrapper = [rerun_items[counter].sercher,]
             counter1 = 0
 
             while (counter1 < len(rerun_items[counter].serchee_layers)):
 
-                assign_dfcs_to_dfc_layer(context, obj_list_wrapper, rerun_items[counter].serchee_layers[counter1])
+                assign_ids_to_layer(context, obj_list_wrapper, rerun_items[counter].serchee_layers[counter1], id_type)
                 counter1 += 1
             
             counter += 1
@@ -512,42 +582,43 @@ def validate_dfc_ids(context, rerun_items):
 
     obj_amount = len(bpy.context.scene.objects)
 
-    existing_dfcs = numpy.empty(obj_amount, dtype = object)
-    existing_dfc_ids = numpy.empty(obj_amount, dtype = numpy.int_)
-    existing_dfc_ids_next_index = 0
+    existing_objs = numpy.empty(obj_amount, dtype = object)
+    existing_obj_ids = numpy.empty(obj_amount, dtype = numpy.int_)
+    existing_obj_ids_next_index = 0
     return_rerun_items = []
     return_rerun_items_nxt_indx = 0
 
     for obj in bpy.context.scene.objects:
     
-        if (obj.dfc_id > 0):
+        obj_id = id_abstractor.get_id_in_obj(context, obj)
+        if (obj_id > 0):
             
             index_counter = 0
-            while (index_counter < existing_dfc_ids_next_index):
+            while (index_counter < existing_obj_ids_next_index):
                 
-                if (obj.dfc_id == existing_dfc_ids[index_counter]):
+                if (obj_id == existing_obj_ids[index_counter]):
 
-                    if (df.df_next_dfc_id < df.df_max_id):
+                    if (id_abstractor.get_next_id(context) < df.df_max_id):
 
-                        id_to_apply = df.df_next_dfc_id
-                        df.df_next_dfc_id += 1
+                        id_to_apply = id_abstractor.get_next_id(context)
+                        id_abstractor.set_next_id(context, (id_to_apply + 1))
 
-                    elif (existing_dfc_ids_next_index < (df.df_max_id - 1)):
+                    elif (existing_obj_ids_next_index < (df.df_max_id - 1)):
 
                         return_rerun_items.append(rerun_item_type())
                         return_rerun_items[return_rerun_items_nxt_indx].sercher = obj
-                        return_rerun_items[return_rerun_items_nxt_indx].serchee = existing_dfcs[index_counter]
-                        return_rerun_items[return_rerun_items_nxt_indx].serchee_layers = get_dfc_dup_serchee_layers(context, existing_dfcs[index_counter].dfc_id)
-                        obj_list_wrapper = [obj, existing_dfcs[index_counter]]
+                        return_rerun_items[return_rerun_items_nxt_indx].serchee = existing_objs[index_counter]
+                        return_rerun_items[return_rerun_items_nxt_indx].serchee_layers = get_id_dup_serchee_layers(context, id_abstractor.get_id_in_obj(context, existing_objs[index_counter]), id_abstractor.layers_col, id_type)
+                        obj_list_wrapper = [obj, existing_objs[index_counter]]
                         counter1 = 0
                         while (counter1 < len(return_rerun_items[return_rerun_items_nxt_indx].serchee_layers)):
 
-                            remove_dfcs_from_dfc_layer(context, obj_list_wrapper, return_rerun_items[return_rerun_items_nxt_indx].serchee_layers[counter1])
+                            remove_ids_from_layer(context, obj_list_wrapper, return_rerun_items[return_rerun_items_nxt_indx].serchee_layers[counter1], id_type)
                             counter1 += 1
 
-                        existing_dfcs = numpy.delete(existing_dfcs, index_counter)
-                        existing_dfc_ids = numpy.delete(existing_dfc_ids, index_counter)
-                        existing_dfc_ids_next_index -= 1
+                        existing_objs = numpy.delete(existing_objs, index_counter)
+                        existing_obj_ids = numpy.delete(existing_obj_ids, index_counter)
+                        existing_obj_ids_next_index -= 1
 
                         return_rerun_items_nxt_indx += 1
                         break
@@ -556,184 +627,64 @@ def validate_dfc_ids(context, rerun_items):
 
                         id_to_apply = 0
 
-                    srchr_dfc_name_len = len(obj.name)
-                    srchee_dfc_name_len = len(existing_dfcs[index_counter].name)
-                    
-                    if (srchr_dfc_name_len == srchee_dfc_name_len):
-
-                        srchr_dup_num = get_name_dup_num(obj.name)
-                        srchee_dup_num = get_name_dup_num(existing_dfcs[index_counter].name)
-                    
-                        if (srchr_dup_num < srchee_dup_num) and (False):
-
-                            existing_dfcs[index_counter].dfc_id = id_to_apply
-                            
-                        else:
-
-                            obj.dfc_id = id_to_apply
-                        
-                    elif (srchr_dfc_name_len < srchee_dfc_name_len) and (False):
-
-                        existing_dfcs[dfc_id.index].dfc_id = id_to_apply
-                        
-                    else:
-
-                        obj.dfc_id = id_to_apply
+                    id_abstractor.set_id_in_obj(context, obj, id_to_apply)
 
                     if (id_to_apply > 0):
 
                         validate_undo_step(context)
                         
-                        serchee_layers = get_dfc_dup_serchee_layers(context, existing_dfcs[index_counter].dfc_id)
+                        serchee_layers = get_id_dup_serchee_layers(context, id_abstractor.get_id_in_obj(context, existing_objs[index_counter]), id_abstractor.layers_col, id_type)
                         obj_list_wrapper = [obj,]
                         counter = 0
                         while (counter < len(serchee_layers)):
 
-                            assign_dfcs_to_dfc_layer(context, obj_list_wrapper, serchee_layers[counter])
+                            assign_ids_to_layer(context, obj_list_wrapper, serchee_layers[counter], id_type)
                             counter += 1
 
                         incrmt_undo_step(context)
 
                 index_counter += 1
 
-            existing_dfcs[existing_dfc_ids_next_index] = obj
-            existing_dfc_ids[existing_dfc_ids_next_index] = obj.dfc_id
-            existing_dfc_ids_next_index += 1 
+            existing_objs[existing_obj_ids_next_index] = obj
+            existing_obj_ids[existing_obj_ids_next_index] = id_abstractor.get_id_in_obj(context, obj)
+            existing_obj_ids_next_index += 1 
 
-    if ((df.df_next_dfc_id >= df.df_max_id) and existing_dfc_ids_next_index < (df.df_max_id - 1)):
+    if ((id_abstractor.get_next_id(context) >= df.df_max_id) and existing_obj_ids_next_index < (df.df_max_id - 1)):
 
-        defrag_dfc_ids(context, existing_dfcs, existing_dfc_ids, existing_dfc_ids_next_index)
+        defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_index, id_abstractor.layers_col, id_type)
 
     return return_rerun_items
 
 
-#########################################################################################################################
-#########################################################################################################################
-#########################################################################################################################
-#########################################################################################################################
+def validate_dfc_dfr_ids():
 
+    rerun_items = validate_ids(bpy.context, [], 0)
+    while(True):
+        
+        if (len(rerun_items) > 0):
             
-def validate_dfr_ids(context, rerun_items):
+            rerun_items = validate_ids(bpy.context, rerun_items, 0)
 
-    df = bpy.context.scene.df
+        else:
 
-    rerun_items_size = len(rerun_items)
-    if (rerun_items_size > 0):
-
-        validate_undo_step(context)
-        counter = 0
-        while (counter < rerun_items_size):
-
-            rerun_items[counter].sercher.dfr_id = df.df_next_dfr_id
-            rerun_items[counter].serchee.dfr_id = df.df_next_dfr_id
-            df.df_next_dfr_id += 1
-            obj_list_wrapper = [rerun_items[counter].sercher,]
-            counter1 = 0
-
-            while (counter1 < len(rerun_items[counter].serchee_layers)):
-
-                assign_dfrs_to_dfr_layer(context, obj_list_wrapper, rerun_items[counter].serchee_layers[counter1])
-                counter1 += 1
-            
-            counter += 1
-
-        incrmt_undo_step(context)
-
-    obj_amount = len(bpy.context.scene.objects)
-
-    existing_dfrs = numpy.empty(obj_amount, dtype = object)
-    existing_dfr_ids = numpy.empty(obj_amount, dtype = numpy.int_)
-    existing_dfr_ids_next_index = 0
-    return_rerun_items = []
-    return_rerun_items_nxt_indx = 0
-
-    for obj in bpy.context.scene.objects:
+            break
     
-        if (obj.dfr_id > 0):
+    rerun_items = validate_ids(bpy.context, [], 1)
+    while(True):
+        
+        if (len(rerun_items) > 0):
             
-            index_counter = 0
-            while (index_counter < existing_dfr_ids_next_index):
-                
-                if (obj.dfr_id == existing_dfr_ids[index_counter]):
+            rerun_items = validate_ids(bpy.context, rerun_items, 1)
 
-                    if (df.df_next_dfr_id < df.df_max_id):
+        else:
 
-                        id_to_apply = df.df_next_dfr_id
-                        df.df_next_dfr_id += 1
+            break
 
-                    elif (existing_dfr_ids_next_index < (df.df_max_id - 1)):
 
-                        return_rerun_items.append(rerun_item_type())
-                        return_rerun_items[return_rerun_items_nxt_indx].sercher = obj
-                        return_rerun_items[return_rerun_items_nxt_indx].serchee = existing_dfrs[index_counter]
-                        return_rerun_items[return_rerun_items_nxt_indx].serchee_layers = get_dfr_dup_serchee_layers(context, existing_dfrs[index_counter].dfr_id)
-                        obj_list_wrapper = [obj, existing_dfrs[index_counter]]
-                        counter1 = 0
-                        while (counter1 < len(return_rerun_items[return_rerun_items_nxt_indx].serchee_layers)):
-
-                            remove_dfrs_from_dfr_layer(context, obj_list_wrapper, return_rerun_items[return_rerun_items_nxt_indx].serchee_layers[counter1])
-                            counter1 += 1
-
-                        existing_dfrs = numpy.delete(existing_dfrs, index_counter)
-                        existing_dfr_ids = numpy.delete(existing_dfr_ids, index_counter)
-                        existing_dfr_ids_next_index -= 1
-
-                        return_rerun_items_nxt_indx += 1
-                        break
-                        
-                    else:
-
-                        id_to_apply = 0
-
-                    srchr_dfr_name_len = len(obj.name)
-                    srchee_dfr_name_len = len(existing_dfrs[index_counter].name)
-                    
-                    if (srchr_dfr_name_len == srchee_dfr_name_len):
-
-                        srchr_dup_num = get_name_dup_num(obj.name)
-                        srchee_dup_num = get_name_dup_num(existing_dfrs[index_counter].name)
-                    
-                        if (srchr_dup_num < srchee_dup_num) and (False):
-
-                            existing_dfrs[index_counter].dfr_id = id_to_apply
-                            
-                        else:
-
-                            obj.dfr_id = id_to_apply
-                        
-                    elif (srchr_dfr_name_len < srchee_dfr_name_len) and (False):
-
-                        existing_dfrs[dfr_id.index].dfr_id = id_to_apply
-                        
-                    else:
-
-                        obj.dfr_id = id_to_apply
-
-                    if (id_to_apply > 0):
-
-                        validate_undo_step(context)
-                        
-                        serchee_layers = get_dfr_dup_serchee_layers(context, existing_dfrs[index_counter].dfr_id)
-                        obj_list_wrapper = [obj,]
-                        counter = 0
-                        while (counter < len(serchee_layers)):
-
-                            assign_dfrs_to_dfr_layer(context, obj_list_wrapper, serchee_layers[counter])
-                            counter += 1
-
-                        incrmt_undo_step(context)
-
-                index_counter += 1
-
-            existing_dfrs[existing_dfr_ids_next_index] = obj
-            existing_dfr_ids[existing_dfr_ids_next_index] = obj.dfr_id
-            existing_dfr_ids_next_index += 1 
-
-    if ((df.df_next_dfr_id >= df.df_max_id) and existing_dfr_ids_next_index < (df.df_max_id - 1)):
-
-        defrag_dfr_ids(context, existing_dfrs, existing_dfr_ids, existing_dfr_ids_next_index)
-
-    return return_rerun_items
+#########################################################################################################################
+#########################################################################################################################
+#########################################################################################################################
+#########################################################################################################################
             
             
 def dfc_layer_name_to_indx(context, dfc_layer_name):
@@ -762,44 +713,6 @@ def incrmt_undo_step(context):
     
     df.df_undo_index += 1
     df_lib.call_df_incrmt_undo_step(ctypes.c_int(df.df_undo_index))
-
-
-# Ctypes psuedo structs
-#-------------------------------------------------------------------------------------------------------------#
-
-
-class coord_xyz_type(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_double),
-                ("y", ctypes.c_double),
-                ("z", ctypes.c_double)]
-
-
-class tri_info_type(ctypes.Structure):
-    _fields_ = [("vert_0", ctypes.c_ulong),
-                ("vert_1", ctypes.c_ulong),
-                ("vert_2", ctypes.c_ulong),
-                ("normal", coord_xyz_type),
-                ("d", ctypes.c_double)]
-
-
-class vert_info_type(ctypes.Structure):
-    _fields_ = [("coord", coord_xyz_type),
-                ("value", ctypes.c_float)]
-
-
-class loop_info_type(ctypes.Structure):
-    _fields_ = [("vert_index", ctypes.c_ulong),] 
-
-
-class concave_entity_type(ctypes.Structure):
-    _fields_ = [("coord", coord_xyz_type),
-                ("rot", coord_xyz_type),
-                ("scale", coord_xyz_type)]
-                
-
-class write_id_type(ctypes.Structure):
-    _fields_ = [("index", ctypes.c_int),
-                ("rand", ctypes.c_int)]
 
 
 # Operators
@@ -1036,7 +949,10 @@ class DF_OT_df_update(bpy.types.Operator):
         print("DEBU UPDATE 0")
         validate_undo_step(context)
         print("DEBU UPDATE 1")
-        validate_dfc_ids()
+        validate_dfc_dfr_ids()
+
+        expel_nonexistant_ids_python(context, 0)
+        expel_nonexistant_ids_python(context, 1)
     
         #Gets current evaluated dependency graph
         depsgraph = context.evaluated_depsgraph_get()
@@ -1679,7 +1595,7 @@ class DF_OT_df_assign_dfcs_to_dfc_layer(bpy.types.Operator):
         validate_undo_step(context)
         
         objects = context.selected_objects
-        assign_dfcs_to_dfc_layer(context, objects, self.dfc_layer_indx)
+        assign_ids_to_layer(context, objects, self.dfc_layer_indx, 0)
     
         incrmt_undo_step(context)
     
@@ -1703,12 +1619,12 @@ class DF_OT_df_remove_dfcs_from_dfc_layer(bpy.types.Operator):
     def execute(self, context):
     
         df = context.scene.df
-        
+
         validate_undo_step(context)
-        
+
         objects = context.selected_objects
-        remove_dfcs_from_dfc_layer(context, objects, self.dfc_layer_indx)
-            
+        remove_ids_from_layer(context, objects, self.dfc_layer_indx, 0)
+
         incrmt_undo_step(context)
         
         return {'FINISHED'}
@@ -1927,7 +1843,7 @@ class DF_OT_df_assign_dfrs_to_dfr_layer(bpy.types.Operator):
         validate_undo_step(context)
         
         objects = context.selected_objects
-        assign_dfrs_to_dfr_layer(context, objects, self.dfr_layer_indx)
+        assign_ids_to_layer(context, objects, self.dfr_layer_indx, 1)
             
         incrmt_undo_step(context)
     
@@ -1955,7 +1871,7 @@ class DF_OT_df_remove_dfrs_from_dfr_layer(bpy.types.Operator):
         validate_undo_step(context)
         
         objects = context.selected_objects
-        remove_dfrs_from_dfr_layer(context, objects, self.dfr_layer_indx)
+        remove_ids_from_layer(context, objects, self.dfr_layer_indx, 1)
         
         incrmt_undo_step(context)
         
@@ -2385,27 +2301,8 @@ def df_depsgraph_update_post_handler(dummy):
 
     df = bpy.context.scene.df
 
-    rerun_items = validate_dfc_ids(bpy.context, [])
-    while(True):
-        
-        if (len(rerun_items) > 0):
-            
-            rerun_items = validate_dfc_ids(bpy.context, rerun_items)
-
-        else:
-
-            break
+    validate_dfc_dfr_ids()
     
-    rerun_items = validate_dfr_ids(bpy.context, [])
-    while(True):
-        
-        if (len(rerun_items) > 0):
-            
-            rerun_items = validate_dfr_ids(bpy.context, rerun_items)
-
-        else:
-
-            break
 
 #########################################################################################################################
 #########################################################################################################################
@@ -2466,9 +2363,6 @@ def df_save_post_handler(dummy):
         if (not(df.df_stashing_enabled)):
         
             df_lib.call_df_weak_stash_volume_local()
-           
-    
-    
                         
         
 # Registration
