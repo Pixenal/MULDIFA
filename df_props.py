@@ -83,8 +83,11 @@ class df_properties(bpy.types.PropertyGroup):
     #Why are you prefixing them with df if they're already within a property group called df_properties?
 
     df_distance : bpy.props.FloatProperty(name = "Distance", default = 10, min = 0, max = 100000, description = "How far an objects influence extends")
-    df_cmprt_size : bpy.props.IntProperty(name = "Compartment Size", default = 4, min = 2, soft_max = 32, description = "The Distance Field Volume is split into compartments for optimization, defines how many voxels per compartment, lower values generally give faster update times but slower initializing of volume times")
-    df_grid_spacing : bpy.props.FloatProperty(name = "Cell Size", default = 1, min = .001, soft_min = .2, soft_max = 8, description = "The size of each grid cell, determines the resolution of the distance field, greatly effects compute times for both updating of the distance field and initialization of the volume")
+    df_cmprt_size : bpy.props.IntProperty(name = "Compartment Size", default = 4, min = 2, soft_max = 32, description = "The Distance Field Volume is split into compartments for optimization; \
+defines how many grid points per compartment; lower values generally give faster update times but slower initialization of volume times. Though note that setting the value too low may \
+end up negatively effecting update times as well")
+    df_grid_spacing : bpy.props.FloatProperty(name = "Point Spacing", default = 1, min = .001, soft_min = .2, soft_max = 8, description = "The distance between grid points; determines the resolution \
+of the distance field; greatly affects compute times for both updating of the distance field and initialization of the volume")
     df_update_vertex_colors : bpy.props.BoolProperty(name = "Update Vertex Colors", default = True)
     df_update_vertex_groups : bpy.props.BoolProperty(name = "Update Vertex Groups", default = False)
     df_distance_last : bpy.props.FloatProperty()
@@ -111,10 +114,12 @@ class df_properties(bpy.types.PropertyGroup):
     df_stashing_enabled : bpy.props.BoolProperty(name = "Enable Stashing", default = False)
     df_init_returned_error : bpy.props.BoolProperty(default = False)
     df_assertion_code : bpy.props.IntProperty(default = 0)
-    df_interp_mode : bpy.props.EnumProperty(name = "Interp Mode", default = 0, items = [('0', 'TriCubic', ''), ('1', 'TriLinear', ''), ('2', 'Nearest', '')])
-    df_gamma : bpy.props.FloatProperty(name = "Gamma", default = 1.0)
-    df_update_on_frame : bpy.props.BoolProperty(name = "Update on Frame Change", default = False)
+    df_interp_mode : bpy.props.EnumProperty(name = "Interpolation Mode", description = "Interpolation mode to use when sampling from distance field",default = 0, items = [('0', 'TriCubic', ''), ('1', 'TriLinear', ''), ('2', 'Nearest', '')])
+    df_gamma : bpy.props.FloatProperty(name = "Gamma", description = "Gamme to apply when sampling from distance field. Is linear by default", default = 1.0)
+    df_update_on_frame : bpy.props.BoolProperty(name = "Update on Frame Change", description = "Toggles updating of the distance field on frame change; intended use is for allowing animated objects to interact \
+with the distance field during rendering", default = False)
     df_undo_index : bpy.props.IntProperty(default = 0)
+    df_clean_dfr_vert_layers : bpy.props.BoolProperty(name = "Clean Vert Layers", description = "Toggles the removal of respective vert group and vert color layers when a recipient layer is removed", default = False)
 
 
 

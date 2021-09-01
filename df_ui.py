@@ -117,7 +117,9 @@ class DF_PT_df(df_parent_panel, bpy.types.Panel):
             col0.prop(df, "df_update_vertex_colors")
             col0.prop(df, "df_update_vertex_groups")
             
-            layout.prop(df, "df_update_on_frame")
+            col1 = layout.column(align = True)
+            col1.prop(df, "df_update_on_frame")
+            col1.prop(df, "df_clean_dfr_vert_layers")
         
         else:
         

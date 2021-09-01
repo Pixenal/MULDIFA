@@ -771,7 +771,7 @@ def incrmt_undo_step(context):
                                                         
 
 class DF_OT_df_create_volume(bpy.types.Operator):
-    """Creates a distance field volume, this must be done (and said volume must be initialized) before the distance field can be generated"""
+    """Creates a distance field volume, this must be done (and said volume must be initialized) before the distance field can be updated"""
     bl_idname = "df.df_create_volume"
     bl_label = "DF Create Volume"
     
@@ -830,7 +830,7 @@ class DF_OT_df_toggle_init_returned_error(bpy.types.Operator):
 
 
 class DF_OT_df_initialize(bpy.types.Operator):
-    """Initializes volume, this must be done before the distance field can be generated"""
+    """Initializes volume, this must be done before the distance field can be updated"""
     bl_idname = "df.df_initialize"
     bl_label = "DF Initialize Volume"
     bl_options = {'REGISTER', 'UNDO'}
@@ -977,7 +977,7 @@ class DF_OT_df_initialize(bpy.types.Operator):
     
 
 class DF_OT_df_update(bpy.types.Operator):
-    """Updates/ generates distance field"""
+    """Updates the distance field, as well as recipients"""
     bl_idname = "df.df_update"
     bl_label = "DF Update"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1168,8 +1168,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
     bl_idname = "df.df_update_recipients"
     bl_label = "DF Update Recipients"
     bl_options = {'REGISTER', 'UNDO'}
-    """ Writes, if enabled, the updated state of the distanc field structure into vertex colors and/or vertex groups of objects that are marked as
-        distance field recipiants (those with _dfr_ in their name) """
+    """ Writes, if enabled, the updated state of the distance field structure into vertex colors and/or vertex groups of objects that belong to a recipient layer """
     
     ground_only : bpy.props.BoolProperty(default = False)
     
@@ -1194,7 +1193,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
             
                 if ("_ground_"in(obj.name)):
                     
-                    ground_amount.value += 1;
+                    ground_amount.value += 1
             
             """ First checks if either update_vertex_colors or update_vertex_groups are actually set to True, or if ground amount is greater than 0,
                 as ground objects always have their vertex groups updated even if df_update_vertex_groups == False  """
@@ -1732,16 +1731,39 @@ class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
         
         validate_undo_step(context)
 
-        for id in context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx].dfr_ids:
+        """ The below block of code removes vertex color and group layers, beloning to the recipient layer to be deleted, from any dfrs contained within said
+            recipient layer (if deleting said color/ group layers is enabled, the option is disabled by default to avoid the potentially for accidental deletion
+            of user authored layers that happen to share the same name) """
 
-            for obj in context.scene.objects:
+        if (df.df_clean_dfr_vert_layers):
 
-                if (obj.dfr_id == id.id):
+            #Alias
+            layer = context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx]
+            for id in layer.dfr_ids:
 
-                    pass
+                for obj in context.scene.objects:
+
+                    if (obj.dfr_id == id.id):
+
+                        #Removes vertex color layer if exists
+                        obj_bmesh = bmesh_type(obj)
+                        vert_col_layer = obj_bmesh.bm_cpy.loops.layers.color.get(layer.name, 0)
+                        if (vert_col_layer != 0):
+
+                            obj_bmesh.bm_cpy.loops.layers.color.remove(vert_col_layer)
+                        del obj_bmesh
+
+                        #Removes vertex group layer if exists
+                        vert_group = obj.vertex_groups.get(layer.name, 0)
+                        if (vert_group != 0):
+
+                            obj.vertex_groups.remove(vert_group)
     
-        context.scene.df_dfr_layers.remove(context.scene.df_dfr_layers_indx)
+        """ The below block of code removes the layer, then then expels any dfrs that were only wihin that layer (ie, expels any that do not have any other
+            layers containing them) """
 
+        context.scene.df_dfr_layers.remove(context.scene.df_dfr_layers_indx)
+        
         if (df.df_state_stashed):
             df_lib.call_df_unstash_state()
             df.df_state_stashed = False
