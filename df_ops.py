@@ -1153,7 +1153,7 @@ class DF_OT_df_update(bpy.types.Operator):
                     
         incrmt_undo_step(context)
                         
-        bpy.ops.df.df_update_recipients(ground_only = False)
+        bpy.ops.df.df_update_recipients()
         if (df.df_stashing_enabled):
             df_lib.call_df_stash_state()
             df.df_state_stashed = True
@@ -1169,8 +1169,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
     bl_label = "DF Update Recipients"
     bl_options = {'REGISTER', 'UNDO'}
     """ Writes, if enabled, the updated state of the distance field structure into vertex colors and/or vertex groups of objects that belong to a recipient layer """
-    
-    ground_only : bpy.props.BoolProperty(default = False)
     
     @classmethod
     def poll(cls, context):
@@ -1188,16 +1186,8 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
         depsgraph = context.evaluated_depsgraph_get()
         if (df.df_volume_initialized == True):
             
-            ground_amount = ctypes.c_short(0)
-            for obj in context.scene.objects:
-            
-                if ("_ground_"in(obj.name)):
-                    
-                    ground_amount.value += 1
-            
-            """ First checks if either update_vertex_colors or update_vertex_groups are actually set to True, or if ground amount is greater than 0,
-                as ground objects always have their vertex groups updated even if df_update_vertex_groups == False  """
-            if ((df.df_update_vertex_colors == True) or (df.df_update_vertex_groups == True) or (ground_amount.value != 0)):
+            """ First checks if either update_vertex_colors or update_vertex_groups are actually set to True """
+            if ((df.df_update_vertex_colors == True) or (df.df_update_vertex_groups == True)):
                 
                 dfrs_total_list = []
                 dfrs_total_nxt_indx = 0
@@ -1218,7 +1208,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                     dfrs_total[counter] = dfrs_total_list[counter]
                     counter += 1
 
-                df_lib.call_df_pre_update_recipients(ctypes.pointer(dfrs_total), ctypes.c_ulong(dfrs_total_nxt_indx), self.ground_only, ground_amount)
+                df_lib.call_df_pre_update_recipients(ctypes.pointer(dfrs_total), ctypes.c_ulong(dfrs_total_nxt_indx))
 
                 """ Loops through each object in the scene, if an object is marked as a distance field recipient,
                     then update its vertex colors or/and vertex groups """
@@ -1242,8 +1232,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 break
                     
                         if (in_layer == True):
-                        
-                            is_ground = ctypes.c_bool(False)
                             
                             # Sets up structures
                             #-------------------------------------------------------------------------------------------------------------#
@@ -1270,40 +1258,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                             height_values_buffer_type = ctypes.c_float * vert_amount.value
                             height_values_buffer = height_values_buffer_type()
                                 
-                            if (self.ground_only == True):
-                            
-                                #Checks if a vertex group called _high_freq_concave_height_ already exists, if not, creates one
-                                height_vert_group_exists = False
-                                for vert_group in obj.vertex_groups:
-                                
-                                    if (vert_group.name == "_high_freq_concave_height_"):
-                                        
-                                        height_vert_group_exists = True
-                                
-                                if (height_vert_group_exists == True):
-                                
-                                    #Gets bmesh's deform layer (afaik vertex groups are stored wihin deform layers)
-                                    df_deform = obj_bmesh.bm_cpy.verts.layers.deform.verify()
-                                    
-                                    """ Gets vertex group layer (this is different to the deform layer in bmesh (not that
-                                        the below statment does not use bmesh)) """
-                                    height_vert_group = obj.vertex_groups.get("_high_freq_concave_height_")
-                                    
-                                    print ("height_vert_group", height_vert_group)
-                                        
-                                    #Loops through each vert and sets it's vert group weight said verts entry in the verts buffer
-                                    for vert in obj_bmesh.bm_cpy.verts:
-                                        
-                                        """ In order to specify that you wish to write to a specific vertex's vertex group entry (when using bmesh),
-                                            you need to specify both the deform layer and the vertex group, I wasn't able to find clear documentation
-                                            on exactly why this is the case, however from what I can gather I think that each vertex's deform layer is,
-                                            atleast in an informal sense, a 2D array, where the first dimension equates to an individual deform layer,
-                                            and each deform layer contains an array of vertex groups, though this could be an incorrect interpretation,
-                                            will research more on why this is """
-                                        height_values_buffer[vert.index] = vert[df_deform][height_vert_group.index]
-                                
-                                
-                            if ((df.df_update_vertex_colors == True) and (self.ground_only == False)):
+                            if (df.df_update_vertex_colors == True):
                             
                                 #Gets amount of loops in bmesh
                                 loop_amount = ctypes.c_ulong(0)
@@ -1345,7 +1300,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                             #-------------------------------------------------------------------------------------------------------------#
                             
                             #First checks if updating vertex colors is enabled
-                            if ((df.df_update_vertex_colors == True) and (self.ground_only == False)):
+                            if (df.df_update_vertex_colors == True):
                             
                                 #Attempts to get vert color layer called _df_, if it doesn't exist, returns 0
                                 df_vert_color_layer = obj_bmesh.bm_cpy.loops.layers.color.get(dfr_layer.name, 0)
@@ -1378,7 +1333,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                             #-------------------------------------------------------------------------------------------------------------#
                             
                             #First checks if updating vertex groups is enabled
-                            if ((df.df_update_vertex_groups == True) or (self.ground_only == True)):
+                            if (df.df_update_vertex_groups == True):
                             
                                 #Checks if a vertex group called _df_ already exists, if not, creates one
                                 df_vert_group_exists = False

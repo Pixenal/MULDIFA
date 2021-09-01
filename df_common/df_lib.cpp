@@ -102,9 +102,9 @@ extern "C"
 	}
 
 
-	EXPORT int call_df_pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount, const bool ground_only, const unsigned short ground_amount)
+	EXPORT int call_df_pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount)
 	{
-		df.pre_update_recipients(dfrs, dfr_amount, ground_only, ground_amount);
+		df.pre_update_recipients(dfrs, dfr_amount);
 
 		return 0;
 	}

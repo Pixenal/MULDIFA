@@ -929,41 +929,10 @@ private:
 	struct update_recipients_local_type
 	{
 		/*Data Members*/
-		
-		bool ground_only = false;
 
 		/*Member Functions*/
 
 		void clean();
-	};
-
-
-	struct grounds_verts_cache_type
-	{
-		/*Types*/
-
-		struct values_type
-		{
-			/*Data Members*/
-
-			float height = .0f;
-
-			/*Member Functions*/
-
-			void clean();
-		};
-
-		/*Data Members*/
-
-		shared_type::vert_info_type** cache = nullptr;
-		values_type** values_cache = nullptr;
-		unsigned short cache_y_size = 0;
-		unsigned long* cache_x_sizes = nullptr;
-		unsigned short cache_y_next_index = 0;
-
-		/*Member Functions*/
-
-		void clean(const unsigned short& ground_amount);
 	};
 
 
@@ -1118,7 +1087,6 @@ private:
 	volume_local_type volume_local;
 	update_local_type update_local;
 	update_recipients_local_type update_recipients_local;
-	grounds_verts_cache_type grounds_verts_cache;
 	regions_buffer_type regions_buffer;
 	unsigned long write_index = 0u;
 
@@ -1408,7 +1376,6 @@ public:
 	/*Data members*/
 
 	grid_type*** const& grid = volume_local.grid;
-	grounds_verts_cache_type& grounds_verts_cache_pub = grounds_verts_cache;
 	const float& distance = volume_local.intern_df_distance;
 	const update_local_type::dfc_cache_type& dfc_cache = update_local.dfc_cache;
 	std::vector<shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>> dfc_layers;
@@ -1426,7 +1393,7 @@ public:
 	int pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount_total, const unsigned long* ignored_dfcs, const unsigned long ignored_dfcs_nxt_indx);
 	int update_grid_points(void* arg_ptr, unsigned short job_index);
 	int update_per_tri(const unsigned long& dfc_id, const unsigned long& dfc_index);
-	int pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount, const bool ground_only, const unsigned short ground_amount);
+	int pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount);
 	shared_type::coord_xyz_type wrld_space_to_grid_indx_space(const shared_type::coord_xyz_type coord);
 	float get_lerped_point_value(const shared_type::coord_xyz_type& vert_coord, const std::vector<unsigned long>& dfc_ids, const char mode, std::vector<shared_type::ncspline_type>& zaligned_splines, const int local_spline_length);
 	bool grid_bounds_check(const shared_type::coord_xyz_type& coord);
@@ -1500,7 +1467,7 @@ extern "C"
 	EXPORT int call_df_pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount_total, const unsigned long* ignored_dfcs, const unsigned long ignored_dfcs_nxt_indx);
 	EXPORT int call_df_update(const unsigned long& dfc_id, const unsigned long& dfc_index);
 	EXPORT int call_df_add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const shared_type::coord_xyz_type* bounds, const unsigned long& dfc_index, const bool& split_dfc);
-	EXPORT int call_df_pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount, const bool ground_only, const unsigned short ground_amount);
+	EXPORT int call_df_pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount);
 	EXPORT int call_df_update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const float* height_verts_buffer, const int interp_mode, const float gamma);
 	EXPORT int call_df_post_update_recipients();
 	EXPORT int call_df_check_volume(shared_type::coord_xyz_type* verts_buffer);

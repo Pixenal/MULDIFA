@@ -2633,21 +2633,13 @@ recheck_if_batches_completed:
 }
 
 /*	This function is called before update_recipient is called, it does some prep work, namely cleaning state	*/
-int df_type::pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount, const bool ground_only, const unsigned short ground_amount)
+int df_type::pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount)
 {
 	update_recipients_local.clean();
 
 	/*	Checks for deleted dfrs	*/
 
 	remove_deleted_element_from_layer_system<std::vector<shared_type::invrse_jenga_type<dfr_id_indx_type*, unsigned long>>>(dfr_layers, &df_type::remove_dfrs_from_dfr_layer, dfrs, dfr_amount, nullptr, 0ul);
-
-	/*	Only relevent to some other old experimental stuff (ground_only should be set to false for now so this no-op atm)	*/
-	if (ground_only == true)
-	{
-		update_recipients_local.ground_only = true;
-
-		grounds_verts_cache.clean(ground_amount);
-	}
 
 	return 0;
 }
@@ -2991,21 +2983,6 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 		}
 	}
 
-	/*	Relic left over from the procedural grass generator I was expermenting with in early 2021 (it used to be in the same project,
-		and was intertwined with the code for the distance field)	*/
-	if (update_recipients_local.ground_only == true)
-	{
-		grounds_verts_cache.cache[grounds_verts_cache.cache_y_next_index] = new shared_type::shared_type::vert_info_type[vert_amount];
-		grounds_verts_cache.cache_x_sizes[grounds_verts_cache.cache_y_next_index] = vert_amount;
-		grounds_verts_cache.values_cache[grounds_verts_cache.cache_y_next_index] = new grounds_verts_cache_type::values_type[vert_amount];
-
-		for (unsigned long a = 0; a < vert_amount; ++a)
-		{
-			grounds_verts_cache.values_cache[grounds_verts_cache.cache_y_next_index][a].height = height_verts_buffer[a];
-		}
-	}
-
-
 	std::vector<shared_type::ncspline_type> zaligned_splines;
 	const int local_spline_length = 8u;
 	shared_type::index_xyz_type min_cmprt;
@@ -3188,12 +3165,6 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 
 		/*	Adds the value to the current verts respective entry in "verts_buffer"	*/
 		verts_buffer[a].value = value;
-
-		/*	Again, relic from past experiment	*/
-		if (update_recipients_local.ground_only == true)
-		{
-			grounds_verts_cache.cache[grounds_verts_cache.cache_y_next_index][a] = verts_buffer[a];
-		}
 	}
 
 	/*	Resets the "temp_spline_indx" data member in each grid point enclosed within the bounding box to 0	*/
@@ -3222,12 +3193,6 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 		}
 	}
 
-
-	/*	Again, relic from past experiment	*/
-	if (update_recipients_local.ground_only == true)
-	{
-		grounds_verts_cache.cache_y_next_index += 1;
-	}
 	return 0;
 }
 
@@ -6188,76 +6153,7 @@ void df_type::tri_local_type::clean()
 
 void df_type::update_recipients_local_type::clean()
 {
-	ground_only = false;
-}
-
-
-/*df_type::grounds_verts_cache_type*/
-/*-------------------------------------------------------------------------------------------------------------*/
-
-
-void df_type::grounds_verts_cache_type::clean(const unsigned short& ground_amount)
-{
-	for (unsigned short a = 0; a < cache_y_next_index; ++a)
-	{
-		if (cache != nullptr)
-		{
-			if (cache[a] != nullptr)
-			{
-				delete[] cache[a];
-				cache[a] = nullptr;
-			}
-		}
-
-		if (values_cache != nullptr)
-		{
-			if (values_cache[a] != nullptr)
-			{
-				delete[] values_cache[a];
-				values_cache[a] = nullptr;
-			}
-		}
-
-		if (cache_x_sizes != nullptr)
-		{
-			cache_x_sizes[a] = 0;
-		}
-	}
-
-	cache_y_next_index = 0;
-
-	if (cache_y_size != ground_amount)
-	{
-		if (cache != nullptr)
-		{
-			delete[] cache;
-		}
-
-		if (values_cache != nullptr)
-		{
-			delete[] values_cache;
-		}
-
-		if (cache_x_sizes != nullptr)
-		{
-			delete[] cache_x_sizes;
-		}
-
-		cache = new shared_type::shared_type::vert_info_type * [ground_amount];
-		values_cache = new values_type * [ground_amount];
-		cache_x_sizes = new unsigned long[ground_amount];
-		cache_y_size = ground_amount;
-	}
-}
-
-
-/*df_type::grounds_verts_cache_type::values_type*/
-/*-------------------------------------------------------------------------------------------------------------*/
-
-
-void df_type::grounds_verts_cache_type::values_type::clean()
-{
-	height = .0f;
+	return;
 }
 
 
