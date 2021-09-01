@@ -1012,10 +1012,8 @@ class DF_OT_df_update(bpy.types.Operator):
             
             dfc_ids_type = ctypes.c_ulong * len(context.scene.objects)
             dfc_ids = dfc_ids_type()
-            
             ignored_dfcs_list = []
             ignored_dfcs_nxt_indx = 0
-            
             dfc_vert_amount_total = ctypes.c_ulong(0)
             dfc_amount = ctypes.c_ulong(0)
             for obj in context.scene.objects:
@@ -1031,9 +1029,7 @@ class DF_OT_df_update(bpy.types.Operator):
                     
                         obj_eval = obj.evaluated_get(depsgraph)
                         mesh_eval = obj_eval.data
-                        
                         dfc_ids[dfc_amount.value] = obj.dfc_id
-                    
                         dfc_vert_amount_total.value += len(mesh_eval.vertices)
                         dfc_amount.value += 1
             
@@ -1044,7 +1040,6 @@ class DF_OT_df_update(bpy.types.Operator):
             
                 ignored_dfcs[counter] = ignored_dfcs_list[counter]
                 counter += 1
-                
                   
             print("DB dfc_amount: ", dfc_amount)
             print("DEBU UPDATE 3")
@@ -1114,11 +1109,9 @@ class DF_OT_df_update(bpy.types.Operator):
                     
                         #Gets coordinates of current vertex in world space
                         vert_coord = obj_eval.matrix_world @ vert.co
-                        
                         verts_buffer[vert.index].x = vert_coord[0]
                         verts_buffer[vert.index].y = vert_coord[1]
                         verts_buffer[vert.index].z = vert_coord[2]
-                    
                     
                     #Loops through all triangles in mesh
                     for tri in mesh_eval.loop_triangles:
@@ -1131,18 +1124,15 @@ class DF_OT_df_update(bpy.types.Operator):
                         #print ("tri_index: ", tri.index, " vert_2: ", tri.vertices[2])
                         
                     bounds_buffer_type = coord_xyz_type * 8
-                    
                     bounds_buffer = bounds_buffer_type()
                     
                     vert_index = 0
                     for vert in obj_eval.bound_box:
                     
                         vert_coord = obj_eval.matrix_world @ mathutils.Vector(vert)
-                        
                         bounds_buffer[vert_index].x = vert_coord.x
                         bounds_buffer[vert_index].y = vert_coord.y
                         bounds_buffer[vert_index].z = vert_coord.z
-                        
                         vert_index += 1
                     
                     df_lib.call_df_add_dfc_to_cache(ctypes.pointer(verts_buffer), ctypes.byref(vert_amount), ctypes.pointer(tris_buffer), ctypes.byref(tri_amount), ctypes.pointer(bounds_buffer), ctypes.byref(dfc_index), ctypes.byref(ctypes.c_bool(False)))
@@ -1197,7 +1187,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
         validate_undo_step(context)
         
         depsgraph = context.evaluated_depsgraph_get()
-    
         if (df.df_volume_initialized == True):
             
             ground_amount = ctypes.c_short(0)
@@ -1232,32 +1221,16 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
 
                 df_lib.call_df_pre_update_recipients(ctypes.pointer(dfrs_total), ctypes.c_ulong(dfrs_total_nxt_indx), self.ground_only, ground_amount)
 
-                """
-                if (self.ground_only == True):
-                
-                    name_conditions = ( "_ground_", )
-                    
-                else:
-                
-                    name_conditions = ( "_ground_",
-                                        "_dfr_" )
-                """
-
                 """ Loops through each object in the scene, if an object is marked as a distance field recipient,
                     then update its vertex colors or/and vertex groups """
                 
                 dfr_layer_indx = 0
                 for dfr_layer in context.scene.df_dfr_layers:
                 
-                    #print("dfr_layer_indx: ", dfr_layer_indx)
-                
                     layer_size = df_lib.call_df_get_dfr_layer_size(ctypes.byref(ctypes.c_ulong(dfr_layer_indx)))
                     dfr_ids_type = ctypes.c_ulong * layer_size
                     dfr_ids = dfr_ids_type()
-                
                     df_lib.call_df_get_all_dfrs_in_dfr_layer(ctypes.byref(ctypes.c_ulong(dfr_layer_indx)), ctypes.pointer(dfr_ids))
-                    
-                    
                     indx_counter_layer_cont = 0
                     while (indx_counter_layer_cont < layer_size):
                         
@@ -1271,75 +1244,22 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                     
                         if (in_layer == True):
                         
-                            """
-                            matches_name = False
-                            for name in name_conditions:
-                            
-                                if((name)in(obj.name)):
-                                    
-                                    matches_name = True
-                            
-                            if (matches_name == True):
-                                """
                             is_ground = ctypes.c_bool(False)
-                            
-                            #Everything below should be indented -> if uncommented
-                            """
-                            if ("_ground_"in(obj.name)):
-                                
-                                is_ground.value = ctypes.c_bool(True)
-                            """
-                        
-                                
                             
                             # Sets up structures
                             #-------------------------------------------------------------------------------------------------------------#
                             
-                            
-                            #Creates alias
-                            mesh = obj.data
-                           
-                            """ First checks if the current object's mode is object mode, if so, gets current mesh as bmesh structure using object mode
-                                specific process and continues as normal (This is checked first as most objects would pressumably be in object mode,
-                                and so checking if the mode is object mode, and skipping the extra check if so, would hopefully minimize the amount of
-                                condition checking done for the total amount of objects (even though it results in repeated code)). If not object mode,
-                                checks if is edit mode, if so, gets current mesh as bmesh structure in the process of doing so that is specific to edit
-                                mode. If is not edit mode (which would be the case if the mode is, for example, weight paint mode), then the object's mode is
-                                switched to object mode, the reason for this is purely precautionary and is done in order to avoid any unwanted behaviour 
-                                (of which I am not aware of) that could arise from using these modes, though it very well may be unnecessary """ 
-                            switched_mode = False
-                            if (obj.mode == 'OBJECT'):
-                                
-                                bm_cpy = bmesh.new()
-                                bm_cpy.from_mesh(mesh)
-                                
-                            else:
-                                
-                                if (obj.mode == 'EDIT'):
-                                
-                                    bm_cpy = bmesh.from_edit_mesh(mesh)
-                                    
-                                else:
-                                    
-                                    switched_mode = True
-                                    
-                                    #Stores the current mode so that it can be switched back to after the initialization process is complete
-                                    original_mode = obj.mode
-                                    bpy.ops.object.mode_set(mode = 'OBJECT')
-                                    
-                                    bm_cpy = bmesh.new()
-                                    bm_cpy.from_mesh(mesh)
-                                    
+                            obj_bmesh = bmesh_type(obj)
                                     
                             #Gets amount of verts in bmesh    
-                            vert_amount = ctypes.c_ulong(len(bm_cpy.verts))
+                            vert_amount = ctypes.c_ulong(len(obj_bmesh.bm_cpy.verts))
                                 
                             #Creates verts buffer array type, and then creates an object if said type
                             verts_buffer_type = vert_info_type * vert_amount.value
                             verts_buffer = verts_buffer_type()
                             
                             #Loops through each vertex in bmesh and adds its coords to the verts buffer
-                            for vert in bm_cpy.verts:
+                            for vert in obj_bmesh.bm_cpy.verts:
                                 
                                 #Gets coordinates of current vertex in world space
                                 vert_coord = obj.matrix_world @ vert.co
@@ -1347,7 +1267,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 verts_buffer[vert.index].coord.x = vert_coord[0]
                                 verts_buffer[vert.index].coord.y = vert_coord[1]
                                 verts_buffer[vert.index].coord.z = vert_coord[2]
-                                
                                 
                             height_values_buffer_type = ctypes.c_float * vert_amount.value
                             height_values_buffer = height_values_buffer_type()
@@ -1365,7 +1284,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 if (height_vert_group_exists == True):
                                 
                                     #Gets bmesh's deform layer (afaik vertex groups are stored wihin deform layers)
-                                    df_deform = bm_cpy.verts.layers.deform.verify()
+                                    df_deform = obj_bmesh.bm_cpy.verts.layers.deform.verify()
                                     
                                     """ Gets vertex group layer (this is different to the deform layer in bmesh (not that
                                         the below statment does not use bmesh)) """
@@ -1374,7 +1293,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                     print ("height_vert_group", height_vert_group)
                                         
                                     #Loops through each vert and sets it's vert group weight said verts entry in the verts buffer
-                                    for vert in bm_cpy.verts:
+                                    for vert in obj_bmesh.bm_cpy.verts:
                                         
                                         """ In order to specify that you wish to write to a specific vertex's vertex group entry (when using bmesh),
                                             you need to specify both the deform layer and the vertex group, I wasn't able to find clear documentation
@@ -1389,7 +1308,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                             
                                 #Gets amount of loops in bmesh
                                 loop_amount = ctypes.c_ulong(0)
-                                for face in bm_cpy.faces:
+                                for face in obj_bmesh.bm_cpy.faces:
                                     loop_amount.value += len(face.loops)
                                 
                                 #Creates loops buffer array type, and then creates an object if said type
@@ -1398,7 +1317,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 
                                 #Adds each loop's respective vert index into said loops equivalent entry in the loops buffer
                                 loop_index = 0
-                                for face in bm_cpy.faces:
+                                for face in obj_bmesh.bm_cpy.faces:
                                     
                                     for loop in face.loops:
                                         
@@ -1414,9 +1333,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                             for dfc_layer in dfr_layer.dfc_layers:
                             
                                 dfc_layers[dfc_layer_indx] = dfc_layer_name_to_indx(context, dfc_layer.dfc_layer)
-                                #print("dfc_layer_indx: ", dfc_layers[dfc_layer_indx])
-                                #print("dfr_layer: ", dfr_layer)
-                                
                                 dfc_layer_indx += 1
                             
                             # Gets values of verts from distance field structure
@@ -1426,7 +1342,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 the grid points surrounding said vert, more precisely the 8 grid points that make up the vertices of the grid cell that the vert sits within """
                             df_lib.call_df_update_recipient(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), ctypes.byref(vert_amount), ctypes.pointer(height_values_buffer), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma))
                             
-                            
                             # Updates vertex colors
                             #-------------------------------------------------------------------------------------------------------------#
                             
@@ -1434,18 +1349,18 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                             if ((df.df_update_vertex_colors == True) and (self.ground_only == False)):
                             
                                 #Attempts to get vert color layer called _df_, if it doesn't exist, returns 0
-                                df_vert_color_layer = bm_cpy.loops.layers.color.get(dfr_layer.name, 0)
+                                df_vert_color_layer = obj_bmesh.bm_cpy.loops.layers.color.get(dfr_layer.name, 0)
                             
                                 #Checks if the above method returned 0
                                 if (df_vert_color_layer == 0):
                                     
                                     #If so, creates a new vertex color layer called _df_
-                                    df_vert_color_layer = bm_cpy.loops.layers.color.new(dfr_layer.name)
+                                    df_vert_color_layer = obj_bmesh.bm_cpy.loops.layers.color.new(dfr_layer.name)
                             
                                 """ Sets each loop's vertex color to the value stored in said loop's respective vert's entry in the verts buffer
                                     (vertex colors are stored per loop, not per vertex) """
                                 loop_index = 0
-                                for face in bm_cpy.faces:
+                                for face in obj_bmesh.bm_cpy.faces:
                                     
                                     for loop in face.loops:
                                     
@@ -1459,11 +1374,9 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                         loop[df_vert_color_layer] = (value, value, value, 1.0)
                                 
                                         loop_index += 1
-                            
                              
                             # Updates vertex groups
                             #-------------------------------------------------------------------------------------------------------------#
-                            
                             
                             #First checks if updating vertex groups is enabled
                             if ((df.df_update_vertex_groups == True) or (self.ground_only == True)):
@@ -1481,14 +1394,14 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                     obj.vertex_groups.new(name = dfr_layer.name)
                                     
                                 #Gets bmesh's deform layer (afaik vertex groups are stored wihin deform layers)
-                                df_deform = bm_cpy.verts.layers.deform.verify()
+                                df_deform = obj_bmesh.bm_cpy.verts.layers.deform.verify()
                                 
                                 """ Gets vertex group layer (this is different to the deform layer in bmesh (not that
                                     the below statment does not use bmesh)) """
                                 df_vert_group = obj.vertex_groups.get(dfr_layer.name)
                                     
                                 #Loops through each vert and sets it's vert group weight said verts entry in the verts buffer
-                                for vert in bm_cpy.verts:
+                                for vert in obj_bmesh.bm_cpy.verts:
                                     
                                     """ In order to specify that you wish to write to a specific vertex's vertex group entry (when using bmesh),
                                         you need to specify both the deform layer and the vertex group, I wasn't able to find clear documentation
@@ -1498,25 +1411,10 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                         will research more on why this is """
                                     vert[df_deform][df_vert_group.index] = verts_buffer[vert.index].value
                                 
-                                
                             # Clean up
                             #-------------------------------------------------------------------------------------------------------------#
                             
-                            #Checks which mode is the current mode, and updates mesh accordingly
-                            if (obj.mode == 'EDIT'):
-                            
-                                bmesh.update_edit_mesh(mesh)
-                                
-                            else:
-                            
-                                bm_cpy.to_mesh(mesh)
-                                
-                                bm_cpy.free()
-                                
-                                #If mode was switched to object mode, swtiched back to original mode
-                                if (switched_mode == True):
-                                
-                                    bpy.ops.object.mode_set(mode = original_mode)
+                            del obj_bmesh
                                     
                         indx_counter_layer_cont += 1
                               
