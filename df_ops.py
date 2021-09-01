@@ -137,6 +137,8 @@ class id_abstractor_type():
     expel_libfunc = None
     defrag_libfunc = None
     get_serchee_layers_libfunc = None
+    get_layer_size_libfunc = None
+    get_ids_in_layer_libfunc = None
 
     def __init__(self, context, id_type):
 
@@ -149,6 +151,8 @@ class id_abstractor_type():
             self.expel_libfunc = df_lib.call_df_expel_nonexistant_dfcs_from_layers
             self.defrag_libfunc = df_lib.call_df_defrag_dfc_ids
             self.get_serchee_layers_libfunc = df_lib.call_df_get_all_layers_with_dfc
+            self.get_layer_size_libfunc = df_lib.call_df_get_dfc_layer_size
+            self.get_ids_in_layer_libfunc = df_lib.call_df_get_all_dfcs_in_dfc_layer
 
         else:
 
@@ -158,6 +162,8 @@ class id_abstractor_type():
             self.expel_libfunc = df_lib.call_df_expel_nonexistant_dfrs_from_layers
             self.defrag_libfunc = df_lib.call_df_defrag_dfr_ids
             self.get_serchee_layers_libfunc = df_lib.call_df_get_all_layers_with_dfr
+            self.get_layer_size_libfunc = df_lib.call_df_get_dfr_layer_size
+            self.get_ids_in_layer_libfunc = df_lib.call_df_get_all_dfrs_in_dfr_layer
 
     def get_ids_col_in_layer(self, context, layer):
 
@@ -246,6 +252,17 @@ class id_abstractor_type():
         else:
 
             layer.dfr_ids_indx = (len(layer.dfr_ids) - 1)
+
+    def get_layer_indx(self, context):
+
+        if (self.id_type == 0):
+
+            return context.scene.df_dfc_layers_indx
+
+        else:
+
+            return context.scene.df_dfr_layers_indx
+    
 
 
 class rerun_item_type:
@@ -391,6 +408,74 @@ def remove_ids_from_layer(context, objects, layer_indx, id_type):
     while (indx_counter < ids_nxt_indx.value):
 
         id_abstractor.set_id_in_obj(context, objects[ids[indx_counter]], 0)
+        indx_counter += 1
+
+
+def select_ids_in_layer(context, id_type):
+
+    validate_undo_step(context, False)
+
+    id_abstractor = id_abstractor_type(context, id_type)
+    df = context.scene.df
+
+    if (df.df_state_stashed):
+        df_lib.call_df_unstash_state()
+        df.df_state_stashed = False
+    layer_size = id_abstractor.get_layer_size_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))))
+    ids_type = ctypes.c_ulong * layer_size
+    ids = ids_type()
+
+    id_abstractor.get_ids_in_layer_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))), ctypes.pointer(ids))
+    if (df.df_stashing_enabled):
+        df_lib.call_df_stash_state()
+        df.df_state_stashed = True
+    else:
+        df.df_state_stashed = False
+    
+    indx_counter = 0
+    while (indx_counter < layer_size):
+    
+        for obj in context.scene.objects:
+        
+            if (id_abstractor.get_id_in_obj(context, obj) == ids[indx_counter]):
+            
+                obj.select_set(True)
+                break
+                
+        indx_counter += 1
+
+
+def deselect_ids_in_layer(context, id_type):
+
+    validate_undo_step(context, False)
+
+    id_abstractor = id_abstractor_type(context, id_type)
+    df = context.scene.df
+
+    if (df.df_state_stashed):
+        df_lib.call_df_unstash_state()
+        df.df_state_stashed = False
+    layer_size = id_abstractor.get_layer_size_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))))
+    ids_type = ctypes.c_ulong * layer_size
+    ids = ids_type()
+
+    id_abstractor.get_ids_in_layer_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))), ctypes.pointer(ids))
+    if (df.df_stashing_enabled):
+        df_lib.call_df_stash_state()
+        df.df_state_stashed = True
+    else:
+        df.df_state_stashed = False
+
+    indx_counter = 0
+    while (indx_counter < layer_size):
+
+        for obj in context.scene.objects:
+        
+            if (id_abstractor.get_id_in_obj(context, obj) == ids[indx_counter]):
+            
+                obj.select_set(False)
+                break
+                
         indx_counter += 1
 
 
@@ -1517,36 +1602,8 @@ class DF_OT_df_select_dfcs_in_dfc_layer(bpy.types.Operator):
         return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers)) and (df.df_assertion_code == 0)
     
     def execute(self, context):
-    
-        df = context.scene.df
 
-        validate_undo_step(context, False)
-        
-        if (df.df_state_stashed):
-            df_lib.call_df_unstash_state()
-            df.df_state_stashed = False
-        layer_size = df_lib.call_df_get_dfc_layer_size(ctypes.byref(ctypes.c_ulong(context.scene.df_dfc_layers_indx)))
-        dfc_ids_type = ctypes.c_ulong * layer_size
-        dfc_ids = dfc_ids_type()
-    
-        df_lib.call_df_get_all_dfcs_in_dfc_layer(ctypes.byref(ctypes.c_ulong(context.scene.df_dfc_layers_indx)), ctypes.pointer(dfc_ids))
-        if (df.df_stashing_enabled):
-            df_lib.call_df_stash_state()
-            df.df_state_stashed = True
-        else:
-            df.df_state_stashed = False
-        
-        indx_counter = 0
-        while (indx_counter < layer_size):
-        
-            for obj in context.scene.objects:
-            
-                if (obj.dfc_id == dfc_ids[indx_counter]):
-                
-                    obj.select_set(True)
-                    break
-                    
-            indx_counter += 1
+        select_ids_in_layer(context, 0)
     
         return {'FINISHED'}
         
@@ -1565,35 +1622,7 @@ class DF_OT_df_deselect_dfcs_in_dfc_layer(bpy.types.Operator):
     
     def execute(self, context):
     
-        df = context.scene.df
-    
-        validate_undo_step(context, False)
-
-        if (df.df_state_stashed):
-            df_lib.call_df_unstash_state()
-            df.df_state_stashed = False
-        layer_size = df_lib.call_df_get_dfc_layer_size(ctypes.byref(ctypes.c_ulong(context.scene.df_dfc_layers_indx)))
-        dfc_ids_type = ctypes.c_ulong * layer_size
-        dfc_ids = dfc_ids_type()
-    
-        df_lib.call_df_get_all_dfcs_in_dfc_layer(ctypes.byref(ctypes.c_ulong(context.scene.df_dfc_layers_indx)), ctypes.pointer(dfc_ids))
-        if (df.df_stashing_enabled):
-            df_lib.call_df_stash_state()
-            df.df_state_stashed = True
-        else:
-            df.df_state_stashed = False
-        
-        indx_counter = 0
-        while (indx_counter < layer_size):
-        
-            for obj in context.scene.objects:
-            
-                if (obj.dfc_id == dfc_ids[indx_counter]):
-                
-                    obj.select_set(False)
-                    break
-                    
-            indx_counter += 1
+        deselect_ids_in_layer(context, 0)
     
         return {'FINISHED'}
         
@@ -1720,7 +1749,7 @@ class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
         
         if (context.scene.df_dfr_layers_indx > 0):
         
-            context.scene.df_dfr_layers_indx -= 1;
+            context.scene.df_dfr_layers_indx -= 1
             
         incrmt_undo_step(context)
     
@@ -1797,35 +1826,7 @@ class DF_OT_df_select_dfrs_in_dfr_layer(bpy.types.Operator):
     
     def execute(self, context):
     
-        df = context.scene.df
-
-        validate_undo_step(context, False)
-    
-        if (df.df_state_stashed):
-            df_lib.call_df_unstash_state()
-            df.df_state_stashed = False
-        layer_size = df_lib.call_df_get_dfr_layer_size(ctypes.byref(ctypes.c_ulong(context.scene.df_dfr_layers_indx)))
-        dfr_ids_type = ctypes.c_ulong * layer_size
-        dfr_ids = dfr_ids_type()
-    
-        df_lib.call_df_get_all_dfrs_in_dfr_layer(ctypes.byref(ctypes.c_ulong(context.scene.df_dfr_layers_indx)), ctypes.pointer(dfr_ids))
-        if (df.df_stashing_enabled):
-            df_lib.call_df_stash_state()
-            df.df_state_stashed = True
-        else:
-            df.df_state_stashed = False
-        
-        indx_counter = 0
-        while (indx_counter < layer_size):
-        
-            for obj in context.scene.objects:
-            
-                if (obj.dfr_id == dfr_ids[indx_counter]):
-                
-                    obj.select_set(True)
-                    break
-                    
-            indx_counter += 1
+        select_ids_in_layer(context, 1)
     
         return {'FINISHED'}
         
@@ -1844,35 +1845,7 @@ class DF_OT_df_deselect_dfrs_in_dfr_layer(bpy.types.Operator):
     
     def execute(self, context):
     
-        df = context.scene.df
-    
-        validate_undo_step(context, False)
-
-        if (df.df_state_stashed):
-            df_lib.call_df_unstash_state()
-            df.df_state_stashed = False
-        layer_size = df_lib.call_df_get_dfr_layer_size(ctypes.byref(ctypes.c_ulong(context.scene.df_dfr_layers_indx)))
-        dfr_ids_type = ctypes.c_ulong * layer_size
-        dfr_ids = dfr_ids_type()
-    
-        df_lib.call_df_get_all_dfrs_in_dfr_layer(ctypes.byref(ctypes.c_ulong(context.scene.df_dfr_layers_indx)), ctypes.pointer(dfr_ids))
-        if (df.df_stashing_enabled):
-            df_lib.call_df_stash_state()
-            df.df_state_stashed = True
-        else:
-            df.df_state_stashed = False
-        
-        indx_counter = 0
-        while (indx_counter < layer_size):
-        
-            for obj in context.scene.objects:
-            
-                if (obj.dfr_id == dfr_ids[indx_counter]):
-                
-                    obj.select_set(False)
-                    break
-                    
-            indx_counter += 1
+        deselect_ids_in_layer(context, 1)
     
         return {'FINISHED'}
         

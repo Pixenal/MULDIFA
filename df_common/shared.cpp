@@ -550,21 +550,21 @@ void shared_type::ncspline_type::init_spline(const double* knott_values, const u
 		have unknowns, as the double derivatives at the 2 end knotts are already known (0 for both, as this is a natural spline). This 
 		results in (n - 2) unknowns/ equations for n knotts. The equation used is:
 		
-		hi-1 * zi-1 + 2 * (hi-1 + h1) * zi + hi * zi+1 = 6 * (bi - bi-1)	Where the h expressions are the coefficients,
-																			the the z's the unknowns.
+		hi-1 * zi-1 + 2 * (hi-1 + h1) * zi + hi * zi+1 = 6 * (bi - bi-1)    Where the h expressions are the coefficients,
+		                                                                    the the z's the unknowns.
 
-																			And where:  hi = (xi+1 - xi),
-																			and:		bi = (yi+1 - yi) / hi  (where y = the passed values)
+		                                                                    And where:  hi = (xi+1 - xi),
+		                                                                    and:        bi = (yi+1 - yi) / hi  (where y = the passed values)
 
 		This is represented in tridiagonal matrix form as:
 		 __                                                            __   _  _     __           __
 		| 2*(h0 + h1)    h1                                              | | z1 |   |   6*(b1-b0)   |
 		|     h1     2*(h1+h2)    h2                                     | | z2 |   |   6*(b2-b1)   |
-		| 	            h2    2*(h2+h3)    h3                            | | z3 |   |   6*(b3-b2)   |
+		|               h2    2*(h2+h3)    h3                            | | z3 |   |   6*(b3-b2)   |
 		|                .         .         .                           | |  . | = |       .       |
-		|                   .		   .         .                       | |  . |   |       .       |
-		|  					 hn-3    2(hn-3+hn-2)    hn-2                | |zn-1|   | 6*(bn-2-bn-3) |
-		|__					             hn-2     2(hn-2 + hn-1)    hn-1_| |zn-2|   |_6*(bn-1-bn-2)_|
+		|                   .          .         .                       | |  . |   |       .       |
+		|                    hn-3    2(hn-3+hn-2)    hn-2                | |zn-1|   | 6*(bn-2-bn-3) |
+		|__                              hn-2     2(hn-2 + hn-1)    hn-1_| |zn-2|   |_6*(bn-1-bn-2)_|
 		
 		The system is solved using TDMA/ Thomas Algorithm. It should be noted that the x coordinates (again, where y = the passed values)
 		are aligned to the indices of the parameter array "knott_values", and as such are equally spaced. Because of this, all h's
@@ -607,16 +607,16 @@ void shared_type::ncspline_type::init_spline(const double* knott_values, const u
 	const unsigned short const_matrix_nxt_indx = knott_values_nxt_indx - 2u;
 	double* const_matrix = new double[knott_values_nxt_indx - 2u];
 
-	/*	Calculates first element ("constant_0 refering to the
-		element in the constant matrix,not the coeff matrix constants"):	constant_0_new = constant_0 / princple_diag_0
-		After subbing constants:											constant_0_new = constant_0 / 4
-		Note that the equation for the elements of the constant matrix are inlined below (6 * (bi - bi-1))	*/
+	/*  Calculates first element ("constant_0 refering to the
+	    element in the constant matrix,not the coeff matrix constants"):    constant_0_new = constant_0 / princple_diag_0
+	    After subbing constants:                                            constant_0_new = constant_0 / 4
+	    Note that the equation for the elements of the constant matrix are inlined below (6 * (bi - bi-1))	*/
 	const_matrix[0] = (6 * (knott_b_values[1] - knott_b_values[0])) / princple_diag;
 
-	/*	Calculates all other elements within the constnat matrix:	constant_i_new = (constant_i	- (lower_diag_i * constant_i-1_new)) /
-																					 (princple_diag_i - (lower_diag_i * upper_diag_i-1_new))
-		After subbing constants and simplifying:					constant_i_new = (constant_i - constant_i-1_new) / 
-																					 (4 - upper_diag_i-1_new)	*/
+	/*  Calculates all other elements within the constnat matrix:    constant_i_new = (constant_i - (lower_diag_i * constant_i-1_new)) /
+	                                                                                  (princple_diag_i - (lower_diag_i * upper_diag_i-1_new))
+	    After subbing constants and simplifying:                     constant_i_new = (constant_i - constant_i-1_new) / 
+	                                                                                  (4 - upper_diag_i-1_new)	*/
 	for (unsigned short a = 1u; a < const_matrix_nxt_indx; ++a)
 	{
 		unsigned short original_indx = a + 1u;
@@ -628,15 +628,15 @@ void shared_type::ncspline_type::init_spline(const double* knott_values, const u
 
 	knott_z_values = new double[knott_values_nxt_indx];
 
-	/*	Sets the double derivative of knotts 0 and (n - 1) to = 0	(natural spline)	(also am using (n - 1) to represent the last knott
-		instead of n as 0 is being used to represent the first knott)	*/
+	/*  Sets the double derivative of knotts 0 and (n - 1) to = 0    (natural spline)    (also am using (n - 1) to represent the last knott
+	    instead of n as 0 is being used to represent the first knott)	*/
 	knott_z_values[0] = .0f;
 	knott_z_values[knott_values_nxt_indx - 1u] = .0f;
 
-	/*	Calculates last element in variable matrix (finds double derivative of knott (n - 2)):	var_n-1 (where n = size of var matrix) = constant_n-1_new	*/
+	/*  Calculates last element in variable matrix (finds double derivative of knott (n - 2)):  var_n-1 (where n = size of var matrix) = constant_n-1_new	*/
 	knott_z_values[knott_values_nxt_indx - 2u] = const_matrix[const_matrix_nxt_indx - 1u];
 
-	/*	Calculates all remaining elements in the variable matrix: var_i = constant_i_new - (upper_diag_i_new * var_i+1)	*/
+	/*  Calculates all remaining elements in the variable matrix: var_i = constant_i_new - (upper_diag_i_new * var_i+1)	*/
 	const unsigned short start_indx = knott_values_nxt_indx - 3u;
 	for (unsigned short a = start_indx; a > 0; --a)
 	{
@@ -662,8 +662,8 @@ void shared_type::ncspline_type::init_spline(const double* knott_values, const u
 	intern_is_valid = true;
 
 	/*	Stores the coord of the first knott in the spline internally (only storeing the x and y coordinates, where the z coord
-	is the axis in which the spline is aligned, note that these x and y coords are not the same as the indices and values passed
-	in "knott_values" (in practice this coord represents the splines location within the distance field)).	*/
+		is the axis in which the spline is aligned, note that these x and y coords are not the same as the indices and values passed
+		in "knott_values" (in practice this coord represents the splines location within the distance field)).	*/
 	this->spline_prpndclr_coord = spline_prpndclr_coord;
 }
 
@@ -773,14 +773,14 @@ double shared_type::ncspline_type::sample(const double indx_coord)
 
 		/*	Calculates value at specified coord using a simplified form of the function:
 		* 
-			f(x) =	((zi+1 / (6 * hi)) * (x - xi)^3) -
-					((zi / (6 * hi)) * (x - xi+1)^3) + 
-					(((yi+1 / hi) - ((hi / 6) * zi+1)) * (x - xi)) -
-					(((yi / hi) - ((hi / 6) * zi)) * (x - xi+1)),
+		    f(x) =  ((zi+1 / (6 * hi)) * (x - xi)^3) -
+		            ((zi / (6 * hi)) * (x - xi+1)^3) + 
+		            (((yi+1 / hi) - ((hi / 6) * zi+1)) * (x - xi)) -
+		            (((yi / hi) - ((hi / 6) * zi)) * (x - xi+1)),
 
-					Where {xi < 0 < xi+1}
+		            Where {xi < 0 < xi+1}
 
-			(simplified as all h's = 1)	*/
+		    (simplified as all h's = 1)	*/
 
 		return	((zip1 / 6.0f) * ((indx_coord - knott_indx) * (indx_coord - knott_indx) * (indx_coord - knott_indx))) -
 				((zi / 6) * ((indx_coord - knott_indx_p1) * (indx_coord - knott_indx_p1) * (indx_coord - knott_indx_p1))) +

@@ -775,26 +775,26 @@ has_changed:
 	#########|#########|#########|#########|
 	#########|#########|#########|#########|
 	#########|#########|#########|#########|
-			 |		   |#########|#########|
-		o    |	       |#########|#########|
-		|    |	  o    |#########|#########|
+	         |         |#########|#########|
+	    o    |         |#########|#########|
+	    |    |    o    |#########|#########|
 	____|____|___/_____|#########|#########|
-		|    |	/	   |		 |#########|
-		|    | /	   |		 |#########|
-		|    |/	       |		 |#########|
+	    |    |  /      |         |#########|
+	    |    | /       |         |#########|
+	    |    |/        |         |#########|
 	____|____|_________|_________|#########|
-		|   /|		   |		 |#########|
-			_|_________|____o    |#########|
-			 |         |		 |#########|
+	    |   /|         |         |#########|
+	        _|_________|____o    |#########|
+	         |         |         |#########|
 	____|___\|_________|_________|#########|
-		|    |	       |		 |#########|
-		|    |\	       |		 |#########|
-		|	 | \       |		 |#########|
+	    |    |         |         |#########|
+	    |    |\        |         |#########|
+	    |    | \       |         |#########|
 	____|____|__\______|_________|#########|
-		|    |	 \     |#########|#########|
-		|    |	  o    |#########|#########|
-		o	 |		   |#########|#########|
-			 |		   |#########|#########|
+	    |    |   \     |#########|#########|
+	    |    |    o    |#########|#########|
+	    o    |         |#########|#########|
+	         |         |#########|#########|
 	#########|#########|#########|#########|
 	#########|#########|#########|#########|
 	#########|#########|#########|#########|
@@ -803,23 +803,23 @@ has_changed:
 
 	The way that these relevency table is generated is by first generating an octant of the shape around compartment (0, 0, 0), eg:
 
-				   |
-				   |
-				   |
-				   |
-				   |
-				  / ^^/|
-				 /___/ |____
-				|    | /   /|
-				|____|/___/ |___
-			   /  	/|    | / 	----____
-			  /____/ |____|/			----__
-			  |    | /
-			  | ___|/
-			  /
-			 /
-			/
-		   /
+	               |
+	               |
+	               |
+	               |
+	               |
+	              / ^^/|
+	             /___/ |____
+	            |    | /   /|
+	            |____|/___/ |___
+	           /    /|    | /   ----____
+	          /____/ |____|/            ----__
+	          |    | /
+	          | ___|/
+	          /
+	         /
+	        /
+	       /
 
 	The the shape is then (in a very informal sense atleast), duplicated 8 times around each compartment in order to get a full voxelized sphere around each compartmnet
 	(with the voxzelized sphere shape obvisously just being an array of compartment indices (again, each compartment has their own array of compartments which are relevent
@@ -831,8 +831,8 @@ has_changed:
 	*/
 
 
-	/*		Octant Generation
-			V		V		V		*/
+	/*       Octant Generation
+	        V        V        V        */
 
 
 	/*Defines objects for keeping track of the next index in the array which will be allocated later on*/
@@ -882,60 +882,60 @@ has_changed:
 
 
 
-				 Z
-				 |
-				 |
-				 |   _____
-				 |  /     ^--.
-				 | .     	   \
-				 ||             \
-				/ |     		 |
-			   /_|               |
-			   | |              /------------ Y
-			   |_|         __ /
-			   / |____..--^
-			  /
-			 /
-			X
+	             Z
+	             |
+	             |
+	             |   _____
+	             |  /     ^--.
+	             | .          \
+	             ||             \
+	            / |              |
+	           /_|               |
+	           | |              /------------ Y
+	           |_|         __ /
+	           / |____..--^
+	          /
+	         /
+	        X
 
 	Condition 2 and 3:
 
 		If a set of x and z coords make it so that a point must lie in the area closest to the edges, then the y coord is gotten by finding the y coord that makes the point lie on the cylinder created around the
 		edge (this includes checking whether or not a point actually lies on the cylinder once the y coord is known)
 
-				 Z
-				 |	   ____
-				 |    /     ^--.
-				 |   /____       \
-				 |  |     ^--.      \
-				 |  |  		    \    | <------- Condition 2
-				 |__|             \  |
-				/   | 		       | /
-			   /____|_____________ |/
-			   |    /			  .|-------- Y
-			   |___/		  __ / |
-			   /  /____..--^	  /
-			  /   |          __ / <------- Condition 3
-			 /    |____..--^
-			X
+	             Z
+	             |     ____
+	             |    /     ^--.
+	             |   /____       \
+	             |  |     ^--.      \
+	             |  |           \    | <------- Condition 2
+	             |__|             \  |
+	            /   |              | /
+	           /____|_____________ |/
+	           |    /             .|-------- Y
+	           |___/         __  / |
+	           /  /____..--^      /
+	          /   |          __ / <------- Condition 3
+	         /    |____..--^
+	        X
 
 	Condition 4:
 
 		If the point is lies directly to the side of the compartment, then the y coord of the compartment on the surface of the shape is simply the integer variant of df distance (in index space obviously)
 
 
-				 Z
-				 |
-				 |
-				 |___________________
-				/     /			    /|
-			   /____ /_____________/ |
-			   |    |              | .------ Y
-			   |____|______________|/
-			   /
-			  /
-			 /
-			X
+	             Z
+	             |
+	             |
+	             |___________________
+	            /     /             /|
+	           /____ /_____________/ |
+	           |    |              | .------ Y
+	           |____|______________|/
+	           /
+	          /
+	         /
+	        X
 		*/
 
 	/*Gets how far to scan along both the x and z axis (the shape is identical in size on both axis so the same max value can be used for both) */
@@ -1077,12 +1077,12 @@ has_changed:
 		const unsigned short size_vec = sizeof(size_test_vec);
 		const unsigned short size_ptr = sizeof(size_test_ptr);
 
-		const unsigned short size_grid_point =	(((size_ptr + size_ulong) + size_ushort) + 10u) +
-											size_vec +
-											size_ushort +
-											(size_ushort * 3u) +
-											size_ptr +
-											size_mutex;
+		const unsigned short size_grid_point =	(((	size_ptr + size_ulong) + size_ushort) + 10u) +
+													size_vec +
+													size_ushort +
+													(size_ushort * 3u) +
+													size_ptr +
+													size_mutex;
 
 		const unsigned long long size_grid = (volume_local.grid_amount.x * size_ptr) + ((volume_local.grid_amount.x * volume_local.grid_amount.y) * size_ptr) + (grid_amount_total * size_grid_point);
 		const unsigned long long size_cmprt_table = (volume_local.cmprt_amount_total * size_ptr) + (grid_amount_total * size_ptr);
@@ -1262,7 +1262,7 @@ has_changed:
 						|	cmprt_2 | @ @ @ @ @ @ @ @ @ |
 						|	cmprt_3 | @ @ @ @ @ @ @ @ @ |
 						|	cmprt_4 | @ @ @ @ @ @ @ @ @ |
-						|	cmprt_5 | @ @ @ @		    |
+						|	cmprt_5 | @ @ @ @           |
 					*/
 				volume_local.cmprt_table[current_cmprt] = new grid_type * [current_cmprt_size];
 
@@ -1740,24 +1740,24 @@ int df_type::update_grid_points(void* arg_ptr, unsigned short job_index)
 			  barycentric coordinates, it can now quickly be dertermined which of the below areas the projected point lies within, this must be known as the distance will need
 			  to be calculated differently depending on where it is located.																															*/
 			  /*
-												\    Vert     /
-												   \       /
-													  \/
-													  /\
-													 /  \
-													/	 \
-												   /	  \
-										Edge	  /  	   \     Edge
-												 /	  	    \
-												/			 \
-											   /		      \
-											  /	   Triangle	   \
-											 /				    \
-								  __	    /					 \		  __
-									----___/______________________\___----
-										   |					  |
-									Vert   | 		 Edge		  |	 Vert
-										   |					  |
+		                                        \    Vert     /
+		                                           \       /
+		                                              \/
+		                                              /\
+		                                             /  \
+		                                            /    \
+		                                           /      \
+		                                Edge      /        \     Edge
+		                                         /          \
+		                                        /            \
+		                                       /              \
+		                                      /    Triangle    \
+		                                     /                  \
+		                          __        /                    \        __
+		                            ----___/______________________\___----
+		                                   |                      |
+		                            Vert   |         Edge         |   Vert
+		                                   |                      |
 			  */
 
 
@@ -1825,22 +1825,22 @@ int df_type::update_grid_points(void* arg_ptr, unsigned short job_index)
 			   /\
 			  /  \
 			 /    \
-				   \			  \     /
-			________\________		\ /
-					 \				/ \
-					  \			  /     \
-					   \
+			       \              \     /
+			________\________       \ /
+			         \              / \
+			          \           /     \
+			           \
 
 			Instead of this:
 
 			   /\
-			  /  \						 /
-			 /    \					    /
-				   \       ___		\  /
-			________\___---			 \/
-					|
-					|
-					|
+			  /  \                       /
+			 /    \                     /
+			       \       ___      \  /
+			________\___---          \/
+			        |
+			        |
+			        |
 
 			This leads to visual artifacting, and so before the below algorithms preceed to calculate the distance, they first check if that projected point is actually on the edge,
 			if it is not, then the flow is redirected back up to the above vert distance calc algorithms.
@@ -2251,21 +2251,21 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 			  it will take to scan (in intervals of 0.5) from the max vertex to the mid vertex (along the axis passed to the function), then it calculates the same for the distance
 			  between the mid vertex and the min vertex. The function will then perform 2 loop statements, one that scans from max to mid, and the other from mid to min:
 
-										 Mid
-									  __--O.
-								 __---       \
-							__---              \
-					   __---				     \
-				  __---						       \
+			                             Mid
+			                          __--O.
+			                     __---       \
+			                __---              \
+			           __---                     \
+			      __---                            \
 			 Min O-----------------------------------O Max
-										  <-----------
-				 <------------------------     |
-						|				       |
-						|		The first loop statement scans from max to mid, only taking
-						|		into account the first part of the hyptenuse, and the line
-						|		between max and mid
-						|
-						|
+			                              <-----------
+			     <------------------------     |
+			            |                      |
+			            |       The first loop statement scans from max to mid, only taking
+			            |       into account the first part of the hyptenuse, and the line
+			            |       between max and mid
+			            |
+			            |
 				The second loop statement scans from mid to min
 				(obviously, starting where the first loop statement
 				left off), and only takes into account the last part
@@ -2689,8 +2689,8 @@ float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_co
 			V      |  |  |  |  |  |  |  |
 			y      |  |  |  |__|  |  |  |
 			       |  |  |  |__|  |  |  |  <---- Splines (note the grid cell at the center)
-				   |  |  |  |  |  |  |  |
-				   |  |  |  |  |  |  |  |
+			       |  |  |  |  |  |  |  |
+			       |  |  |  |  |  |  |  |
 			       |  |  |  |  |  |  |  |
 			
 			These spline's knotts sample from the existing z aligned splines at the current verts z coord (in index space)
@@ -2703,10 +2703,10 @@ float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_co
 			|      |  |  |  |  |  |  |  |
 			V      |  |  |  |  |  |  |  |
 			y      |  |  |  |__|  |  |  |
-				   o--o--o--o--o--o--o--o  <---- x aligned spline
-				   |  |  |  |  |  |  |  |
-				   |  |  |  |  |  |  |  |
-				   |  |  |  |  |  |  |  |
+			       o--o--o--o--o--o--o--o  <---- x aligned spline
+			       |  |  |  |  |  |  |  |
+			       |  |  |  |  |  |  |  |
+			       |  |  |  |  |  |  |  |
 
 			The final interpolated value is then gained by sampling from this spline at the current verts index spade x coord	*/
 
@@ -2797,21 +2797,21 @@ float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_co
 	{
 		/*	Trilinear interpolation	*/
 
-		/*       mxx o                    o mmx
-				  \		     x_z       \
+		/*   mxx o                    o mmx
+		          \          x_z       \
 		   mxx_xxx o__________o_________o mmx_xmx
-					\	      |	         \
-					 \	      | 	      \
-				  xxx o       |      	   o xmx
-							  |
-							  o	final
-							  |
-			 mxm o            |        o mmm
-				  \		      |	        \
+		            \         |          \
+		             \        |           \
+		          xxx o       |            o xmx
+		                      |
+		                      o final
+		                      |
+		     mxm o            |        o mmm
+		          \           |         \
 		   mxm_xxm o__________o__________o mmm_xmm
-					\	     m_z 	      \
-					 \	    	           \
-				  xxm o 	  		        o xmm
+		            \        m_z          \
+		             \                     \
+		          xxm o                     o xmm
 
 			mmm is first lerped with xmm to get mmm_xmm, then mxm is lerped with xxm to get mxm_xxm,
 			then mmm_xmm is lerp with mxm_xxm to get m_z,
