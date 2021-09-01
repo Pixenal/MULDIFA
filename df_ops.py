@@ -64,10 +64,79 @@ df_lib.pass_lib_dir(ctypes.c_char_p(bytes(current_dir, 'utf-8')))
 #-------------------------------------------------------------------------------------------------------------#
 
 
+class bmesh_type():
+
+    bm_cpy = None
+    obj = None
+    mesh = None
+    switched_mode = False
+    original_mode = None
+
+    def __init__(self, obj):
+
+        self.obj = obj
+        self.mesh = obj.data
+        
+        """ First checks if the current object's mode is object mode, if so, gets current mesh as bmesh structure using object mode
+            specific process and continues as normal (This is checked first as most objects would pressumably be in object mode,
+            and so checking if the mode is object mode, and skipping the extra check if so, would hopefully minimize the amount of
+            condition checking done for the total amount of objects (even though it results in repeated code)). If not object mode,
+            checks if is edit mode, if so, gets current mesh as bmesh structure in the process of doing so that is specific to edit
+            mode. If is not edit mode (which would be the case if the mode is, for example, weight paint mode), then the object's mode is
+            switched to object mode, the reason for this is purely precautionary and is done in order to avoid any unwanted behaviour 
+            (of which I am not aware of) that could arise from using these modes, though it very well may be unnecessary """ 
+        if (obj.mode == 'OBJECT'):
+            
+            #Internal references/ Aliases
+            self.bm_cpy = bmesh.new()
+            self.bm_cpy.from_mesh(self.mesh)
+            
+        else:
+            
+            if (obj.mode == 'EDIT'):
+            
+                self.bm_cpy = bmesh.from_edit_mesh(self.mesh)
+                
+            else:
+                
+                self.switched_mode = True
+                
+                #Stores the current mode so that it can be switched back to after the initialization process is complete
+                self.original_mode = obj.mode
+                bpy.ops.object.mode_set(mode = 'OBJECT')
+                
+                self.bm_cpy = bmesh.new()
+                self.bm_cpy.from_mesh(self.mesh)
+
+    def __del__(self):
+
+        #Checks which mode is the current mode, and updates mesh accordingly
+        if (self.obj.mode == 'EDIT'):
+        
+            bmesh.update_edit_mesh(self.mesh)
+            
+        else:
+        
+            self.bm_cpy.to_mesh(self.mesh)
+            
+            self.bm_cpy.free()
+            
+            #If mode was switched to object mode, swtiched back to original mode
+            if (self.switched_mode == True):
+            
+                bpy.ops.object.mode_set(mode = self.original_mode)
+
+
+
 class id_abstractor_type():
 
     id_type = 0
     layers_col = None
+    assign_libfunc = None
+    remove_libfunc = None
+    expel_libfunc = None
+    defrag_libfunc = None
+    get_serchee_layers_libfunc = None
 
     def __init__(self, context, id_type):
 
@@ -75,10 +144,20 @@ class id_abstractor_type():
         if (id_type == 0):
             
             self.layers_col = context.scene.df_dfc_layers
+            self.assign_libfunc = df_lib.call_df_assign_dfcs_to_dfc_layer
+            self.remove_libfunc = df_lib.call_df_remove_dfcs_from_dfc_layer
+            self.expel_libfunc = df_lib.call_df_expel_nonexistant_dfcs_from_layers
+            self.defrag_libfunc = df_lib.call_df_defrag_dfc_ids
+            self.get_serchee_layers_libfunc = df_lib.call_df_get_all_layers_with_dfc
 
         else:
 
             self.layers_col = context.scene.df_dfr_layers
+            self.assign_libfunc = df_lib.call_df_assign_dfrs_to_dfr_layer
+            self.remove_libfunc = df_lib.call_df_remove_dfrs_from_dfr_layer
+            self.expel_libfunc = df_lib.call_df_expel_nonexistant_dfrs_from_layers
+            self.defrag_libfunc = df_lib.call_df_defrag_dfr_ids
+            self.get_serchee_layers_libfunc = df_lib.call_df_get_all_layers_with_dfr
 
     def get_ids_col_in_layer(self, context, layer):
 
@@ -90,7 +169,6 @@ class id_abstractor_type():
 
             return layer.dfr_ids
 
-
     def set_ids_indx_in_layer(self, context, layer, index):
 
         if (self.id_type == 0):
@@ -100,7 +178,6 @@ class id_abstractor_type():
         else:
 
             layer.dfr_ids_indx = index
-
 
     def add_item_to_ids_col_in_layer(self, context, layer, id):
 
@@ -116,7 +193,6 @@ class id_abstractor_type():
             layer.dfr_ids.add()
             layer.dfr_ids[layer.dfr_ids_indx].id = id
 
-
     def get_id_in_obj(self, context, obj):
 
         if (self.id_type == 0):
@@ -127,8 +203,6 @@ class id_abstractor_type():
 
             return obj.dfr_id
 
-
-
     def set_id_in_obj(self, context, obj, id):
 
         if (self.id_type == 0):
@@ -138,7 +212,6 @@ class id_abstractor_type():
         else:
 
             obj.dfr_id = id
-
 
     def get_next_id(self, context):
 
@@ -152,7 +225,6 @@ class id_abstractor_type():
 
             return df.df_next_dfr_id
 
-
     def set_next_id(self, context, id):
 
         df = context.scene.df
@@ -165,7 +237,6 @@ class id_abstractor_type():
 
             df.df_next_dfr_id = id
 
-    
     def set_ids_col_indx_to_end(self, context, layer):
 
         if (self.id_type == 0):
@@ -230,19 +301,11 @@ def assign_ids_to_layer(context, objects, layer_indx, id_type):
 
     df = context.scene.df
 
-    id_abstractor = id_abstractor_type(context, id_type)
-
-    if (id_type == 0):
-
-        assign_libfunc = df_lib.call_df_assign_dfcs_to_dfc_layer
-
-    elif (id_type == 1):
-
-        assign_libfunc = df_lib.call_df_assign_dfrs_to_dfr_layer
-
-    else:
+    if not ((id_type == 0) or (id_type == 1)):
 
         return
+
+    id_abstractor = id_abstractor_type(context, id_type)
 
     ids_type = ctypes.c_ulong * len(objects)
     ids = ids_type()
@@ -271,7 +334,7 @@ def assign_ids_to_layer(context, objects, layer_indx, id_type):
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
-    assign_libfunc(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(ids), ctypes.byref(ids_nxt_indx))
+    id_abstractor.assign_libfunc(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(ids), ctypes.byref(ids_nxt_indx))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
         df.df_state_stashed = True
@@ -283,19 +346,11 @@ def remove_ids_from_layer(context, objects, layer_indx, id_type):
 
     df = context.scene.df
 
-    id_abstractor = id_abstractor_type(context, id_type)
-
-    if (id_type == 0):
-
-        remove_libfunc = df_lib.call_df_remove_dfcs_from_dfc_layer
-
-    elif (id_type == 1):
-
-        remove_libfunc = df_lib.call_df_remove_dfrs_from_dfr_layer
-
-    else:
+    if not ((id_type == 0) or (id_type == 1)):
 
         return
+
+    id_abstractor = id_abstractor_type(context, id_type)
 
     slcted_obj_amount = len(objects)
     ids_type = ctypes.c_ulong * slcted_obj_amount
@@ -325,7 +380,7 @@ def remove_ids_from_layer(context, objects, layer_indx, id_type):
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
-    remove_libfunc(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(ids), ctypes.byref(ids_nxt_indx))
+    id_abstractor.remove_libfunc(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(ids), ctypes.byref(ids_nxt_indx))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
         df.df_state_stashed = True
@@ -439,17 +494,11 @@ def defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_i
 
     df = context.scene.df
 
+    if not ((id_type == 0) or (id_type == 1)):
+
+        return
+
     id_abstractor = id_abstractor_type(context, id_type)
-
-    if (id_type == 0):
-
-        expel_libfunc = df_lib.call_df_expel_nonexistant_dfcs_from_layers
-        defrag_libfunc = df_lib.call_df_defrag_dfc_ids
-
-    else:
-
-        expel_libfunc = df_lib.call_df_expel_nonexistant_dfrs_from_layers
-        defrag_libfunc = df_lib.call_df_defrag_dfr_ids
 
     validate_undo_step(context)
 
@@ -458,9 +507,9 @@ def defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_i
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
-    expel_libfunc(existing_obj_ids_buffer, ctypes.c_ulong(existing_obj_ids_next_index))
+    id_abstractor.expel_libfunc(existing_obj_ids_buffer, ctypes.c_ulong(existing_obj_ids_next_index))
     expel_nonexistant_ids_python(context, id_type)
-    defrag_libfunc(existing_obj_ids_buffer, ctypes.byref(ctypes.c_ulong(existing_obj_ids_next_index)), ctypes.byref(greatest_id))
+    id_abstractor.defrag_libfunc(existing_obj_ids_buffer, ctypes.byref(ctypes.c_ulong(existing_obj_ids_next_index)), ctypes.byref(greatest_id))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
         df.df_state_stashed = True
@@ -512,13 +561,11 @@ def get_id_dup_serchee_layers(context, serchee_id, layers_col, id_type):
 
     df = context.scene.df
 
-    if (id_type == 0):
+    if not ((id_type == 0) or (id_type == 1)):
 
-        get_serchee_layers_lib_func = df_lib.call_df_get_all_layers_with_dfc
+        return
 
-    else:
-
-        get_serchee_layers_lib_func = df_lib.call_df_get_all_layers_with_dfr
+    id_abstractor = id_abstractor_type(context, id_type)
 
     serchee_layers_type = ctypes.c_ulong * len(layers_col)
     serchee_layers = serchee_layers_type()
@@ -527,7 +574,7 @@ def get_id_dup_serchee_layers(context, serchee_id, layers_col, id_type):
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
-    get_serchee_layers_lib_func(serchee_id, ctypes.pointer(serchee_layers), ctypes.byref(serchee_layers_nxt_indx))
+    id_abstractor.get_serchee_layers_libfunc(serchee_id, ctypes.pointer(serchee_layers), ctypes.byref(serchee_layers_nxt_indx))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
         df.df_state_stashed = True
@@ -556,6 +603,10 @@ def validate_ids(context, rerun_items, id_type):
 
     df = bpy.context.scene.df
 
+    if not ((id_type == 0) or (id_type == 1)):
+
+        return
+
     id_abstractor = id_abstractor_type(context, id_type)
 
     rerun_items_size = len(rerun_items)
@@ -565,8 +616,8 @@ def validate_ids(context, rerun_items, id_type):
         counter = 0
         while (counter < rerun_items_size):
 
-            id_abstractor.set_id_in_obj(context, rerun_items[counter].sercher, df.df_next_dfc_id)
-            id_abstractor.set_id_in_obj(context, rerun_items[counter].serchee, df.df_next_dfc_id)
+            id_abstractor.set_id_in_obj(context, rerun_items[counter].sercher, id_abstractor.get_next_id(context))
+            id_abstractor.set_id_in_obj(context, rerun_items[counter].serchee, id_abstractor.get_next_id(context))
             id_abstractor.set_next_id(context, (id_abstractor.get_next_id(context) + 1))
             obj_list_wrapper = [rerun_items[counter].sercher,]
             counter1 = 0
@@ -1782,6 +1833,14 @@ class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
         df = context.scene.df
         
         validate_undo_step(context)
+
+        for id in context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx].dfr_ids:
+
+            for obj in context.scene.objects:
+
+                if (obj.dfr_id == id.id):
+
+                    pass
     
         context.scene.df_dfr_layers.remove(context.scene.df_dfr_layers_indx)
 
