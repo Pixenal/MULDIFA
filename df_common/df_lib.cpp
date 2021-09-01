@@ -189,10 +189,7 @@ extern "C"
 
 	EXPORT int call_df_add_dfc_layer()
 	{
-		//std::cout << "DEBUG LINUX 0" << std::endl;
-
-		return df.add_dfc_layer();
-		
+		return df.add_dfc_layer();	
 	}
 
 
@@ -200,7 +197,6 @@ extern "C"
 	{
 		
 		return df.add_dfr_layer();
-		
 	}
 
 
@@ -208,7 +204,6 @@ extern "C"
 	{
 		
 		return df.remove_dfc_layer(layer_indx, expelled_dfcs, expelled_dfcs_nxt_indx);
-		
 	}
 
 
@@ -216,7 +211,6 @@ extern "C"
 	{
 		
 		return df.remove_dfr_layer(layer_indx, expelled_dfrs, expelled_dfrs_nxt_indx);
-		
 	}
 
 
@@ -224,7 +218,6 @@ extern "C"
 	{
 		
 		return df.assign_dfcs_to_dfc_layer(layer_indx, dfc_ids, dfc_ids_nxt_indx);
-		
 	}
 
 
@@ -232,7 +225,6 @@ extern "C"
 	{
 		
 		return df.assign_dfrs_to_dfr_layer(layer_indx, dfr_ids, dfr_ids_nxt_indx);
-		
 	}
 
 
@@ -240,7 +232,6 @@ extern "C"
 	{
 		
 		return df.remove_dfcs_from_dfc_layer(layer_indx, dfcs, dfcs_nxt_indx, true);
-		
 	}
 
 
@@ -248,7 +239,6 @@ extern "C"
 	{
 		
 		return df.remove_dfrs_from_dfr_layer(layer_indx, dfrs, dfrs_nxt_indx, true);
-		
 	}
 
 
@@ -256,7 +246,6 @@ extern "C"
 	{
 		
 		return df.get_all_dfcs_in_dfc_layer(layer_indx, dfc_ids);
-		
 	}
 
 
@@ -264,7 +253,6 @@ extern "C"
 	{
 		
 		return df.get_all_dfrs_in_dfr_layer(layer_indx, dfr_ids);
-		
 	}
 
 
@@ -294,7 +282,6 @@ extern "C"
 
 	EXPORT int call_df_copy_to_buffer()
 	{
-
 		return df.copy_to_buffer();
 	}
 
@@ -326,7 +313,6 @@ extern "C"
 	EXPORT int call_df_new_blend_handler(const char* dir, const char* file_name, const shared_type::write_id_type& write_id, const int** dfc_layers, const int** dfr_layers, const bool df_cache_enabled)
 	{
 		int return_value = df.new_blend_handler(dir, file_name, write_id, dfc_layers, dfr_layers, df_cache_enabled);
-		
 		return return_value;
 	}
 
@@ -357,12 +343,6 @@ extern "C"
 		shared_type::write_id_type test;
 		test.index = 1056;
 		return test;
-	}
-
-	EXPORT int print_bazingo()
-	{
-		std::cout << "BAZINGO FROM WITHIN C++ !!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-		return 0;
 	}
 }
 

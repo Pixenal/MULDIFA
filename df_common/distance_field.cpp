@@ -1581,8 +1581,6 @@ has_changed:
 
 int df_type::pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount_total, const unsigned long* ignored_dfcs, const unsigned long ignored_dfcs_nxt_indx)
 {
-	std::cout << "DEBUG LINUX PRE 0" << std::endl;
-
 	update_local.clean();
 
 	/*	Moves contents of existing dfc cache to legacy cache (at a macro level, this is done so that the last dfc cache state can be compared to the one about to be initialized). 
@@ -2063,14 +2061,8 @@ int df_type::update_grid_points(void* arg_ptr, unsigned short job_index)
 
 
 		update_local.token.lock();
-
 		update_local.batches_completed += 1;
-
-		//std::cout << "update_local.batches_completed: " << update_local.batches_completed << std::endl;
-
 		update_local.token.unlock();
-
-		//std::cout << "batch_completed on thread: " << thread_index << std::endl;
 	}
 	else
 	{
@@ -2178,8 +2170,6 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 
 
 	loop_through_tris:
-
-		std::cout << "DEBUG LINUX 0" << std::endl;
 
 		/*	If the mesh has changed or is new, creates a new mesh_local_type object, and initializes it appripriatly	*/
 		if ((has_changed == true) || (is_new_mesh == true))
@@ -2584,8 +2574,6 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 
 		}
 
-		std::cout << "DEBUG LINUX 1" << std::endl;
-
 		/*	If the current mesh has not been flagged as changed nor new, then set the array of layer indices in the current mesh's entry in the dfc cache to equal that if it's legacy counterpart,
 			as these layers have not been adjusted as the current mesh was never marked as changed or new	*/
 		if ((has_changed == false) && (is_new_mesh == false))
@@ -2871,8 +2859,6 @@ float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_co
 	}
 
 	default:
-
-		std::cout << std::endl;
 
 		return .0f;
 	}
@@ -3353,7 +3339,6 @@ unsigned long df_type::get_dfr_layer_size(const unsigned long& layer_indx)
 /*	Adds a new dfc layers	*/
 int df_type::add_dfc_layer()
 {
-	//std::cout << "DEBUG LINUX 1" << std::endl;
 	dfc_layers.push_back(shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>());
 	return 0;
 }
@@ -3895,12 +3880,6 @@ int df_type::stash_write_id()
 	returns 2 if cache file was in sync and successfully loaded to df state, returns 3 if df cache was disabled	*/
 int df_type::new_blend_handler(const char* dir, const char* file_name, const shared_type::write_id_type& write_id, const int** dfc_layers, const int** dfr_layers, const bool df_cache_enabled)
 {
-	std::cout << "DEBUG NEW BLEND 0" << std::endl;
-	//int c = getchar();
-
-	std::cout << "DIR: " << dir << std::endl;
-	std::cout << "FILE_NAME: " << file_name << std::endl;
-
 	int return_code = 0;
 	
 	/*	Attempts to open cache file	*/
@@ -3908,8 +3887,6 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 
 	if (!df_cache_enabled)
 	{
-		std::cout << "DEBUG NEW BLEND 1" << std::endl;
-		//c = getchar();
 		return_code = 3;
 		goto load_layers_from_params;
 	}
@@ -3917,10 +3894,7 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 	/*	If attempt is unsuccessfull, returns 0	*/
 	if (loader.file.is_open() == false)
 	{
-		std::cout << "DEBUG NEW BLEND 2" << std::endl;
-		//c = getchar();
-		std::cout << "UNABLE TO LOAD FILE" << std::endl;
-		return_code = 0;
+		return_code = 4;
 		goto load_layers_from_params;
 	}
 
@@ -3932,50 +3906,29 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 		below condition, which checks that the write id on the python side matches that stored within the cache	*/
 	if (write_id == *loader.director.write_id_ptr)
 	{
-		std::cout << "write_id: " << write_id.index << std::endl;
-		std::cout << "write_id: " << write_id.rand << std::endl;
-		std::cout << "*loader.director.write_id_ptr: " << loader.director.write_id_ptr->index << std::endl;
-		std::cout << "*loader.director.write_id_ptr: " << loader.director.write_id_ptr->rand << std::endl;
-		std::cout << "DEBUG NEW BLEND 3" << std::endl;
-		//c = getchar();
 		/*If the write ids match, the next step is to make sure that the dfc layers and dfr layers match	*/
 
 		/*	Checks if amount of dfc layers on python side match	the amount in the cache	*/
 		/*	Note that dfc_layers[0][0] is the amount of dfc_layers	*/
 		if (loader.director.dfc_layers_ptr->size() != dfc_layers[0][0])
 		{
-			std::cout << "DEBUG NEW BLEND 4" << std::endl;
-			//c = getchar();
 			goto not_in_sync;
 		}
 
-		std::cout << "DEBUG NEW BLEND 5" << std::endl;
-		//c = getchar();
 		/*	Checks if the contents of the dfc layers match	*/
 		{
 			int param_size_full_0 = dfc_layers[0][0] + 1;
 			for (int a = 1; a < param_size_full_0; ++a)
 			{
-				std::cout << "DEBUG NEW BLEND 12" << std::endl;
-				//c = getchar();
-
 				/*	Note thate dfc_layers[a][0] is the amount of dfc_ids in the layer	*/
 				int param_size_full_1 = dfc_layers[a][0] + 1;
 				for (int b = 1; b < param_size_full_1; ++b)
 				{
-					std::cout << "DEBUG NEW BLEND 13" << std::endl;
-					//c = getchar();
-
 					(*loader.director.dfc_layers_ptr)[a - 1].calc_size();
 					if ((*loader.director.dfc_layers_ptr)[a - 1].size != dfc_layers[a][0])
 					{
-						std::cout << "DEBUG NEW BLEND 9" << std::endl;
-						//c = getchar();
 						goto not_in_sync;
 					}
-
-					std::cout << "DEBUG NEW BLEND 14" << std::endl;
-					//c = getchar();
 
 					for (int c = 0; c < (*loader.director.dfc_layers_ptr)[a - 1].size; ++c)
 					{
@@ -3988,15 +3941,9 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 
 				dfc_exists:
 
-					std::cout << "DEBUG NEW BLEND 15" << std::endl;
-					//c = getchar();
-
 					continue;
 
 				dfc_doesnt_exist:
-
-					std::cout << "DEBUG NEW BLEND 6" << std::endl;
-					//c = getchar();
 
 					goto not_in_sync;
 				}
@@ -4007,11 +3954,6 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 		/*	Note that dfr_layers[0] is the amount of dfr_layers	*/
 		if (loader.director.dfr_layers_ptr->size() != *dfr_layers[0])
 		{
-			std::cout << "DEBUG NEW BLEND 16" << std::endl;
-			std::cout << "*dfr_layers[0]: " << *dfr_layers[0] << std::endl;
-			std::cout << "loader.director.dfr_layers_ptr->size(): " << loader.director.dfr_layers_ptr->size() << std::endl;
-			//c = getchar();
-
 			goto not_in_sync;
 		}
 
@@ -4027,8 +3969,6 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 					(*loader.director.dfr_layers_ptr)[a - 1].calc_size();
 					if ((*loader.director.dfr_layers_ptr)[a - 1].size != dfr_layers[a][0])
 					{
-						std::cout << "DEBUG NEW BLEND 10" << std::endl;
-						//c = getchar();
 						goto not_in_sync;
 					}
 
@@ -4046,8 +3986,6 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 
 				dfr_doesnt_exist:
 
-					std::cout << "DEBUG NEW BLEND 7" << std::endl;
-					//c = getchar();
 					goto not_in_sync;
 				}
 			}
@@ -4057,15 +3995,9 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 	{
 	not_in_sync:
 
-		std::cout << "DEBUG NEW BLEND 11" << std::endl;
-		//c = getchar();
-
 		return_code = 1;
 		goto load_layers_from_params;
 	}
-
-	std::cout << "DEBUG NEW BLEND 8" << std::endl;
-	//c = getchar();
 
 	/*	If flow has reached this statement, then it is assumed that the cache is in sync with the state on the python side	*/
 	loader.director.load_to_df_state();
@@ -4131,8 +4063,6 @@ load_layers_from_params:
 int df_type::write_cache(const char* dir, const char* file_name)
 {
 	df_writer_type writer(std::string(dir), std::string(file_name) + std::string(".dfcache"), regions_buffer);
-	std::cout << "DIR: " << dir << std::endl;
-	std::cout << "file_name: " << file_name << std::endl;
 	writer.write_to_file();
 	return 0;
 }
@@ -5439,8 +5369,6 @@ void df_type::update_local_type::dfc_cache_type::initialize_cache(const unsigned
 
 void df_type::update_local_type::dfc_cache_type::add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const shared_type::coord_xyz_type* bounds, const unsigned long& dfc_index, const bool& split_dfc)
 {
-	std::cout << "DEBUG LINUX DFC 0" << std::endl;
-
 	if (tri_amount != 0)
 	{
 		/*	Dynamically allocates array	at the current dfc's entry in the tri cache to store it's verts	*/

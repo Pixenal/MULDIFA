@@ -1501,7 +1501,6 @@ extern "C"
 	EXPORT int call_df_weak_unstash_volume_local();
 	EXPORT int call_df_validate_undo_step(const int python_index, const bool delete_further_steps);
 	EXPORT int call_df_incrmt_undo_step(const int python_index);
-	EXPORT int print_bazingo();
 }
 
 

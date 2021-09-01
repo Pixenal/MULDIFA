@@ -42,7 +42,7 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 
 if (current_platform == "win32"):
 
-    current_dir += "\lib\Debug\df_win\\"
+    current_dir += "\lib\df_win\\"
     lib_file_name = "df_win.dll"
     
 elif ((current_platform == "linux") or (current_platform == "linux2")):
@@ -730,12 +730,6 @@ def validate_dfc_dfr_ids():
         else:
 
             break
-
-
-#########################################################################################################################
-#########################################################################################################################
-#########################################################################################################################
-#########################################################################################################################
             
             
 def dfc_layer_name_to_indx(context, dfc_layer_name):
@@ -786,7 +780,6 @@ class DF_OT_df_create_volume(bpy.types.Operator):
         
         #Checks if a volume exists in the scene
         
-        print("WRITEIDRAND: ", df_lib.call_df_get_write_id_rand())
         volume_exists = False
         
         for obj in context.scene.objects:
@@ -916,10 +909,7 @@ class DF_OT_df_initialize(bpy.types.Operator):
                 else:
                     df_lib.call_df_weak_unstash_volume_local()
                         
-                start_time = time.time()
                 initialize_return = df_lib.call_df_initialize_volume(ctypes.pointer(verts_buffer), ctypes.c_float(df.df_distance), ctypes.c_ushort(df.df_cmprt_size), ctypes.c_double(df.df_grid_spacing), ctypes.c_bool(False))
-                end_time = time.time()
-                print("25/8/20201 INITIALIZE VOLUME TIME: ", (end_time - start_time))
                 
                 incrmt_undo_step(context)
                 
@@ -993,21 +983,15 @@ class DF_OT_df_update(bpy.types.Operator):
     
     def execute(self, context):
     
-        print("DB 0")
-    
         df = context.scene.df
         
-        print("DEBU UPDATE 0")
         validate_undo_step(context)
-        print("DEBU UPDATE 1")
         validate_dfc_dfr_ids()
-
         expel_nonexistant_ids_python(context, 0)
         expel_nonexistant_ids_python(context, 1)
     
         #Gets current evaluated dependency graph
         depsgraph = context.evaluated_depsgraph_get()
-        print("DEBU UPDATE 2")
         if (df.df_volume_initialized == True):
             
             dfc_ids_type = ctypes.c_ulong * len(context.scene.objects)
@@ -1041,18 +1025,14 @@ class DF_OT_df_update(bpy.types.Operator):
                 ignored_dfcs[counter] = ignored_dfcs_list[counter]
                 counter += 1
                   
-            print("DB dfc_amount: ", dfc_amount)
-            print("DEBU UPDATE 3")
             #Calls call_df_pre_update, this does things that need to be done once per update operation, and not once per object
             if (df.df_state_stashed):
                 df_lib.call_df_unstash_state()
                 df.df_state_stashed = False
             else:
                 df_lib.call_df_weak_unstash_volume_local()
-            print("DB 0.5")
-            print("DEBU UPDATE 4")
+
             df_lib.call_df_pre_update(ctypes.pointer(dfc_ids), ctypes.byref(dfc_amount), ctypes.byref(dfc_vert_amount_total), ctypes.pointer(ignored_dfcs), ctypes.c_ulong(ignored_dfcs_nxt_indx))
-            print("DB 1")
             
             # Updates distance field structures
             #-------------------------------------------------------------------------------------------------------------#
@@ -1121,8 +1101,6 @@ class DF_OT_df_update(bpy.types.Operator):
                         tris_buffer[tri.index].vert_1 = tri.vertices[1]
                         tris_buffer[tri.index].vert_2 = tri.vertices[2]
                         
-                        #print ("tri_index: ", tri.index, " vert_2: ", tri.vertices[2])
-                        
                     bounds_buffer_type = coord_xyz_type * 8
                     bounds_buffer = bounds_buffer_type()
                     
@@ -1136,14 +1114,9 @@ class DF_OT_df_update(bpy.types.Operator):
                         vert_index += 1
                     
                     df_lib.call_df_add_dfc_to_cache(ctypes.pointer(verts_buffer), ctypes.byref(vert_amount), ctypes.pointer(tris_buffer), ctypes.byref(tri_amount), ctypes.pointer(bounds_buffer), ctypes.byref(dfc_index), ctypes.byref(ctypes.c_bool(False)))
-                    print("DB 2")
-                    time_start = time.time()
 
                     #Calls function "call_df_update" in dynamic library
                     df_lib.call_df_update(ctypes.byref(ctypes.c_ulong(obj.dfc_id)), ctypes.byref(dfc_index))
-                    print("DB 3")
-                    time_end = time.time()
-                    print("25/8/2021 UPDATE TIME: ", (time_end - time_start))
                     
                     #If the object's mode was switched, switches it back to what it was origionally set to
                     if (switched_mode == True):
@@ -1160,7 +1133,6 @@ class DF_OT_df_update(bpy.types.Operator):
         else:
             df_lib.call_df_weak_stash_volume_local()
             df.df_state_stashed = False
-        print("DB 4")
         return {'FINISHED'}
             
             
@@ -2088,10 +2060,8 @@ def frame_change_post_handler(dummy):
     df = bpy.context.scene.df
 
     if ((bpy.ops.df.df_update.poll()) and (df.df_update_on_frame)):
-        print("DB -1")
-        #print("Calling update")
+
         bpy.ops.df.df_update(enable_non_object_modes = False)
-        print("DB 5")
 
 
 #Cleans memory (removes dynamically allocated distance field related data structures from memory) if a new blend file is loaded,
@@ -2166,11 +2136,7 @@ def df_load_post_handler(dummy):
         dfc_layers[0].contents = dfc_ids_type()
         dfc_layers[0].contents[0] = 0
         
-    print ("DFR AMOUNT: ", len(bpy.context.scene.df_dfr_layers) )
-        
     if (len(bpy.context.scene.df_dfr_layers) > 0):
-        
-        print ("mhm")
         
         dfr_layers[0].contents = dfr_ids_type()
         dfr_layers[0].contents[0] = len(bpy.context.scene.df_dfr_layers)
@@ -2200,26 +2166,37 @@ def df_load_post_handler(dummy):
     if (df.df_cache_dir_is_rel):
             
         df_cache_dir_abs = bpy.path.abspath(df.df_cache_dir)
-        print("df_cache_dir_abs[-1] : ", df_cache_dir_abs[-1] )
         if (df_cache_dir_abs[-1] == "."):
             
             df_cache_dir_abs = df_cache_dir_abs[:-1]
             
     else:
         
-        print("NOPE")
         df_cache_dir_abs = df.df_cache_dir
     
-    print("EGG: ", df_cache_dir_abs)
+    return_code = df_lib.call_df_new_blend_handler(ctypes.c_char_p(bytes(df_cache_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(os.path.splitext(bpy.path.basename(bpy.data.filepath))[0], 'utf-8')), ctypes.byref(write_id), ctypes.pointer(dfc_layers), ctypes.pointer(dfr_layers), ctypes.c_bool(df.df_enable_cache))
+
+
+    if (return_code == 1):
+
+        #Cache file was found, but was invalid
+        print("DF WARNING: Cache was invalid. This can occur if the cache is old or corrupt")
+        df.df_volume_initialized = False
+
+    elif (return_code == 2):
     
-    return_value = df_lib.call_df_new_blend_handler(ctypes.c_char_p(bytes(df_cache_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(os.path.splitext(bpy.path.basename(bpy.data.filepath))[0], 'utf-8')), ctypes.byref(write_id), ctypes.pointer(dfc_layers), ctypes.pointer(dfr_layers), ctypes.c_bool(df.df_enable_cache))
-    
-    if (return_value == 2):
-    
-        print("return value 2")
+        #Cache file was loaded successfully
         df.df_volume_initialized = True
-    else:
-        print("not return value 2")
+
+    elif (return_code == 3):
+
+        #Cache is disabled
+        df.df_volume_initialized = False
+
+    elif (return_code == 4):
+
+        #Cache file was not found
+        print("DF WARNING: Cache file not found")
         df.df_volume_initialized = False
         
     if (df.df_stashing_enabled):
@@ -2237,13 +2214,6 @@ def df_depsgraph_update_post_handler(dummy):
 
     validate_dfc_dfr_ids()
     
-
-#########################################################################################################################
-#########################################################################################################################
-#########################################################################################################################
-#########################################################################################################################
-#########################################################################################################################
-    
     
 @persistent
 def df_save_pre_handler(dummy):
@@ -2258,12 +2228,6 @@ def df_save_pre_handler(dummy):
         if (df.df_state_stashed):
         
             df_lib.call_df_stash_write_id()
-
-        if (bpy.data.filepath != ""):
-
-            if (os.path.splitdrive(bpy.data.filepath)[0] == os.path.splitdrive(df.df_cache_dir)[0]):
-
-                print("egg")
 		    
     
 @persistent
@@ -2283,7 +2247,6 @@ def df_save_post_handler(dummy):
         if (df.df_cache_dir_is_rel):
         
             df_cache_dir_abs = bpy.path.abspath(df.df_cache_dir)
-            print("df_cache_dir_abs[-1] : ", df_cache_dir_abs[-1] )
             if (df_cache_dir_abs[-1] == "."):
         
                 df_cache_dir_abs = df_cache_dir_abs[:-1]

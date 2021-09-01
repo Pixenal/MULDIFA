@@ -215,11 +215,12 @@ class DF_PT_df_cache(df_parent_panel, bpy.types.Panel):
         layout = self.layout
         
         col0 = layout.column()
-        
-        layout.prop(df, "df_enable_cache", icon = 'DISK_DRIVE')
-        layout.operator("df.df_make_df_cache_dir_rel")
+
         col0.enabled = df.df_enable_cache
         col0.prop(df, "df_cache_dir")
+        col0.operator("df.df_make_df_cache_dir_rel")
+            
+        layout.prop(df, "df_enable_cache", icon = 'DISK_DRIVE')
         
         
         

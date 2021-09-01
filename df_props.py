@@ -42,7 +42,6 @@ def df_cache_dir_update(self, context):
     df = context.scene.df
     if (not df.df_cache_dir_skip_handler):
     
-        print("UPDATING REL !!!!!!!!!!!!!!!!!!!!!!!!!!")
         df.df_cache_dir_is_rel = False
 
 
