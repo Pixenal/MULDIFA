@@ -4603,18 +4603,6 @@ df_type::grid_type::remove_layer_return_type  df_type::grid_type::remove_layer(c
 	}
 	else
 	{
-		/*	TEST AND REMOVE IF REMOVAL DOESN'T BREAK ANYTHING	*/
-		/*calc_layer_size();
-		if (layer_index >= layers_size)
-		{
-			if (token != nullptr)
-			{
-				token->unlock();
-			}
-			return_obj.return_code = 1;
-			return return_obj;
-		}*/
-
 		/*	If the specified layer was not at the end, moves the layer that is at the end to the spot previously occupied
 			by the specified layer	*/
 
@@ -5900,16 +5888,6 @@ void df_type::update_local_type::dfc_cache_type::clean()
 		}
 		delete[] mesh_cache;
 	}
-
-	/*	MARKED FOR REMOVAL	*/
-	/*for (unsigned long a = 0; a < dfc_amount; ++a)
-	{
-		if (dfc_indx_to_id_table[a] != nullptr)
-		{
-			delete dfc_indx_to_id_table[a];
-		}
-	}
-	std::vector<dfc_id_indx_type*>().swap(dfc_ids.vector);*/
 
 	if (dfc_indx_to_id_table != nullptr)
 	{
