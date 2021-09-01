@@ -34,9 +34,21 @@ import atexit
     
 current_platform = sys.platform
 
-#Is just for testing
-#  V             V
-#current_platform = "linux"
+
+""" The below chunk of code loads the dynamic library component of this addon
+    (The majority of the code for the addon lies within said library, the python
+    side primarily exists as an interface between the library and Blender).  
+
+    As a note, calls to functions within the dynamic library often have calls before
+    and after them that refer to stashing and unstashing. Certain structures within
+    the dynamic librarie's memory are compressed, and so these extra calls exist to
+    essentially uncompress these structures so a function can be called, before
+    recompressing. The reason as to why some calls are encased in this extra code,
+    and some are not, is due to the fact that only parts of memory are compressed,
+    and so functions that don't use these parts don't require uncompressing.
+    Also, the use of 2 types of stashing (stashing and weak_stashing) is a relic
+    of an older compression method that is no longer in use (only weak stashing is
+    used now, stashing took too long)   """
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -63,7 +75,7 @@ df_lib.pass_lib_dir(ctypes.c_char_p(bytes(current_dir, 'utf-8')))
 # Classes
 #-------------------------------------------------------------------------------------------------------------#
 
-
+""" The below class handles the creation and destruction of bmesh objects   """
 class bmesh_type():
 
     bm_cpy = None
@@ -72,6 +84,7 @@ class bmesh_type():
     switched_mode = False
     original_mode = None
 
+    """ Constructor """
     def __init__(self, obj):
 
         self.obj = obj
@@ -108,6 +121,7 @@ class bmesh_type():
                 self.bm_cpy = bmesh.new()
                 self.bm_cpy.from_mesh(self.mesh)
 
+    """ Destructor  """
     def __del__(self):
 
         #Checks which mode is the current mode, and updates mesh accordingly
@@ -127,11 +141,16 @@ class bmesh_type():
                 bpy.ops.object.mode_set(mode = self.original_mode)
 
 
-
+""" The below class exists to allow generality in the id system, that is to say,
+    it allows both dfc and dfr ids to be handled by the same functions, instead of
+    having to create seperate ones for each """
 class id_abstractor_type():
 
     id_type = 0
+    """ References the layer collection """
     layers_col = None
+
+    """ dynamic library function pointers   """
     assign_libfunc = None
     remove_libfunc = None
     expel_libfunc = None
@@ -140,6 +159,7 @@ class id_abstractor_type():
     get_layer_size_libfunc = None
     get_ids_in_layer_libfunc = None
 
+    """ Constructor """
     def __init__(self, context, id_type):
 
         self.id_type = id_type
@@ -165,6 +185,7 @@ class id_abstractor_type():
             self.get_layer_size_libfunc = df_lib.call_df_get_dfr_layer_size
             self.get_ids_in_layer_libfunc = df_lib.call_df_get_all_dfrs_in_dfr_layer
 
+    """ Returns the collection containing all the ids within the specificed layer   """
     def get_ids_col_in_layer(self, context, layer):
 
         if (self.id_type == 0):
@@ -175,6 +196,7 @@ class id_abstractor_type():
 
             return layer.dfr_ids
 
+    """ Sets the active index for the aformentioned ids collection within the specified layer  """
     def set_ids_indx_in_layer(self, context, layer, index):
 
         if (self.id_type == 0):
@@ -185,6 +207,7 @@ class id_abstractor_type():
 
             layer.dfr_ids_indx = index
 
+    """ Adds an id to the specified layer   """
     def add_item_to_ids_col_in_layer(self, context, layer, id):
 
         if (self.id_type == 0):
@@ -199,6 +222,7 @@ class id_abstractor_type():
             layer.dfr_ids.add()
             layer.dfr_ids[layer.dfr_ids_indx].id = id
 
+    """ Returns the id of the specified Blender object  """
     def get_id_in_obj(self, context, obj):
 
         if (self.id_type == 0):
@@ -209,6 +233,7 @@ class id_abstractor_type():
 
             return obj.dfr_id
 
+    """ Sets the id of the specified Blender object """
     def set_id_in_obj(self, context, obj, id):
 
         if (self.id_type == 0):
@@ -219,6 +244,7 @@ class id_abstractor_type():
 
             obj.dfr_id = id
 
+    """ Returns the next id (the id that will be assigned to new dfc's/ dfr's)"""
     def get_next_id(self, context):
 
         df = context.scene.df
@@ -231,6 +257,7 @@ class id_abstractor_type():
 
             return df.df_next_dfr_id
 
+    """ Sets the next id    """
     def set_next_id(self, context, id):
 
         df = context.scene.df
@@ -243,16 +270,7 @@ class id_abstractor_type():
 
             df.df_next_dfr_id = id
 
-    def set_ids_col_indx_to_end(self, context, layer):
-
-        if (self.id_type == 0):
-
-            layer.dfc_ids_indx = (len(layer.dfc_ids) - 1)
-
-        else:
-
-            layer.dfr_ids_indx = (len(layer.dfr_ids) - 1)
-
+    """ Gets the active index for the layers collection """
     def get_layer_indx(self, context):
 
         if (self.id_type == 0):
@@ -264,7 +282,7 @@ class id_abstractor_type():
             return context.scene.df_dfr_layers_indx
     
 
-
+""" The below class is used by the id system for rerunning  """
 class rerun_item_type:
 
     sercher = None
@@ -275,6 +293,8 @@ class rerun_item_type:
 # Ctypes psuedo structs
 #-------------------------------------------------------------------------------------------------------------#
 
+""" The below classes are used for transfering objects between this script and the dynamic library
+    (ie they allow for passing c/c++ style structs to and from the c++ side) """
 
 class coord_xyz_type(ctypes.Structure):
     _fields_ = [("x", ctypes.c_double),
@@ -313,28 +333,37 @@ class write_id_type(ctypes.Structure):
 # Misc functions
 #-------------------------------------------------------------------------------------------------------------#
 
+""" The below id functions make use of the aformentioned "id_abstractor_type" class to work with dfc and dfr ids
+    in a general way (they were previously seperated into 2 sets of functions before being merged).  """
 
+""" Assigned the specified objects to the specified layer (also assigns the objects an id if they don't already have one) """
 def assign_ids_to_layer(context, objects, layer_indx, id_type):
 
     df = context.scene.df
 
+    """ Returns if id_type is out of range (only 0 and 1 are supported; 0 for dfc's and 1 for dfr's)    """
     if not ((id_type == 0) or (id_type == 1)):
 
         return
 
     id_abstractor = id_abstractor_type(context, id_type)
 
+    """ Defines a ctypes buffer for storing the ids, which will be passed to the dynamic library so that it can update things
+        accordingly on it's end (ie notify it that the ids have been added the the layer), as copies of the layers are
+        stored on both the python and c++ side  """
     ids_type = ctypes.c_ulong * len(objects)
     ids = ids_type()
     ids_nxt_indx = ctypes.c_ulong(0)
 
     for obj in objects:
 
+        """ Assigns the current object an id if it doesn't already have one (an id of 0 indicates no id)    """
         if (id_abstractor.get_id_in_obj(context, obj) == 0):
 
             id_abstractor.set_id_in_obj(context, obj, id_abstractor.get_next_id(context)) 
             id_abstractor.set_next_id(context, (id_abstractor.get_next_id(context) + 1))
         
+        """ The below for loop checks if the current object already exists within the specified layer   """
         exists = False
         for id in id_abstractor.get_ids_col_in_layer(context, id_abstractor.layers_col[layer_indx]):
 
@@ -342,6 +371,7 @@ def assign_ids_to_layer(context, objects, layer_indx, id_type):
 
                 exists = True
                 
+        """ If the current object does not exists within the specified layer, adds it to the layer  """
         if (exists == False):
 
             id_abstractor.add_item_to_ids_col_in_layer(context, id_abstractor.layers_col[layer_indx], id_abstractor.get_id_in_obj(context, obj))
@@ -351,6 +381,7 @@ def assign_ids_to_layer(context, objects, layer_indx, id_type):
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
+    """ Passes info to the dynamic library so it can update accordingly """
     id_abstractor.assign_libfunc(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(ids), ctypes.byref(ids_nxt_indx))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
@@ -359,16 +390,21 @@ def assign_ids_to_layer(context, objects, layer_indx, id_type):
         df.df_state_stashed = False
 
 
+""" Removes the specified objects from the specified layer, and expels those which are no within any other layers 
+    (expel meaning that their id is set to 0)   """
 def remove_ids_from_layer(context, objects, layer_indx, id_type):
 
     df = context.scene.df
 
+    """ Returns if id_type is out of range (only 0 and 1 are supported; 0 for dfc's and 1 for dfr's)    """
     if not ((id_type == 0) or (id_type == 1)):
 
         return
 
     id_abstractor = id_abstractor_type(context, id_type)
 
+    """ As with the above assign function, this function creates buffers to store the ids to be removed,
+        which it will then send to the dynamic library so it can update appropriately   """
     slcted_obj_amount = len(objects)
     ids_type = ctypes.c_ulong * slcted_obj_amount
     ids = ids_type()
@@ -376,6 +412,7 @@ def remove_ids_from_layer(context, objects, layer_indx, id_type):
 
     for obj in objects:
             
+        """ Checks if the current obj exists wihin the specified layer, if so, removes  """
         ids[ids_nxt_indx.value] = id_abstractor.get_id_in_obj(context, obj)
         ids_nxt_indx.value += 1
         index = -1
@@ -394,9 +431,12 @@ def remove_ids_from_layer(context, objects, layer_indx, id_type):
             
             layer_ids.remove(index)
             
+    
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
+    """ Passes info to the dynamic library. The function within it will update it's internal memory accordingly,
+        as well as check if any ids should be expelled  """
     id_abstractor.remove_libfunc(ctypes.byref(ctypes.c_ulong(layer_indx)), ctypes.pointer(ids), ctypes.byref(ids_nxt_indx))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
@@ -404,6 +444,7 @@ def remove_ids_from_layer(context, objects, layer_indx, id_type):
     else:
         df.df_state_stashed = False
     
+    """ Expels any ids marked for expulsion; determined by the above library function call  """
     indx_counter = 0
     while (indx_counter < ids_nxt_indx.value):
 
@@ -411,13 +452,20 @@ def remove_ids_from_layer(context, objects, layer_indx, id_type):
         indx_counter += 1
 
 
+""" Selects all objects contained within the specified layer    """
 def select_ids_in_layer(context, id_type):
 
     validate_undo_step(context, False)
 
+    """ Returns if id_type is out of range (only 0 and 1 are supported; 0 for dfc's and 1 for dfr's)    """
+    if not ((id_type == 0) or (id_type == 1)):
+
+        return
+
     id_abstractor = id_abstractor_type(context, id_type)
     df = context.scene.df
 
+    """ Creates buffer  """
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
@@ -425,6 +473,7 @@ def select_ids_in_layer(context, id_type):
     ids_type = ctypes.c_ulong * layer_size
     ids = ids_type()
 
+    """ The below function adds all objects/ ids contained within the specified layer to the buffer  """
     id_abstractor.get_ids_in_layer_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))), ctypes.pointer(ids))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
@@ -432,6 +481,7 @@ def select_ids_in_layer(context, id_type):
     else:
         df.df_state_stashed = False
     
+    """ The objects within the buffer are deselected    """
     indx_counter = 0
     while (indx_counter < layer_size):
     
@@ -444,14 +494,20 @@ def select_ids_in_layer(context, id_type):
                 
         indx_counter += 1
 
-
+""" Deselects all objects contained within the specified layer  """
 def deselect_ids_in_layer(context, id_type):
 
     validate_undo_step(context, False)
 
+    """ Returns if id_type is out of range (only 0 and 1 are supported; 0 for dfc's and 1 for dfr's)    """
+    if not ((id_type == 0) or (id_type == 1)):
+
+        return
+
     id_abstractor = id_abstractor_type(context, id_type)
     df = context.scene.df
 
+    """ Creates buffer  """
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
@@ -459,6 +515,7 @@ def deselect_ids_in_layer(context, id_type):
     ids_type = ctypes.c_ulong * layer_size
     ids = ids_type()
 
+    """ The below function adds all objects/ ids contained within the specified layer to the buffer  """
     id_abstractor.get_ids_in_layer_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))), ctypes.pointer(ids))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
@@ -466,6 +523,7 @@ def deselect_ids_in_layer(context, id_type):
     else:
         df.df_state_stashed = False
 
+    """ The objects within the buffer are selected  """
     indx_counter = 0
     while (indx_counter < layer_size):
 
@@ -479,6 +537,8 @@ def deselect_ids_in_layer(context, id_type):
         indx_counter += 1
 
 
+""" Returns the number at the end of a duplicate name as an integer
+    (eg, returns 2 when passed "New Layer.002")  """
 def get_name_dup_num(name):
 
     name_len = len(name)
@@ -501,7 +561,8 @@ def get_name_dup_num(name):
         
         index_counter -= 1
         
-        
+
+""" Creates a unique duplicate name (eg, "New Layer.006")    """
 def generate_uniq_dup_name(collection, base_name):
         
         max_dup_num = -2
@@ -541,12 +602,22 @@ def generate_uniq_dup_name(collection, base_name):
             return base_name
 
 
+""" As mentioned earlier, id and layer information is stored in copies on both the
+    python and c++ side. This function expels ids from the layers on the
+    python side whose respective objects no longer exist in scene (this can occur
+    if an object is deleted without being properly removed) """
 def expel_nonexistant_ids_python(context, id_type):
 
-    df = context.scene.df
+    """ Returns if id_type is out of range (only 0 and 1 are supported; 0 for dfc's and 1 for dfr's)    """
+    if not ((id_type == 0) or (id_type == 1)):
 
+        return
+
+    df = context.scene.df
     id_abstractor = id_abstractor_type(context, id_type)
 
+    """ The purpose of the below local function is to allow for breaking on of
+        multiple loops in the below for loop (the one that loops through layers)"""
     def check_against_ids(context, id):
 
         for obj in context.scene.objects:
@@ -558,16 +629,20 @@ def expel_nonexistant_ids_python(context, id_type):
 
         return False
 
+    """ The below for loop iterates through each layers and checks that every id within
+        corresponds to an actual object in scene, if one does not, it is removed    """
     counter = 0
     for layer in id_abstractor.layers_col:
         counter1 = 0
         layer_ids = id_abstractor.get_ids_col_in_layer(context, layer)
         while (counter1 < len(layer_ids)):
 
+            """ "check_against_ids" checks if the current id exists in scene    """
             if (not check_against_ids(context, layer_ids[counter1])):
 
+                """ If not, removes the current id from the current layer   """
                 layer_ids.remove(counter1)
-                id_abstractor.set_ids_col_indx_to_end(context, layer)
+                id_abstractor.set_ids_indx_in_layer(context, layer, (len(id_abstractor.get_ids_col_in_layer(context, layer)) - 1))
                 counter1 -= 1
 
             counter1 += 1
@@ -575,10 +650,17 @@ def expel_nonexistant_ids_python(context, id_type):
         counter += 1
 
 
+""" The way in which the id system determines what id to assign to a new dfc/ dfr, is to simply keep an counter variable that increments
+    everytime a new dfc/ dfr is assigned an id, with the value of the variable being the id that is assigned. As a result, it is
+    possible for ids to become defragmented over time (after deleting and adding objects over and over, you can eventually come to
+    a point where you only have 2 objects, but whose id's are extremely large numbers, (eg, 230000 and 360000)). To prevent the
+    aforementioned id counter variable from overflowing, the ids are defragmented when the counter hits the numeric limit of a 32
+    bit integer (the addon does not support more dfcs or dfrs existing in scene than can fit within this limit))   """
 def defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_index, layers_col, id_type):
 
     df = context.scene.df
 
+    """ Returns if id_type is out of range (only 0 and 1 are supported; 0 for dfc's and 1 for dfr's)    """
     if not ((id_type == 0) or (id_type == 1)):
 
         return
@@ -587,13 +669,19 @@ def defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_i
 
     validate_undo_step(context)
 
+
     existing_obj_ids_buffer = existing_obj_ids.ctypes.data_as(ctypes.POINTER(ctypes.c_ulong))
     greatest_id = ctypes.c_int(0)
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
+    
+    """ First expels nonexistant ids (see description of "expel_nonexistant_ids_python" for more info)  """
     id_abstractor.expel_libfunc(existing_obj_ids_buffer, ctypes.c_ulong(existing_obj_ids_next_index))
     expel_nonexistant_ids_python(context, id_type)
+
+    """ Calls defrag function in dynamic library, this defrags it's internal layer system, and updates the passed objects so that they can be
+        used to update the python side layers as well   """
     id_abstractor.defrag_libfunc(existing_obj_ids_buffer, ctypes.byref(ctypes.c_ulong(existing_obj_ids_next_index)), ctypes.byref(greatest_id))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
@@ -601,14 +689,8 @@ def defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_i
     else:
         df.df_state_stashed = False
 
-    layer_indx = 0
-    for layer in layers_col:
-        id_indx = 0
-        layer_ids = id_abstractor.get_ids_col_in_layer(context, layer)
-        for id in layer_ids:
-            id_indx += 1
-        layer_indx += 1
-
+    """ Defrags ids on the python side using the arguments passed to the above library function (which the library function updated with the
+        new defragged id values)    """
     index_counter  = 0
     while (index_counter < existing_obj_ids_next_index):
 
@@ -627,14 +709,6 @@ def defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_i
         id_abstractor.set_id_in_obj(context, existing_objs[index_counter], existing_obj_ids_buffer[index_counter])
         index_counter += 1
 
-    layer_indx = 0
-    for layer in layers_col:
-        id_indx = 0
-        layer_ids = id_abstractor.get_ids_col_in_layer(context, layer)
-        for id in layer_ids:
-            id_indx += 1
-        layer_indx += 1
-
     if (greatest_id.value < df.df_max_id):
 
         id_abstractor.set_next_id(context, (greatest_id.value + 1))
@@ -642,16 +716,19 @@ def defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_i
     incrmt_undo_step(context)
 
 
+""" Used to get an array of all the layers that contain a serchee id (see the below "validate_ids" function for more context)   """
 def get_id_dup_serchee_layers(context, serchee_id, layers_col, id_type):
 
     df = context.scene.df
 
+    """ Returns if id_type is out of range (only 0 and 1 are supported; 0 for dfc's and 1 for dfr's)    """
     if not ((id_type == 0) or (id_type == 1)):
 
         return
 
     id_abstractor = id_abstractor_type(context, id_type)
 
+    """ Defines buffers """
     serchee_layers_type = ctypes.c_ulong * len(layers_col)
     serchee_layers = serchee_layers_type()
     serchee_layers_nxt_indx = ctypes.c_ulong(0)
@@ -659,6 +736,7 @@ def get_id_dup_serchee_layers(context, serchee_id, layers_col, id_type):
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
+    """ Calls a function in the dynamic library which returns all the layers that contain the specified id  """
     id_abstractor.get_serchee_layers_libfunc(serchee_id, ctypes.pointer(serchee_layers), ctypes.byref(serchee_layers_nxt_indx))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
@@ -666,6 +744,7 @@ def get_id_dup_serchee_layers(context, serchee_id, layers_col, id_type):
     else:
         df.df_state_stashed = False
 
+    """ Moves contents of buffer to a trimmed array (ie trims the buffer)   """
     trimmed_serchee_layers_type = ctypes.c_ulong * serchee_layers_nxt_indx.value
     trimmed_serchee_layers = trimmed_serchee_layers_type()
     counter = 0
@@ -677,23 +756,38 @@ def get_id_dup_serchee_layers(context, serchee_id, layers_col, id_type):
     return trimmed_serchee_layers
 
 
-class rerun_item_type:
-
-    sercher = None
-    serchee = None
-    serchee_layers = []
-
-
+""" Afaik, blender does not have a way to uniquely idenify objects, the id system is primarily a work around for this,
+    howwever certain things, such as detecting if an object was duplicated, are quite involved (in the case of duplication,
+    the duplicated object retains the same id as the origional object). The purpose of the below function is primarily to handle
+    this duplication case (as well as a few other things such as defragmenting ids and such). The function is called every time
+    the dependency graph is updated (post), and checks if any objects share the same id, if any do, the object with the highest
+    index (the one that was presumably created after the other) assumed to be a duplicate, and is assigned a unique id and added
+    to any layers that the origional object belonged to (this addon makes it so that objects inherit dfc/ dfr layers upon duplication).
+    
+    Another thing to note is that the function makes reference to something called rerunning. This exists as a fix to an (exceedingly)
+    rare occurance where the numerical limit for the next id counter is reached while the function is still iterating through duplicate
+    objects (thus preventing it from assigning anymore ids to duplicates until the ids are defragged). The solution to the issue is to
+    continue processing as normal, but store any duplicates discovered after that point in an array. The function is then called a second
+    time, treating the duplicates in the array as a seperate duplication event (the ids would be defragged at the end of the function,
+    so the overflow issue will no longer apply the second time it's called, and the duplicates will be able to be assign new ids).
+    This second calling of the function is referred to as a rerun (the function is only rerun if the above mentioned numerical limit
+    is hit (which in practice would be virtually never))
+    
+    Note that many of the above functions are ultimately called from this function, this could be considered the "main" id function in a sense """
 def validate_ids(context, rerun_items, id_type):
 
     df = bpy.context.scene.df
 
+    """ Returns if id_type is out of range (only 0 and 1 are supported; 0 for dfc's and 1 for dfr's)    """
     if not ((id_type == 0) or (id_type == 1)):
 
         return
 
     id_abstractor = id_abstractor_type(context, id_type)
 
+    """ If this is the second time the function has been called (if this is a rerun), sets up the duplicates
+        contained within the above mentioned array to appear to the rest of the function as normal duplicates
+        (so the function can process them as if nothing is different (as if this wasn't a rerun))   """
     rerun_items_size = len(rerun_items)
     if (rerun_items_size > 0):
 
@@ -716,31 +810,48 @@ def validate_ids(context, rerun_items, id_type):
 
         incrmt_undo_step(context)
 
+    """ Creates objects used to keep track of which objects/ ids have already been iterated through 
+        (note that only objects that have an id greater than 0 are added to "existing_objs")    """
     obj_amount = len(bpy.context.scene.objects)
-
     existing_objs = numpy.empty(obj_amount, dtype = object)
     existing_obj_ids = numpy.empty(obj_amount, dtype = numpy.int_)
     existing_obj_ids_next_index = 0
+
+    """ Defines the array for storing rerun duplicates (again, in almost all cases this won't be used)  """
     return_rerun_items = []
     return_rerun_items_nxt_indx = 0
 
     for obj in bpy.context.scene.objects:
     
         obj_id = id_abstractor.get_id_in_obj(context, obj)
+
+        """ Checks if the current object has an id  """
         if (obj_id > 0):
             
+            """ The below while loop iterates through every object within the array of already processed objects,
+                and checks if the current object ("obj") is a duplicate of one of them (shares the same id) """
             index_counter = 0
             while (index_counter < existing_obj_ids_next_index):
                 
+                """ Checks if ids match """
                 if (obj_id == existing_obj_ids[index_counter]):
 
+                    """ Checks that next id counter is below numeric limit  """
                     if (id_abstractor.get_next_id(context) < df.df_max_id):
 
+                        """ If so, sets the id to apply to equal a unique id """
                         id_to_apply = id_abstractor.get_next_id(context)
                         id_abstractor.set_next_id(context, (id_to_apply + 1))
 
+                    #   If not, checks if the amount if objects with an id is less then the numeric limit
                     elif (existing_obj_ids_next_index < (df.df_max_id - 1)):
 
+                        """ If so, add current object, as well as the original object (remember that the current object
+                            is a duplicate) to the rerun array (just adds the info needed to replicate them in the second
+                            function call (the object references, as well as the layers contnaining the original object)),
+                            and removes them from the "existing" arrays so that they don't affect the functions ability
+                            to continue processing.
+                            Flow then jumps to the next object in the scene (note the below "break" statement) """
                         return_rerun_items.append(rerun_item_type())
                         return_rerun_items[return_rerun_items_nxt_indx].sercher = obj
                         return_rerun_items[return_rerun_items_nxt_indx].serchee = existing_objs[index_counter]
@@ -760,11 +871,13 @@ def validate_ids(context, rerun_items, id_type):
                         break
                         
                     else:
-
+                        """ Else, sets the id to apply to 0 (if flow reaches this statement then the addons state is essentially broken (there would need to be ~2 billion objects in scene))"""
                         id_to_apply = 0
 
+                    """ Sets the duplicate object ("obj") to "id_to_apply" (the value of which is determined above) """
                     id_abstractor.set_id_in_obj(context, obj, id_to_apply)
 
+                    """ Adds the duplicate object to the layers containing the original object  """
                     if (id_to_apply > 0):
 
                         validate_undo_step(context)
@@ -781,17 +894,20 @@ def validate_ids(context, rerun_items, id_type):
 
                 index_counter += 1
 
+            """ Adds the current object to the arrays that keep track of already processed objects (now that the object has been processed) """
             existing_objs[existing_obj_ids_next_index] = obj
             existing_obj_ids[existing_obj_ids_next_index] = id_abstractor.get_id_in_obj(context, obj)
             existing_obj_ids_next_index += 1 
 
-    if ((id_abstractor.get_next_id(context) >= df.df_max_id) and existing_obj_ids_next_index < (df.df_max_id - 1)):
+    """ If the next id counter has hit its numeric limit (and the number of objects in scene with a non-zero id is less than to said numeric limit), defrags ids    """
+    if ((id_abstractor.get_next_id(context) >= df.df_max_id) and (existing_obj_ids_next_index < (df.df_max_id - 1))):
 
         defrag_ids(context, existing_objs, existing_obj_ids, existing_obj_ids_next_index, id_abstractor.layers_col, id_type)
 
     return return_rerun_items
 
 
+""" Calls "validate_ids" for both dfc's and dfr's, and handles reruns for them """
 def validate_dfc_dfr_ids():
 
     rerun_items = validate_ids(bpy.context, [], 0)
@@ -816,7 +932,8 @@ def validate_dfc_dfr_ids():
 
             break
             
-            
+
+""" Returns the index belonging to the layer with the name specified (if said layer exists, returns 0 if not) """
 def dfc_layer_name_to_indx(context, dfc_layer_name):
 
     index_counter = 0
@@ -830,13 +947,17 @@ def dfc_layer_name_to_indx(context, dfc_layer_name):
             
     return 0
     
-    
+
+""" Wrapper function for the dynamic library function "call_df_validate_undo_step"  """
 def validate_undo_step(context, delete_further_steps = True):
 
     df = context.scene.df
 
     df_lib.call_df_validate_undo_step(ctypes.c_int(df.df_undo_index), ctypes.c_bool(delete_further_steps))
 
+
+
+""" Wrapper function for the dynamic library function "call_df_incrmt_undo_step"  """
 def incrmt_undo_step(context):
 
     df = context.scene.df

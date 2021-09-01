@@ -3271,6 +3271,7 @@ int df_type::defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amo
 	return 0;
 }
 
+
 /*	Same as above function, but for dfr_ids instead of dfc_ids (probably look into merging these into a single "index_defragment" function to avoid code repitition)	*/
 int df_type::defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount, int& greatest_id)
 {
