@@ -416,6 +416,17 @@ void shared_type::invert_bit_order(unsigned long& number)
 }
 
 
+/*	Serializes the specified unsigned long long, writing to the specified byte vector.
+	If param "bit_size" == 0, the number is serialized into the sv format, which consists
+	of 2 components, size and value, the size component is always 6 bits long, and represents
+	the length of the value component in bits. The value component, as the name suggests,
+	stores the actual value (the value's bit size is reduced down to the minimum number of
+	bits needed to represent it, hence the need for the size component).
+	If param "bit_size > 0, then the function will simply serialize the above mentioned value
+	component, with the component's bit length equal to "bit_size" (no size component is made)"
+	Note that this function is ultimately called for all datatypes (all other "feed_by_bit" overloads'
+	just convert from the  specified values original type (including floating point types) to an
+	unsigned long long before calling this function)	*/
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, unsigned long long byte_index, const unsigned long long& number, unsigned short bit_size, const int type)
 {
 	if (!((byte_vec.next_bit_index == 0u) && (byte_index == 0u)))
@@ -433,9 +444,13 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, unsigned lon
 	unsigned short buffer_bit_counter = 0u;
 	unsigned short bit_size_meta = bit_size;
 	std::bitset<70> number_byte_arr_buffer(number);
+	/*	If bit_size == 0, gets minimum number of bits needed to represent the spencified value	*/
 	if (bit_size == 0u)
 	{
 		unsigned short optimal_bit_size = std::log2(number) + 1u;
+		/*	"sv_meta_size" is a const data member of "shared_type" which defines the set length
+			the size component (is currently set to 6)	*/
+		/*	"bit_size_meta" stores the total bits to be written (including both the size and value components)	*/
 		bit_size_meta = sv_meta_size + optimal_bit_size;
 		std::bitset<8> meta_byte_arr_buffer(optimal_bit_size);
 		number_byte_arr_buffer <<= sv_meta_size;
@@ -445,8 +460,14 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, unsigned lon
 		}
 	}
 
+	/*	"byte_size_planted" stores the total number of bytes that the sv will occupy in the specified byte vec
+		(note that this does not simply represent the bit length of the data converted to bytes, but rather
+		how many bytes within the byte vector the data will span. Keep in mind that this function is often
+		called multiple times for the same byte vector (multiple numbers packed into the same byte string), 
+		and so the bytes of the data doesn not neccessarily align with the bytes of the byte vec)	*/
 	unsigned short byte_size_planted = ((((byte_vec.next_bit_index) + bit_size_meta) - 1u) / 8u) + 1u;
 
+	/*	Iterates through each spanned byte	(see comment above "byte_size_planted" for more info)	*/
 	for (unsigned short a = 0u; a < byte_size_planted; ++a)
 	{	
 		const unsigned long long byte_offset_index = byte_index + a;
@@ -468,9 +489,12 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, unsigned lon
 		
 		for (; (b < 8u) && (buffer_bit_counter < bit_size_meta); ++b)
 		{
+			/*	Writes bit	*/
 			byte_vec.byte_buffer[b] = (int)number_byte_arr_buffer[buffer_bit_counter];
 			++buffer_bit_counter;
 
+			/*	This is set every bit that once all the data is written, the last value of b can be known
+				(iirc using an external object for b instead of one local to the loop caused issues)	*/
 			return_bit_index = b;
 		}
 	}
@@ -479,8 +503,10 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, unsigned lon
 }
 
 
+/*	Serializes specified value (using sv format if "bit_size" == 0, or with a fixed size if > 0)	*/
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned long& number, unsigned short bit_size)
 {
+	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long long number_buffer = number;
 	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size, 32);
 }
@@ -488,6 +514,7 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsign
 
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned short& number, unsigned short bit_size)
 {
+	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long long number_buffer = number;
 	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size, 16);
 }
@@ -495,6 +522,7 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsign
 
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const double& number, unsigned short bit_size)
 {
+	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long long number_buffer = 0u;
 	std::memcpy(&number_buffer, &number, 8);
 	invert_bit_order(number_buffer);
@@ -505,6 +533,7 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsign
 
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const float& number, unsigned short bit_size)
 {
+	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long number_buffer = 0u;
 	std::memcpy(&number_buffer, &number, 4);
 	invert_bit_order(number_buffer);
@@ -515,12 +544,14 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsign
 
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const bool& number, unsigned short bit_size)
 {
+	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long long number_buffer = number;
 	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size, 8);
 }
 
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const int& number, unsigned short bit_size)
 {
+	/*	Converts value to an unsigned long long and calls ull overload	*/
 	int test = 0u;
 	unsigned long long number_buffer = 0u;
 	std::memcpy(&number_buffer, &number, 4);

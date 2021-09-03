@@ -67,7 +67,7 @@ elif (current_platform == "darwin"):
     current_dir += "/lib/df_macos/"
     lib_file_name = "df_macos.dylib"
 
-#Loads "dynamic library"
+""" Loads "dynamic library" """
 df_lib = ctypes.cdll.LoadLibrary(current_dir + lib_file_name)
 df_lib.pass_lib_dir(ctypes.c_char_p(bytes(current_dir, 'utf-8')))
 
@@ -2138,6 +2138,14 @@ def df_load_post_handler(dummy):
     """ Sets undo step to 0 as undo history is local to each session    """
     df.df_undo_index = 0
 
+    """ The rest of this function revolves around setting up arguments for, and calling, the dynamic
+        library function "call_df_new_blend_handler", whose primary purpose is loading the cache file
+        (if enabled and present), and making sure the data within it lines up with the data passed over
+        from the python side (the data that was stored in the actual .blend file). If so, the cached data
+        is fully loaded into memory, though if not, the function simply reconstructs its dfc/ dfr layer
+        system using the python side data passed to it  """
+
+    """ Determines how long to make the id arrays within the buffer to be created further down """
     max_dfc_id_length = 0
     for dfc_layer in bpy.context.scene.df_dfc_layers:
         
@@ -2152,6 +2160,7 @@ def df_load_post_handler(dummy):
         
             max_dfr_id_length = len(dfr_layer.dfr_ids)
     
+    """ Defines buffers to be used for passing dfc/ dfr layer info to the dynamic library   """
     dfc_ids_type = ctypes.c_int * (max_dfc_id_length + 1)
     dfr_ids_type = ctypes.c_int * (max_dfr_id_length + 1)
     dfc_layers_type = ctypes.POINTER(dfc_ids_type) * (len(bpy.context.scene.df_dfc_layers) + 1)
@@ -2159,6 +2168,7 @@ def df_load_post_handler(dummy):
     dfc_layers = dfc_layers_type()
     dfr_layers = dfr_layers_type()
     
+    """ Copies dfc id/ layer info into buffer   """
     if (len(bpy.context.scene.df_dfc_layers) > 0):
     
         dfc_layers[0].contents = dfc_ids_type()
@@ -2181,7 +2191,8 @@ def df_load_post_handler(dummy):
     
         dfc_layers[0].contents = dfc_ids_type()
         dfc_layers[0].contents[0] = 0
-        
+    
+    """ Copies dfr id/ layer info into buffer   """
     if (len(bpy.context.scene.df_dfr_layers) > 0):
         
         dfr_layers[0].contents = dfr_ids_type()
@@ -2204,11 +2215,16 @@ def df_load_post_handler(dummy):
 
         dfr_layers[0].contents = dfr_ids_type()
         dfr_layers[0].contents[0] = 0
-            
+    
+    """ Each time a df is written, it is assigned a unique write id, this id is stored both
+        within the cache, and the .blend file to which it belongs. This is used by the
+        aforementioned dynamic libaray function to ensure that a loaded dfcache file is
+        in sync with the current loaded .blend (alongside checking of the dfc and dfr layers).  """
     write_id = write_id_type()
     write_id.index = df.df_write_id_index
     write_id.rand = df.df_write_id_rand
     
+    """ Ensures cache file directory is absolute    """
     if (df.df_cache_dir_is_rel):
             
         df_cache_dir_abs = bpy.path.abspath(df.df_cache_dir)
@@ -2220,28 +2236,29 @@ def df_load_post_handler(dummy):
         
         df_cache_dir_abs = df.df_cache_dir
     
+    """ Calls dynamic library function  """
     return_code = df_lib.call_df_new_blend_handler(ctypes.c_char_p(bytes(df_cache_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(os.path.splitext(bpy.path.basename(bpy.data.filepath))[0], 'utf-8')), ctypes.byref(write_id), ctypes.pointer(dfc_layers), ctypes.pointer(dfr_layers), ctypes.c_bool(df.df_enable_cache))
 
-
+    """ Handles return code """
     if (return_code == 1):
 
-        #Cache file was found, but was invalid
+        """ Cache file was found, but was invalid (was not in sync with the .blend)   """
         print("DF WARNING: Cache was invalid. This can occur if the cache is old or corrupt")
         df.df_volume_initialized = False
 
     elif (return_code == 2):
     
-        #Cache file was loaded successfully
+        """ Cache file was loaded successfully  """
         df.df_volume_initialized = True
 
     elif (return_code == 3):
 
-        #Cache is disabled
+        """ Cache is disabled   """
         df.df_volume_initialized = False
 
     elif (return_code == 4):
 
-        #Cache file was not found
+        """ Cache file was not found    """
         print("DF WARNING: Cache file not found")
         df.df_volume_initialized = False
         
@@ -2258,6 +2275,8 @@ def df_depsgraph_update_post_handler(dummy):
 
     df = bpy.context.scene.df
 
+    """ dfc's and dfr's are verified after every dependency graph update to check for
+        object duplication  """
     validate_dfc_dfr_ids()
     
     
@@ -2266,6 +2285,10 @@ def df_save_pre_handler(dummy):
 
     df = bpy.context.scene.df
     
+    """ Little is done prior to the saving of the .blend file, so as to reduce
+    the possibility of the addon causing an error before Blender has a chance to
+    save. All the below function does is generate a unique write id (this is done
+    now as the id needs to be written to both the .blend and .dfcache file) """
     if (df.df_enable_cache == True):
     
         df.df_write_id_index = df_lib.call_df_get_write_id_index()
@@ -2283,6 +2306,7 @@ def df_save_post_handler(dummy):
     
     validate_undo_step(bpy.context, False)
     
+    """ Writes df cache if enabled  """
     if (df.df_enable_cache == True):
     
         if (not(df.df_state_stashed)):
@@ -2290,6 +2314,7 @@ def df_save_post_handler(dummy):
             df_lib.call_df_weak_unstash_volume_local()
             df_lib.call_df_copy_to_buffer()
             
+        """ Ensures cache directory is absolute"""
         if (df.df_cache_dir_is_rel):
         
             df_cache_dir_abs = bpy.path.abspath(df.df_cache_dir)
@@ -2301,6 +2326,7 @@ def df_save_post_handler(dummy):
         
             df_cache_dir_abs = df.df_cache_dir
             
+        """ Calls the dynamic library function responsible for writing the cache    """
         df_lib.call_df_write_cache(ctypes.c_char_p(bytes(df_cache_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(os.path.splitext(bpy.path.basename(bpy.data.filepath))[0], 'utf-8')))
         
         if (not(df.df_stashing_enabled)):

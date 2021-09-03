@@ -354,9 +354,8 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
             #If 1 volume exists, display volume button based on below conditions
             elif(volume_amount == 1):
                     
-                    
-                ######################################################## SUB-CONDITION # ELSE IF VOLUME ISN'T INITIALIZED
-                    
+                # SUB-CONDITION # ELSE IF VOLUME ISN'T INITIALIZED
+                #-------------------------------------------------------------------------------------------------------------#
                     
                 #If volume is not initialized, set label and icon accordingly
                 if (df.df_volume_initialized == False):
@@ -364,36 +363,29 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
                         layout.label(text = "-Volume not initialized-")
                         volume_button_icon = 'CUBE'
 
-
                 # SUB-CONDITION # ELSE
                 #-------------------------------------------------------------------------------------------------------------#
 
-
                 else:
-                    
                     
                     # SUB-SUB-CONDITION # IF VOLUME IS UP TO DATE
                     #-------------------------------------------------------------------------------------------------------------#
-                    
                     
                     #If volume initialized, check if the current volume in scene matches the distance field structure currently in memory
                     if ((df.df_distance_last == df.df_distance) and (df.df_cmprt_size_last == df.df_cmprt_size) and (df.df_grid_spacing_last == df.df_grid_spacing) and (df.df_volume_same == 1)):
                     
                         #If so, display set label and icon accordingly
                         layout.label(text = "-Volume is up to date-")
-                        volume_button_icon = 'SNAP_VOLUME'
-                        
+                        volume_button_icon = 'SNAP_VOLUME'    
                         
                     # SUB-SUB-CONDITION # IF VOLUME IS OUTDATED
-                    #-------------------------------------------------------------------------------------------------------------#
-                        
+                    #-------------------------------------------------------------------------------------------------------------# 
                         
                     else:
                     
                         #If not, set label and icon accordingly
                         layout.label(text = "-Volume outdated-")
                         volume_button_icon = 'CUBE'
-                    
                 
                 row0 = layout.row()
                 row0.scale_y = 2.0
