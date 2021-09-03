@@ -309,7 +309,7 @@ class DF_PT_df_volume(df_parent_panel, bpy.types.Panel):
                 col0.label(text = "the current settings. Please")
                 col0.label(text = "adjust volume size or settings")
                 
-            prop0 = layout.operator("df.df_toggle_init_returned_error", text = "OK")
+            layout.operator("df.df_toggle_init_returned_error", text = "OK")
         
         else:
             

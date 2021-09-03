@@ -821,7 +821,7 @@ private:
 			long long dfc_id_to_indx(const unsigned long& dfc_id, const int& legacy_setting);
 			dfc_id_indx_type* get_dfc_id(const unsigned long& dfc_id);
 			void initialize_cache(const unsigned long* obj_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount);
-			void add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const shared_type::coord_xyz_type* bounds, const unsigned long& dfc_index, const bool& split_dfc);
+			void add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc);
 			int move_to_legacy();
 			void clean_legacy();
 			void clean();
@@ -1388,7 +1388,7 @@ public:
 
 	}
 
-	int add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const shared_type::coord_xyz_type* bounds, const unsigned long& dfc_index, const bool& split_dfc);
+	int add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc);
 	int initialize_volume(const shared_type::coord_xyz_type* volume_verts, const float& df_distance, const unsigned short& df_cmprt_size, const double& grid_spacing, const bool skip_sync_check);
 	int pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount_total, const unsigned long* ignored_dfcs, const unsigned long ignored_dfcs_nxt_indx);
 	int update_grid_points(void* arg_ptr, unsigned short job_index);
@@ -1399,7 +1399,7 @@ public:
 	bool grid_bounds_check(const shared_type::coord_xyz_type& coord);
 	shared_type::index_xyz_type get_enclsing_cmprt(const shared_type::coord_xyz_type& coord);
 	shared_type::index_xyz_type get_enclsing_cmprt_from_indx_space(const shared_type::coord_xyz_type& indx_space_coord);
-	int update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const float* height_verts_buffer, const int interp_mode, const float gamma);
+	int update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma);
 	int post_update_recipients();
 	int clean();
 	int clean_special();
@@ -1466,9 +1466,9 @@ extern "C"
 	EXPORT int call_df_initialize_volume(const shared_type::coord_xyz_type* verts_buffer, const float df_distance, const unsigned short df_cmprt_size, const double grid_spacing, const bool skip_sync_check);
 	EXPORT int call_df_pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount_total, const unsigned long* ignored_dfcs, const unsigned long ignored_dfcs_nxt_indx);
 	EXPORT int call_df_update(const unsigned long& dfc_id, const unsigned long& dfc_index);
-	EXPORT int call_df_add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const shared_type::coord_xyz_type* bounds, const unsigned long& dfc_index, const bool& split_dfc);
+	EXPORT int call_df_add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc);
 	EXPORT int call_df_pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount);
-	EXPORT int call_df_update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const float* height_verts_buffer, const int interp_mode, const float gamma);
+	EXPORT int call_df_update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma);
 	EXPORT int call_df_post_update_recipients();
 	EXPORT int call_df_check_volume(shared_type::coord_xyz_type* verts_buffer);
 	EXPORT int call_df_defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount, int& greatest_id);

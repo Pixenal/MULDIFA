@@ -112,7 +112,6 @@ of the distance field; greatly affects compute times for both updating of the di
     df_state_stashed : bpy.props.BoolProperty(name = "State Stashed", default = False)
     df_stashing_enabled : bpy.props.BoolProperty(name = "Enable Stashing", default = False)
     df_init_returned_error : bpy.props.BoolProperty(default = False)
-    df_assertion_code : bpy.props.IntProperty(default = 0)
     df_interp_mode : bpy.props.EnumProperty(name = "Interpolation Mode", description = "Interpolation mode to use when sampling from distance field",default = 0, items = [('0', 'TriCubic', ''), ('1', 'TriLinear', ''), ('2', 'Nearest', '')])
     df_gamma : bpy.props.FloatProperty(name = "Gamma", description = "Gamme to apply when sampling from distance field. Is linear by default", default = 1.0)
     df_update_on_frame : bpy.props.BoolProperty(name = "Update on Frame Change", description = "Toggles updating of the distance field on frame change; intended use is for allowing animated objects to interact \

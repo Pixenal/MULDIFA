@@ -95,9 +95,9 @@ extern "C"
 	}
 
 
-	EXPORT int call_df_add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const shared_type::coord_xyz_type* bounds, const unsigned long& dfc_index, const bool& split_dfc)
+	EXPORT int call_df_add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc)
 	{
-		df.add_dfc_to_cache(verts, vert_amount, tris, tri_amount, bounds, dfc_index, split_dfc);
+		df.add_dfc_to_cache(verts, vert_amount, tris, tri_amount, dfc_index, split_dfc);
 		return 0;
 	}
 
@@ -110,9 +110,9 @@ extern "C"
 	}
 
 
-	EXPORT int call_df_update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const float* height_verts_buffer, const int interp_mode, const float gamma)
+	EXPORT int call_df_update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma)
 	{
-		df.update_recipient(dfc_layers, dfc_layers_nxt_indx, verts_buffer, vert_amount, height_verts_buffer, interp_mode, gamma);
+		df.update_recipient(dfc_layers, dfc_layers_nxt_indx, verts_buffer, vert_amount, interp_mode, gamma);
 
 		return 0;
 	}

@@ -149,6 +149,7 @@ class id_abstractor_type():
     id_type = 0
     """ References the layer collection """
     layers_col = None
+    layers_col_indx = None
 
     """ dynamic library function pointers   """
     assign_libfunc = None
@@ -158,6 +159,9 @@ class id_abstractor_type():
     get_serchee_layers_libfunc = None
     get_layer_size_libfunc = None
     get_ids_in_layer_libfunc = None
+    add_layer_libfunc = None
+    get_ids_size_libfunc = None
+    remove_layer_libfunc = None
 
     """ Constructor """
     def __init__(self, context, id_type):
@@ -166,6 +170,7 @@ class id_abstractor_type():
         if (id_type == 0):
             
             self.layers_col = context.scene.df_dfc_layers
+            self.layers_col_indx = context.scene.df_dfc_layers_indx
             self.assign_libfunc = df_lib.call_df_assign_dfcs_to_dfc_layer
             self.remove_libfunc = df_lib.call_df_remove_dfcs_from_dfc_layer
             self.expel_libfunc = df_lib.call_df_expel_nonexistant_dfcs_from_layers
@@ -173,10 +178,14 @@ class id_abstractor_type():
             self.get_serchee_layers_libfunc = df_lib.call_df_get_all_layers_with_dfc
             self.get_layer_size_libfunc = df_lib.call_df_get_dfc_layer_size
             self.get_ids_in_layer_libfunc = df_lib.call_df_get_all_dfcs_in_dfc_layer
+            self.add_layer_libfunc = df_lib.call_df_add_dfc_layer
+            self.get_ids_size_libfunc = df_lib.call_df_get_dfc_ids_size
+            self.remove_layer_libfunc = df_lib.call_df_remove_dfc_layer
 
         else:
 
             self.layers_col = context.scene.df_dfr_layers
+            self.layers_col_indx = context.scene.df_dfr_layers_indx
             self.assign_libfunc = df_lib.call_df_assign_dfrs_to_dfr_layer
             self.remove_libfunc = df_lib.call_df_remove_dfrs_from_dfr_layer
             self.expel_libfunc = df_lib.call_df_expel_nonexistant_dfrs_from_layers
@@ -184,6 +193,9 @@ class id_abstractor_type():
             self.get_serchee_layers_libfunc = df_lib.call_df_get_all_layers_with_dfr
             self.get_layer_size_libfunc = df_lib.call_df_get_dfr_layer_size
             self.get_ids_in_layer_libfunc = df_lib.call_df_get_all_dfrs_in_dfr_layer
+            self.add_layer_libfunc = df_lib.call_df_add_dfr_layer
+            self.get_ids_size_libfunc = df_lib.call_df_get_dfr_ids_size
+            self.remove_layer_libfunc = df_lib.call_df_remove_dfr_layer
 
     """ Returns the collection containing all the ids within the specificed layer   """
     def get_ids_col_in_layer(self, context, layer):
@@ -248,7 +260,6 @@ class id_abstractor_type():
     def get_next_id(self, context):
 
         df = context.scene.df
-
         if (self.id_type == 0):
 
             return df.df_next_dfc_id
@@ -261,7 +272,6 @@ class id_abstractor_type():
     def set_next_id(self, context, id):
 
         df = context.scene.df
-
         if (self.id_type == 0):
 
             df.df_next_dfc_id = id
@@ -270,16 +280,17 @@ class id_abstractor_type():
 
             df.df_next_dfr_id = id
 
-    """ Gets the active index for the layers collection """
-    def get_layer_indx(self, context):
+    """ Sets the active index of the layers collection  """
+    def set_layers_col_indx(self, context, index):
 
         if (self.id_type == 0):
 
-            return context.scene.df_dfc_layers_indx
+            context.scene.df_dfc_layers_indx = index
 
         else:
 
-            return context.scene.df_dfr_layers_indx
+           context.scene.df_dfr_layers_indx = index
+
     
 
 """ The below class is used by the id system for rerunning  """
@@ -335,6 +346,84 @@ class write_id_type(ctypes.Structure):
 
 """ The below id functions make use of the aformentioned "id_abstractor_type" class to work with dfc and dfr ids
     in a general way (they were previously seperated into 2 sets of functions before being merged).  """
+
+
+def add_new_id_layer(context, id_type):
+
+    df = context.scene.df
+    id_abstractor = id_abstractor_type(context, id_type)
+
+    """ Generates a unique duplicate name for the new layer (eg, "New Layer.004")   """
+    layer_name = generate_uniq_dup_name(id_abstractor.layers_col, "New Layer")
+    
+    """ Adds layer to layers collection on the python side  """
+    id_abstractor.layers_col_indx = len(id_abstractor.layers_col);             
+    new_layer = id_abstractor.layers_col.add()
+    new_layer.name = layer_name
+    
+    if (df.df_state_stashed):
+        df_lib.call_df_unstash_state()
+        df.df_state_stashed = False
+
+    """ Adds layer to layer system on the c++ side  """
+    id_abstractor.add_layer_libfunc()
+    if (df.df_stashing_enabled):
+        df_lib.call_df_stash_state()
+        df.df_state_stashed = True
+    else:
+        df.df_state_stashed = False
+
+
+def remove_id_layer(context, id_type):
+
+    df = context.scene.df
+
+    id_abstractor = id_abstractor_type(context, id_type)
+
+    """ Removes layer from layers collection"""
+    id_abstractor.layers_col.remove(id_abstractor.layers_col_indx)
+
+    if (df.df_state_stashed):
+        df_lib.call_df_unstash_state()
+        df.df_state_stashed = False
+
+    """ Gets total number of ids stored within the dynamic libraries copy of the layer system
+        (as a side note the dynamic library stores a single array containing all ids, and any
+        layers or such that use these ids store pointers to the ids rather than individual
+        copies of the number. This makes changing the values of ids easier as changing it
+        within the array of ids will change it everywhere within the system)   """
+    ids_size = id_abstractor.get_ids_size_libfunc()
+    expelled_ids_type = ctypes.c_ulong * ids_size
+    expelled_ids = expelled_ids_type()
+    expelled_ids_nxt_indx = ctypes.c_ulong(0)
+    
+    """ Calls a function within the dynamic library which removes the specified layer in it's internal copy of the layer system, and updates the arguments passed
+        to it to contain any objects that were expelled as a result so the python side can update accordingly (ie, returns any objects that were no in any layers
+        other than the one being removed)   """
+    id_abstractor.remove_layer_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.layers_col_indx)), ctypes.pointer(expelled_ids), ctypes.byref(expelled_ids_nxt_indx))
+    if (df.df_stashing_enabled):
+        df_lib.call_df_stash_state()
+        df.df_state_stashed = True
+    else:
+        df.df_state_stashed = False
+        
+    """ Updates python side layer/ id system according to the arguments updated by the above library function   """
+    indx_counter = 0
+    while (indx_counter < expelled_ids_nxt_indx.value):
+    
+        for obj in context.scene.objects:
+
+            if (id_abstractor.get_id_in_obj(context, obj) == expelled_ids[indx_counter]):
+            
+                id_abstractor.set_id_in_obj(context, obj, 0)
+                break
+                
+        indx_counter += 1
+    
+    if (id_abstractor.layers_col_indx > 0):
+    
+        id_abstractor.set_layers_col_indx(context, (id_abstractor.layers_col_indx - 1))
+
 
 """ Assigned the specified objects to the specified layer (also assigns the objects an id if they don't already have one) """
 def assign_ids_to_layer(context, objects, layer_indx, id_type):
@@ -469,12 +558,12 @@ def select_ids_in_layer(context, id_type):
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
-    layer_size = id_abstractor.get_layer_size_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))))
+    layer_size = id_abstractor.get_layer_size_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.layers_col_indx)))
     ids_type = ctypes.c_ulong * layer_size
     ids = ids_type()
 
     """ The below function adds all objects/ ids contained within the specified layer to the buffer  """
-    id_abstractor.get_ids_in_layer_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))), ctypes.pointer(ids))
+    id_abstractor.get_ids_in_layer_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.layers_col_indx)), ctypes.pointer(ids))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
         df.df_state_stashed = True
@@ -511,12 +600,12 @@ def deselect_ids_in_layer(context, id_type):
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
-    layer_size = id_abstractor.get_layer_size_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))))
+    layer_size = id_abstractor.get_layer_size_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.layers_col_indx)))
     ids_type = ctypes.c_ulong * layer_size
     ids = ids_type()
 
     """ The below function adds all objects/ ids contained within the specified layer to the buffer  """
-    id_abstractor.get_ids_in_layer_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.get_layer_indx(context))), ctypes.pointer(ids))
+    id_abstractor.get_ids_in_layer_libfunc(ctypes.byref(ctypes.c_ulong(id_abstractor.layers_col_indx)), ctypes.pointer(ids))
     if (df.df_stashing_enabled):
         df_lib.call_df_stash_state()
         df.df_state_stashed = True
@@ -565,41 +654,41 @@ def get_name_dup_num(name):
 """ Creates a unique duplicate name (eg, "New Layer.006")    """
 def generate_uniq_dup_name(collection, base_name):
         
-        max_dup_num = -2
-        for element in collection:
+    max_dup_num = -2
+    for element in collection:
+    
+        if ((base_name)in(element.name)):
         
-            if ((base_name)in(element.name)):
+            dup_num = get_name_dup_num(element.name)
+            if (dup_num > max_dup_num):
             
-                dup_num = get_name_dup_num(element.name)
-                if (dup_num > max_dup_num):
-                
-                    max_dup_num = dup_num
-        
-        max_dup_num += 1
-                
-        if (max_dup_num > 0):
-        
-            if (max_dup_num < 10):
+                max_dup_num = dup_num
+    
+    max_dup_num += 1
             
-                layer_name = ".00" + str(max_dup_num)
-                
-            elif (max_dup_num < 100):
+    if (max_dup_num > 0):
+    
+        if (max_dup_num < 10):
+        
+            layer_name = ".00" + str(max_dup_num)
             
-                layer_name = ".0" + str(max_dup_num)
-                
-            else:
+        elif (max_dup_num < 100):
+        
+            layer_name = ".0" + str(max_dup_num)
             
-                layer_name = "." + str(max_dup_num)
-                
-            return base_name + layer_name
-        
-        elif (max_dup_num == 0):
-        
-            return base_name + ".001"
-        
         else:
+        
+            layer_name = "." + str(max_dup_num)
+            
+        return base_name + layer_name
+    
+    elif (max_dup_num == 0):
+    
+        return base_name + ".001"
+    
+    else:
 
-            return base_name
+        return base_name
 
 
 """ As mentioned earlier, id and layer information is stored in copies on both the
@@ -971,16 +1060,9 @@ def incrmt_undo_step(context):
                                                         
 
 class DF_OT_df_create_volume(bpy.types.Operator):
-    """Creates a distance field volume, this must be done (and said volume must be initialized) before the distance field can be updated"""
+    """Creates a distance field volume (creates a cube in scene), this volume determines the bounds of the distance field, and as a result, must be created before the distance field can be initialized"""
     bl_idname = "df.df_create_volume"
     bl_label = "DF Create Volume"
-    
-    @classmethod
-    def poll(cls, context):
-    
-        df = context.scene.df
-    
-        return df.df_assertion_code == 0;
     
     def execute(self, context):
         
@@ -998,20 +1080,15 @@ class DF_OT_df_create_volume(bpy.types.Operator):
             bpy.ops.mesh.primitive_cube_add(size = 80)
             bpy.context.active_object.name = "_df_volume_"
             bpy.context.active_object.display_type = 'WIRE'
+            bpy.context.active_object.hide_render = True
         
         return {'FINISHED'}
 
 
 class DF_OT_df_toggle_init_returned_error(bpy.types.Operator):
+    """Used to toggle property "df.df_init_returned_error" when user presses the ok button upon the displaying of an error message in the initialization subpanel (the returned error flag gets reset to False and the error message goes away)"""
     bl_idname = "df.df_toggle_init_returned_error"
     bl_label = "toggle_init_returned_error"
-    
-    @classmethod
-    def poll(cls, context):
-    
-        df = context.scene.df
-    
-        return df.df_assertion_code == 0;
     
     def execute(self, context):
     
@@ -1029,17 +1106,10 @@ class DF_OT_df_toggle_init_returned_error(bpy.types.Operator):
 
 
 class DF_OT_df_initialize(bpy.types.Operator):
-    """Initializes volume, this must be done before the distance field can be updated"""
+    """Initializes the distance field, this must be done before the distance field can be updated"""
     bl_idname = "df.df_initialize"
-    bl_label = "DF Initialize Volume"
+    bl_label = "Initialize"
     bl_options = {'REGISTER', 'UNDO'}
-    
-    @classmethod
-    def poll(cls, context):
-    
-        df = context.scene.df
-    
-        return df.df_assertion_code == 0;
     
     def execute(self, context):
         
@@ -1048,7 +1118,7 @@ class DF_OT_df_initialize(bpy.types.Operator):
         
         validate_undo_step(context)
         
-        #Loops through each object in the scene
+        """ The below for loop checks how many volumes are current in scene """
         volume_amount = 0
         for obj in context.scene.objects:
         
@@ -1058,7 +1128,7 @@ class DF_OT_df_initialize(bpy.types.Operator):
                 volume_amount += 1
                 
         """ If only one volume exists, then continue with initialization 
-            using the alis to the volume object set during the above loop """
+            using the alias to the volume object set during the above loop """
         if (volume_amount == 1):
             
             """ Checks if the volumes current mode is not object mode, if this is the case
@@ -1084,7 +1154,7 @@ class DF_OT_df_initialize(bpy.types.Operator):
             #Gets object after dependency graph evaluation (so that modifiers and such are applied)
             volume_eval = volume.evaluated_get(depsgraph)
             
-            #Creates alias
+            #Creates alias to mesh
             mesh_eval = volume_eval.data
             
             #Checks if vertex count is equal to 8, as the initialization function in df_lib expects this
@@ -1092,7 +1162,7 @@ class DF_OT_df_initialize(bpy.types.Operator):
                 
                 #Creates ctypes array type
                 verts_buffer_type = coord_xyz_type * 8
-                
+
                 #Creates object of the above type, ie, actually creates an array object
                 verts_buffer = verts_buffer_type()
                 
@@ -1101,33 +1171,28 @@ class DF_OT_df_initialize(bpy.types.Operator):
                 
                     #Gets vert coordinates in world space
                     vert_coord = volume_eval.matrix_world @ vert.co
-                    
                     verts_buffer[vert.index].x = vert_coord[0]
                     verts_buffer[vert.index].y = vert_coord[1]
                     verts_buffer[vert.index].z = vert_coord[2]
-                    
-                                
                 
-                #Calls function "call_df_initialize_volume" in dynamic library
+                
                 if (df.df_state_stashed):
                     df_lib.call_df_unstash_state()
                     df.df_state_stashed = False
                 else:
                     df_lib.call_df_weak_unstash_volume_local()
-                        
+
+                """ Calls function "call_df_initialize_volume" in dynamic library   """
                 initialize_return = df_lib.call_df_initialize_volume(ctypes.pointer(verts_buffer), ctypes.c_float(df.df_distance), ctypes.c_ushort(df.df_cmprt_size), ctypes.c_double(df.df_grid_spacing), ctypes.c_bool(False))
-                
                 incrmt_undo_step(context)
-                
                 if (df.df_stashing_enabled):
                     df_lib.call_df_stash_state()
                     df.df_state_stashed = True
                 else:
                     df_lib.call_df_weak_stash_volume_local()
-                        
                     df.df_state_stashed = False
                 
-                #If the function returns 0, was successful
+                """ If the function returns 0, was successful   """
                 if (initialize_return == 0):
                     
                     """ Sets the values that the volume was initialized with, so that it can be quickly determined at the UI level if
@@ -1135,19 +1200,21 @@ class DF_OT_df_initialize(bpy.types.Operator):
                     df.df_distance_last = df.df_distance
                     df.df_cmprt_size_last = df.df_cmprt_size
                     df.df_grid_spacing_last = df.df_grid_spacing
-                    
+
                     df.df_init_returned_error = False
                     df.df_volume_initialized = True
                     
                     """ If the function returns 0, than it is safe to assume that the volume was of correct scale,
-                    and the memory estimate did not exceed the hard coded max, as this is checked for in the function """
+                    and the memory estimate did not exceed the hard coded max, as this is checked for within the function """
                     df.df_mem_est_exceeded_max = False
                     df.df_volume_too_small = False
                     
                     """ Now that the volume has just been initialized, this property is now set to indicate that,
                         atleast at this exact point in time, the volume is in sync with the volume in scene as well
                         as with the properties that effect the volume """
-                    df.df_volume_same = 1;
+                    df.df_volume_same = 1
+
+                #   If function returns 3, then initialization was no successful as the estimated memory use exceeded the hard coded max
                 elif (initialize_return == 3):
                     
                     df.df_init_returned_error = True
@@ -1155,7 +1222,7 @@ class DF_OT_df_initialize(bpy.types.Operator):
                     df.df_volume_initialized = False
                     df.df_volume_too_small = False
                     
-                #If function returns 1, then initialization was not successful as the volume was too small
+                #   If function returns 1, then initialization was not successful as the volume was too small
                 elif (initialize_return == 1):
                 
                     df.df_init_returned_error = True
@@ -1184,14 +1251,16 @@ class DF_OT_df_update(bpy.types.Operator):
     def poll(cls, context):
     
         df = context.scene.df
-    
-        return (df.df_volume_initialized) and (df.df_assertion_code == 0)
+
+        return (df.df_volume_initialized)
     
     def execute(self, context):
     
         df = context.scene.df
         
         validate_undo_step(context)
+
+        """ Validates ids, and expels non-existant  """
         validate_dfc_dfr_ids()
         expel_nonexistant_ids_python(context, 0)
         expel_nonexistant_ids_python(context, 1)
@@ -1200,12 +1269,21 @@ class DF_OT_df_update(bpy.types.Operator):
         depsgraph = context.evaluated_depsgraph_get()
         if (df.df_volume_initialized == True):
             
+            """ Creates misc buffers and objects    """
             dfc_ids_type = ctypes.c_ulong * len(context.scene.objects)
             dfc_ids = dfc_ids_type()
             ignored_dfcs_list = []
             ignored_dfcs_nxt_indx = 0
             dfc_vert_amount_total = ctypes.c_ulong(0)
             dfc_amount = ctypes.c_ulong(0)
+
+            """ The below for loop iterates through each object in scene, and for each that have a non-zero dfc id,
+                will add it to the list of dfc's in scene (ignoring objects whose current mode is not object mode if
+                "enable_non_object_modes" is disabled (the flag is enabled when manually updating using the UI button,
+                but is disabled when updating on frame change))
+                Note that the updating of the distance field does not take into account dfc layers, as they more so
+                exists to control which recipients are effected by which dfc (any object that has a non-zero dfc id
+                is assumed to belong to at least one dfc layer)  """
             for obj in context.scene.objects:
             
                 if (obj.dfc_id > 0):
@@ -1223,26 +1301,30 @@ class DF_OT_df_update(bpy.types.Operator):
                         dfc_vert_amount_total.value += len(mesh_eval.vertices)
                         dfc_amount.value += 1
             
+            """ Moves the contents of the ignored dfcs list into a new buffer (the reason for using a list as opposed to just
+                using ctypes array from the start was to allow for dynamic sizing while adding items in the above for loop.
+                This probably should have been done from the start for all arrays, instead of making buffer arrays equal to the
+                total number of objects in scene, though I only started doing the dynamic scaling with lists thing recently)    """
             ignored_dfcs_type = ctypes.c_ulong * ignored_dfcs_nxt_indx
             ignored_dfcs = ignored_dfcs_type()
             counter = 0
-            for dfc in ignored_dfcs_list:
+            while (counter < ignored_dfcs_nxt_indx):
             
                 ignored_dfcs[counter] = ignored_dfcs_list[counter]
                 counter += 1
                   
-            #Calls call_df_pre_update, this does things that need to be done once per update operation, and not once per object
             if (df.df_state_stashed):
                 df_lib.call_df_unstash_state()
                 df.df_state_stashed = False
             else:
                 df_lib.call_df_weak_unstash_volume_local()
-
+            """ Calls call_df_pre_update, this does things that need to be done once per update operation, and not once per object  """
             df_lib.call_df_pre_update(ctypes.pointer(dfc_ids), ctypes.byref(dfc_amount), ctypes.byref(dfc_vert_amount_total), ctypes.pointer(ignored_dfcs), ctypes.c_ulong(ignored_dfcs_nxt_indx))
             
             # Updates distance field structures
             #-------------------------------------------------------------------------------------------------------------#
             
+            """ The below for loop iterates through each object in scene"""
             dfc_index = ctypes.c_ulong(0)
             for obj in context.scene.objects:
             
@@ -1257,7 +1339,9 @@ class DF_OT_df_update(bpy.types.Operator):
                     For modes other than edit mode (such as modes weight paint or vertex paint),
                     the reason for switching is purely precautionary and is done in order to avoid 
                     any unwanted behaviour (of which I am not aware of) that could arise from using 
-                    these modes, though it very well may be unnecessary """
+                    these modes, though it very well may be unnecessary.
+                    
+                    Also skips if current object mode isn't 'OBJECT' and "enable_non_object_modes" == False """
                     switched_mode = False
                     if (obj.mode != 'OBJECT'):
                     
@@ -1273,7 +1357,7 @@ class DF_OT_df_update(bpy.types.Operator):
                 
                     #Gets object after dependency graph evaluation (so that modifiers and such are applied)
                     obj_eval = obj.evaluated_get(depsgraph)
-                    #Creates alias
+                    #Creates alias for mesh
                     mesh_eval = obj_eval.data
                     #Triangulates mesh so that triangles can be gotten instead of polygons (this is requiried otherwise .loop_triangles will be empty)
                     mesh_eval.calc_loop_triangles()
@@ -1290,10 +1374,9 @@ class DF_OT_df_update(bpy.types.Operator):
                     verts_buffer = verts_buffer_type()
                     tris_buffer = tris_buffer_type()
                     
-                    
                     for vert in mesh_eval.vertices:
                     
-                        #Gets coordinates of current vertex in world space
+                        #Gets coordinates of current vertex in world space, before adding to array of verts
                         vert_coord = obj_eval.matrix_world @ vert.co
                         verts_buffer[vert.index].x = vert_coord[0]
                         verts_buffer[vert.index].y = vert_coord[1]
@@ -1306,22 +1389,14 @@ class DF_OT_df_update(bpy.types.Operator):
                         tris_buffer[tri.index].vert_0 = tri.vertices[0]
                         tris_buffer[tri.index].vert_1 = tri.vertices[1]
                         tris_buffer[tri.index].vert_2 = tri.vertices[2]
-                        
-                    bounds_buffer_type = coord_xyz_type * 8
-                    bounds_buffer = bounds_buffer_type()
                     
-                    vert_index = 0
-                    for vert in obj_eval.bound_box:
-                    
-                        vert_coord = obj_eval.matrix_world @ mathutils.Vector(vert)
-                        bounds_buffer[vert_index].x = vert_coord.x
-                        bounds_buffer[vert_index].y = vert_coord.y
-                        bounds_buffer[vert_index].z = vert_coord.z
-                        vert_index += 1
-                    
-                    df_lib.call_df_add_dfc_to_cache(ctypes.pointer(verts_buffer), ctypes.byref(vert_amount), ctypes.pointer(tris_buffer), ctypes.byref(tri_amount), ctypes.pointer(bounds_buffer), ctypes.byref(dfc_index), ctypes.byref(ctypes.c_bool(False)))
+                    """ Calls function within dynamic library which adds the mesh data of the dfcs to a cache,
+                        so that said data can be tested against next time update is called to prevent reupdating
+                        distance field layers whose dfc have not changed (layers here refers to the distance field's
+                        internal mesh layer system, not the dfc/ dfr layers)    """
+                    df_lib.call_df_add_dfc_to_cache(ctypes.pointer(verts_buffer), ctypes.byref(vert_amount), ctypes.pointer(tris_buffer), ctypes.byref(tri_amount), ctypes.byref(dfc_index), ctypes.byref(ctypes.c_bool(False)))
 
-                    #Calls function "call_df_update" in dynamic library
+                    """ Calls function "call_df_update" in dynamic library; this function performs the actual updating of the distance field  """
                     df_lib.call_df_update(ctypes.byref(ctypes.c_ulong(obj.dfc_id)), ctypes.byref(dfc_index))
                     
                     #If the object's mode was switched, switches it back to what it was origionally set to
@@ -1331,7 +1406,8 @@ class DF_OT_df_update(bpy.types.Operator):
                     dfc_index.value += 1
                     
         incrmt_undo_step(context)
-                        
+        
+        """ Calls operator "df_update_recipients"   """
         bpy.ops.df.df_update_recipients()
         if (df.df_stashing_enabled):
             df_lib.call_df_stash_state()
@@ -1343,17 +1419,10 @@ class DF_OT_df_update(bpy.types.Operator):
             
             
 class DF_OT_df_update_recipients(bpy.types.Operator):   
+    """Writes, if enabled, the updated state of the distance field structure into vertex colors and/or vertex groups of objects that belong to a recipient layer"""
     bl_idname = "df.df_update_recipients"
     bl_label = "DF Update Recipients"
     bl_options = {'REGISTER', 'UNDO'}
-    """ Writes, if enabled, the updated state of the distance field structure into vertex colors and/or vertex groups of objects that belong to a recipient layer """
-    
-    @classmethod
-    def poll(cls, context):
-    
-        df = context.scene.df
-    
-        return df.df_assertion_code == 0;
     
     def execute (self, context):
     
@@ -1361,6 +1430,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
         
         validate_undo_step(context)
         
+        """ Gets update dependency graph    """
         depsgraph = context.evaluated_depsgraph_get()
         if (df.df_volume_initialized == True):
             
@@ -1381,26 +1451,31 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                 dfrs_total = dfrs_total_type()
                 
                 counter = 0
-                for dfr in dfrs_total_list:
+                while (counter < dfrs_total_nxt_indx):
                 
                     dfrs_total[counter] = dfrs_total_list[counter]
                     counter += 1
 
+                """ Calls pre update recipients function within dynamic library, this is used to do anything that should be done
+                    once per update, and not once per object    """
                 df_lib.call_df_pre_update_recipients(ctypes.pointer(dfrs_total), ctypes.c_ulong(dfrs_total_nxt_indx))
 
-                """ Loops through each object in the scene, if an object is marked as a distance field recipient,
-                    then update its vertex colors or/and vertex groups """
-                
+                """ The below for loop iterates through each recipient layer in the scene, then loops through each object within said layer,
+                    updating each ones vertex colors or/and vertex groups (depending on which is enabled)   """
                 dfr_layer_indx = 0
                 for dfr_layer in context.scene.df_dfr_layers:
                 
+                    """ Creates misc buffers and objects    """
                     layer_size = df_lib.call_df_get_dfr_layer_size(ctypes.byref(ctypes.c_ulong(dfr_layer_indx)))
                     dfr_ids_type = ctypes.c_ulong * layer_size
                     dfr_ids = dfr_ids_type()
                     df_lib.call_df_get_all_dfrs_in_dfr_layer(ctypes.byref(ctypes.c_ulong(dfr_layer_indx)), ctypes.pointer(dfr_ids))
                     indx_counter_layer_cont = 0
+
+                    """ The below while loop iterates through each id in the current layer  """
                     while (indx_counter_layer_cont < layer_size):
                         
+                        """ Gets the object in scene that corresponds to the current id """
                         in_layer = False
                         for obj in context.scene.objects:
 
@@ -1408,12 +1483,16 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                             
                                 in_layer = True
                                 break
-                    
+                        
+                        """ If said object exists in scene (which it should as expel nonexistent ids was called in "df_update"), proceeds   """
                         if (in_layer == True):
                             
                             # Sets up structures
                             #-------------------------------------------------------------------------------------------------------------#
                             
+                            """ Creates bmesh from current object's mesh (using a custom wrapper class).
+                                As with "df_update", the object mode is switch to 'OBJECT' if not already
+                                set as so, this is handled by the wrapper   """
                             obj_bmesh = bmesh_type(obj)
                                     
                             #Gets amount of verts in bmesh    
@@ -1432,9 +1511,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 verts_buffer[vert.index].coord.x = vert_coord[0]
                                 verts_buffer[vert.index].coord.y = vert_coord[1]
                                 verts_buffer[vert.index].coord.z = vert_coord[2]
-                                
-                            height_values_buffer_type = ctypes.c_float * vert_amount.value
-                            height_values_buffer = height_values_buffer_type()
                                 
                             if (df.df_update_vertex_colors == True):
                             
@@ -1457,10 +1533,10 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 
                                         loop_index += 1
                                 
+                            """ Defines and fills a buffer containing all dfc layers that effect the current dfr layer  """
                             dfc_layers_nxt_indx = ctypes.c_ulong(len(dfr_layer.dfc_layers))
                             dfc_layers_type = ctypes.c_ulong * dfc_layers_nxt_indx.value
                             dfc_layers = dfc_layers_type()
-                                
                             dfc_layer_indx = 0
                             for dfc_layer in dfr_layer.dfc_layers:
                             
@@ -1470,9 +1546,9 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                             # Gets values of verts from distance field structure
                             #-------------------------------------------------------------------------------------------------------------#
                             
-                            """ Calls function "call_df_get_vert_value" in df_lib, this writes a value to each vert in "verts_buffer" lerped from the values of  
+                            """ Calls function "call_df_update_recipient" in df_lib, this writes a value to each vert in "verts_buffer" lerped from the values of  
                                 the grid points surrounding said vert, more precisely the 8 grid points that make up the vertices of the grid cell that the vert sits within """
-                            df_lib.call_df_update_recipient(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), ctypes.byref(vert_amount), ctypes.pointer(height_values_buffer), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma))
+                            df_lib.call_df_update_recipient(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), ctypes.byref(vert_amount), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma))
                             
                             # Updates vertex colors
                             #-------------------------------------------------------------------------------------------------------------#
@@ -1558,17 +1634,10 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
         
         
 class  DF_OT_df_add_dfc_layer(bpy.types.Operator):
-
+    """Adds a new layer"""
     bl_idname = "df.df_add_dfc_layer"
     bl_label = "Add Layer"
     bl_options = {'REGISTER', 'UNDO'}
-    
-    @classmethod
-    def poll(cls, context):
-    
-        df = context.scene.df
-    
-        return df.df_assertion_code == 0;
     
     def execute(self, context):
     
@@ -1576,21 +1645,7 @@ class  DF_OT_df_add_dfc_layer(bpy.types.Operator):
         
         validate_undo_step(context)
         
-        layer_name = generate_uniq_dup_name(context.scene.df_dfc_layers, "New Layer")
-             
-        context.scene.df_dfc_layers_indx = len(context.scene.df_dfc_layers);             
-        new_layer = context.scene.df_dfc_layers.add()
-        new_layer.name = layer_name
-            
-        if (df.df_state_stashed):
-            df_lib.call_df_unstash_state()
-            df.df_state_stashed = False
-        df_lib.call_df_add_dfc_layer()
-        if (df.df_stashing_enabled):
-            df_lib.call_df_stash_state()
-            df.df_state_stashed = True
-        else:
-            df.df_state_stashed = False
+        add_new_id_layer(context, 0)
             
         incrmt_undo_step(context)
         
@@ -1598,7 +1653,7 @@ class  DF_OT_df_add_dfc_layer(bpy.types.Operator):
         
 
 class DF_OT_df_remove_dfc_layer(bpy.types.Operator):
-
+    """Removes the current layer"""
     bl_idname = "df.df_remove_dfc_layer"
     bl_label = "Remove Layer"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1608,7 +1663,7 @@ class DF_OT_df_remove_dfc_layer(bpy.types.Operator):
         
         df = bpy.context.scene.df
         
-        return (len(context.scene.df_dfc_layers) > 0) and (df.df_assertion_code == 0)
+        return (len(context.scene.df_dfc_layers) > 0)
 
     def execute(self, context):
     
@@ -1616,38 +1671,7 @@ class DF_OT_df_remove_dfc_layer(bpy.types.Operator):
         
         validate_undo_step(context)
     
-        context.scene.df_dfc_layers.remove(context.scene.df_dfc_layers_indx)
-
-        if (df.df_state_stashed):
-            df_lib.call_df_unstash_state()
-            df.df_state_stashed = False
-        dfc_ids_size = df_lib.call_df_get_dfc_ids_size()
-        expelled_dfcs_type = ctypes.c_ulong * dfc_ids_size
-        expelled_dfcs = expelled_dfcs_type()
-        expelled_dfcs_nxt_indx = ctypes.c_ulong(0)
-        
-        df_lib.call_df_remove_dfc_layer(ctypes.byref(ctypes.c_ulong(context.scene.df_dfc_layers_indx)), ctypes.pointer(expelled_dfcs), ctypes.byref(expelled_dfcs_nxt_indx))
-        if (df.df_stashing_enabled):
-            df_lib.call_df_stash_state()
-            df.df_state_stashed = True
-        else:
-            df.df_state_stashed = False
-            
-        indx_counter = 0
-        while (indx_counter < expelled_dfcs_nxt_indx.value):
-        
-            for obj in context.scene.objects:
-
-                if (obj.dfc_id == expelled_dfcs[indx_counter]):
-                
-                    obj.dfc_id = 0
-                    break
-                    
-            indx_counter += 1
-        
-        if (context.scene.df_dfc_layers_indx > 0):
-        
-            context.scene.df_dfc_layers_indx -= 1;
+        remove_id_layer(context, 0)
             
         incrmt_undo_step(context)
         
@@ -1655,7 +1679,7 @@ class DF_OT_df_remove_dfc_layer(bpy.types.Operator):
 
         
 class DF_OT_df_assign_dfcs_to_dfc_layer(bpy.types.Operator):
-
+    """Assigns selected objects to the current layer"""
     bl_idname = "df.df_assign_dfcs_to_dfc_layer"
     bl_label = "Assign DFCs to DFC layer"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1667,7 +1691,7 @@ class DF_OT_df_assign_dfcs_to_dfc_layer(bpy.types.Operator):
         
         df = bpy.context.scene.df
         
-        return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers)) and (df.df_assertion_code == 0)
+        return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers))
         
     def execute(self, context):
     
@@ -1683,7 +1707,7 @@ class DF_OT_df_assign_dfcs_to_dfc_layer(bpy.types.Operator):
         return {'FINISHED'}
         
 class DF_OT_df_remove_dfcs_from_dfc_layer(bpy.types.Operator):
-
+    """Removes selected objects from the current layer"""
     bl_idname = "df.df_remove_dfcs_from_dfc_layer"
     bl_label = "Remove DFCs to DFC layer"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1695,7 +1719,7 @@ class DF_OT_df_remove_dfcs_from_dfc_layer(bpy.types.Operator):
         
         df = bpy.context.scene.df
         
-        return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers)) and(df.df_assertion_code == 0)
+        return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers))
         
     def execute(self, context):
     
@@ -1711,7 +1735,7 @@ class DF_OT_df_remove_dfcs_from_dfc_layer(bpy.types.Operator):
         return {'FINISHED'}
         
 class DF_OT_df_select_dfcs_in_dfc_layer(bpy.types.Operator):
-
+    """Selects all objects contained within the current layer"""
     bl_idname = "df.df_select_dfcs_in_dfc_layer"
     bl_label = "Select DFCs in DFC layer"
     
@@ -1720,7 +1744,7 @@ class DF_OT_df_select_dfcs_in_dfc_layer(bpy.types.Operator):
         
         df = bpy.context.scene.df
         
-        return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers)) and (df.df_assertion_code == 0)
+        return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers))
     
     def execute(self, context):
 
@@ -1730,7 +1754,7 @@ class DF_OT_df_select_dfcs_in_dfc_layer(bpy.types.Operator):
         
         
 class DF_OT_df_deselect_dfcs_in_dfc_layer(bpy.types.Operator):
-
+    """Deselects all objects contained within the current layer"""
     bl_idname = "df.df_deselect_dfcs_in_dfc_layer"
     bl_label = "Deselect DFCs in DFC layer"
     
@@ -1739,7 +1763,7 @@ class DF_OT_df_deselect_dfcs_in_dfc_layer(bpy.types.Operator):
         
         df = bpy.context.scene.df
         
-        return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers)) and (df.df_assertion_code == 0)
+        return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers))
     
     def execute(self, context):
     
@@ -1749,17 +1773,10 @@ class DF_OT_df_deselect_dfcs_in_dfc_layer(bpy.types.Operator):
         
         
 class DF_OT_df_add_dfr_layer(bpy.types.Operator):
-
+    """Adds a new layer"""
     bl_idname = "df.df_add_dfr_layer"
     bl_label = "Add DFR Layer"
     bl_options = {'REGISTER', 'UNDO'}
-    
-    @classmethod
-    def poll(cls, context):
-    
-        df = context.scene.df
-    
-        return df.df_assertion_code == 0;
     
     def execute(self, context):
     
@@ -1767,22 +1784,7 @@ class DF_OT_df_add_dfr_layer(bpy.types.Operator):
         
         validate_undo_step(context)
         
-        layer_name = generate_uniq_dup_name(context.scene.df_dfr_layers, "New Layer")
-             
-        context.scene.df_dfr_layers_indx = len(context.scene.df_dfr_layers);             
-        context.scene.df_dfr_layers.add()
-        new_layer = context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx]
-        new_layer.name = layer_name
-        
-        if (df.df_state_stashed):
-            df_lib.call_df_unstash_state()
-            df.df_state_stashed = False
-        df_lib.call_df_add_dfr_layer()
-        if (df.df_stashing_enabled):
-            df_lib.call_df_stash_state()
-            df.df_state_stashed = True
-        else:
-            df.df_state_stashed = False
+        add_new_id_layer(context, 1)
             
         incrmt_undo_step(context)
         
@@ -1790,7 +1792,7 @@ class DF_OT_df_add_dfr_layer(bpy.types.Operator):
         
         
 class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
-
+    """Removes the current layer"""
     bl_idname = "df.df_remove_dfr_layer"
     bl_label = "Remove DFR Layer"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1800,7 +1802,7 @@ class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
         
         df = bpy.context.scene.df
         
-        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers)) and (df.df_assertion_code == 0)
+        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
         
     def execute(self, context):
     
@@ -1836,41 +1838,7 @@ class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
 
                             obj.vertex_groups.remove(vert_group)
     
-        """ The below block of code removes the layer, then then expels any dfrs that were only wihin that layer (ie, expels any that do not have any other
-            layers containing them) """
-
-        context.scene.df_dfr_layers.remove(context.scene.df_dfr_layers_indx)
-        
-        if (df.df_state_stashed):
-            df_lib.call_df_unstash_state()
-            df.df_state_stashed = False
-        dfr_ids_size = df_lib.call_df_get_dfr_ids_size()
-        expelled_dfrs_type = ctypes.c_ulong * dfr_ids_size
-        expelled_dfrs = expelled_dfrs_type()
-        expelled_dfrs_nxt_indx = ctypes.c_ulong(0)
-        
-        df_lib.call_df_remove_dfr_layer(ctypes.byref(ctypes.c_ulong(context.scene.df_dfr_layers_indx)), ctypes.pointer(expelled_dfrs), ctypes.byref(expelled_dfrs_nxt_indx))
-        if (df.df_stashing_enabled):
-            df_lib.call_df_stash_state()
-            df.df_state_stashed = True
-        else:
-            df.df_state_stashed = False
-            
-        indx_counter = 0
-        while (indx_counter < expelled_dfrs_nxt_indx.value):
-        
-            for obj in context.scene.objects:
-
-                if (obj.dfr_id == expelled_dfrs[indx_counter]):
-                
-                    obj.dfr_id = 0
-                    break
-                    
-            indx_counter += 1
-        
-        if (context.scene.df_dfr_layers_indx > 0):
-        
-            context.scene.df_dfr_layers_indx -= 1
+        remove_id_layer(context, 1)
             
         incrmt_undo_step(context)
     
@@ -1878,7 +1846,7 @@ class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
         
         
 class DF_OT_df_assign_dfrs_to_dfr_layer(bpy.types.Operator):
-
+    """Assigns selected objects to the current layer"""
     bl_idname = "df.df_assign_dfrs_to_dfr_layer"
     bl_label = "Assign dfrs to dfr layer"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1890,7 +1858,7 @@ class DF_OT_df_assign_dfrs_to_dfr_layer(bpy.types.Operator):
         
         df = bpy.context.scene.df
         
-        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers)) and (df.df_assertion_code == 0)
+        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
         
     def execute(self, context):
     
@@ -1906,7 +1874,7 @@ class DF_OT_df_assign_dfrs_to_dfr_layer(bpy.types.Operator):
         return {'FINISHED'}
         
 class DF_OT_df_remove_dfrs_from_dfr_layer(bpy.types.Operator):
-
+    """Removes selected objects from the current layer"""
     bl_idname = "df.df_remove_dfrs_from_dfr_layer"
     bl_label = "Remove dfrs to dfr layer"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1918,7 +1886,7 @@ class DF_OT_df_remove_dfrs_from_dfr_layer(bpy.types.Operator):
         
         df = bpy.context.scene.df
         
-        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers)) and (df.df_assertion_code == 0)
+        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
         
     def execute(self, context):
     
@@ -1934,7 +1902,7 @@ class DF_OT_df_remove_dfrs_from_dfr_layer(bpy.types.Operator):
         return {'FINISHED'}
         
 class DF_OT_df_select_dfrs_in_dfr_layer(bpy.types.Operator):
-
+    """Selects all objects contained within the current layer"""
     bl_idname = "df.df_select_dfrs_in_dfr_layer"
     bl_label = "Select dfrs in dfr layer"
     
@@ -1943,7 +1911,7 @@ class DF_OT_df_select_dfrs_in_dfr_layer(bpy.types.Operator):
     
         df = bpy.context.scene.df
         
-        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers)) and (df.df_assertion_code == 0)
+        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
     
     def execute(self, context):
     
@@ -1953,7 +1921,7 @@ class DF_OT_df_select_dfrs_in_dfr_layer(bpy.types.Operator):
         
         
 class DF_OT_df_deselect_dfrs_in_dfr_layer(bpy.types.Operator):
-
+    """Deselects all objects contained within the current layer"""
     bl_idname = "df.df_deselect_dfrs_in_dfr_layer"
     bl_label = "Deselect dfrs in dfr layer"
     
@@ -1962,7 +1930,7 @@ class DF_OT_df_deselect_dfrs_in_dfr_layer(bpy.types.Operator):
     
         df = bpy.context.scene.df
         
-        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers)) and (df.df_assertion_code == 0)
+        return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
     
     def execute(self, context):
     
@@ -1972,19 +1940,12 @@ class DF_OT_df_deselect_dfrs_in_dfr_layer(bpy.types.Operator):
         
         
 class DF_OT_df_add_dfr_layer_dfc_layer(bpy.types.Operator):
-
+    """Assigns a contributor layer to the current recipient layer; these contributor layers will effect the current recipient layer when the distance field is updated"""
     bl_idname = "df.df_add_dfr_layer_dfc_layer"
     bl_label = "Add DFR Layer DFC layer"
     bl_options = {'REGISTER', 'UNDO'}
     
     dfr_layer_indx : bpy.props.IntProperty()
-    
-    @classmethod
-    def poll(cls, context):
-    
-        df = context.scene.df
-    
-        return df.df_assertion_code == 0;
     
     def execute(self, context):
     
@@ -2004,20 +1965,13 @@ class DF_OT_df_add_dfr_layer_dfc_layer(bpy.types.Operator):
         
         
 class DF_OT_df_remove_dfr_layer_dfc_layer(bpy.types.Operator):
-
+    """Removes contributor layer from the current recipient layer"""
     bl_idname = "df.df_remove_dfr_layer_dfc_layer"
     bl_label = "Remove DFR Layer DFC layer"
     bl_options = {'REGISTER', 'UNDO'}
     
     dfr_layer_indx : bpy.props.IntProperty()
     dfr_layer_dfc_layer_indx : bpy.props.IntProperty()
-        
-    @classmethod
-    def poll(cls, context):
-    
-        df = context.scene.df
-    
-        return df.df_assertion_code == 0;
         
     def execute(self, context):
     
@@ -2029,10 +1983,9 @@ class DF_OT_df_remove_dfr_layer_dfc_layer(bpy.types.Operator):
         
         
 class DF_OT_df_make_df_cache_dir_rel(bpy.types.Operator):
-
+    """Makes df cache director relative (can only do so if the directory is on the same drive as the current .blend file)"""
     bl_idname = "df.df_make_df_cache_dir_rel"
     bl_label = "Make Path Relative"
-    
     
     @classmethod
     def poll(cls, context):
@@ -2165,8 +2118,6 @@ def df_load_pre_handler(dummy):
 
     df = bpy.context.scene.df
     
-    df.df_assertion_code = 0
-    
     #Calls function "call_df_clean_memory" in df_lib 
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
@@ -2184,8 +2135,9 @@ def df_load_post_handler(dummy):
     
     df = bpy.context.scene.df
     
+    """ Sets undo step to 0 as undo history is local to each session    """
     df.df_undo_index = 0
-    
+
     max_dfc_id_length = 0
     for dfc_layer in bpy.context.scene.df_dfc_layers:
         

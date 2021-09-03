@@ -638,9 +638,9 @@ df_type::dfr_id_indx_type* df_type::get_dfr_in_dfr_layer(const unsigned long& la
 
 
 /*Calls function add_dfc_to_cache, is used as the dfc_cache class is private*/
-int df_type::add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const shared_type::coord_xyz_type* bounds, const unsigned long& dfc_index, const bool& split_dfc)
+int df_type::add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc)
 {
-	update_local.dfc_cache.add_dfc_to_cache(verts, vert_amount, tris, tri_amount, bounds, dfc_index, split_dfc);
+	update_local.dfc_cache.add_dfc_to_cache(verts, vert_amount, tris, tri_amount, dfc_index, split_dfc);
 	return 0;
 }
 
@@ -2912,7 +2912,7 @@ shared_type::index_xyz_type df_type::get_enclsing_cmprt_from_indx_space(const sh
 
 
 /*	Updates a recipient, that is to say, projects the distance field values onto a mesh	*/
-int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const float* height_verts_buffer, const int interp_mode, const float gamma)
+int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma)
 {
 	/*	The below chunk of code results in a vector containing of all the dfc_id within the dfc_layer passed to the function
 		(at the python level, each dfr_layer only lists the index of the dfc_layer(s) that affect it, so that list of layer indices
@@ -5368,7 +5368,7 @@ void df_type::update_local_type::dfc_cache_type::initialize_cache(const unsigned
 }
 
 
-void df_type::update_local_type::dfc_cache_type::add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const shared_type::coord_xyz_type* bounds, const unsigned long& dfc_index, const bool& split_dfc)
+void df_type::update_local_type::dfc_cache_type::add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc)
 {
 	if (tri_amount != 0)
 	{
