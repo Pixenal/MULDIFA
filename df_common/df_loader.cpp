@@ -470,7 +470,8 @@ void df_type::df_loader_type::director_type::buffers_type::buffer_grid_points()
 				/*	Reads dfc_id from output stream (from "file"), then finds the dfc_id's entry in the dfc_id region, and sets the
 				dfc_id data member in the current grid point layers entry in the buffer to equal the dfc_id's entry's memory address	*/
 				unsigned long dfc_id = get_ulong();
-				for (unsigned long c = 0u; c < update_local.dfc_amount; ++c)
+				update_local.dfc_ids.calc_size();
+				for (unsigned long c = 0u; c < update_local.dfc_ids.size; ++c)
 				{
 					if (update_local.dfc_ids.vector[c]->id == dfc_id)
 					{
