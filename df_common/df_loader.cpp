@@ -750,7 +750,10 @@ void df_type::df_loader_type::director_type::buffers_type::buffer_dfc_id_index_t
 		for (unsigned long a = 0u; a < update_local.dfc_amount; ++a)
 		{
 			unsigned long dfc_id = get_ulong();
-			for (unsigned long b = 0u; b < update_local.dfc_amount; ++b)
+			/*	Searches dfc_ids to find the the matching id entry, and sets the current
+				entry in the indx to id table to equal the pointer to said dfc id entry	*/
+			update_local.dfc_ids.calc_size();
+			for (unsigned long b = 0u; b < update_local.dfc_ids.size; ++b)
 			{
 				if (update_local.dfc_ids.vector[b]->id == dfc_id)
 				{

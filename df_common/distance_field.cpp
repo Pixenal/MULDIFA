@@ -1619,6 +1619,7 @@ int df_type::pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_a
 					goto if_doesnt_exist;
 
 				if_exists:
+
 					continue;
 				}
 
@@ -1679,7 +1680,6 @@ int df_type::pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_a
 
 		remove_deleted_element_from_layer_system<std::vector<shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>>>(dfc_layers, &df_type::remove_dfcs_from_dfc_layer, current_dfcs, dfc_cache.dfc_amount, ignored_dfcs, ignored_dfcs_nxt_indx);
 	}
-
 
 	thread_pool.set_jobs_per_iteration(23u);
 	return 0;
