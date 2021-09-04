@@ -2211,6 +2211,8 @@ def df_load_post_handler(dummy):
         dfr_layers[0].contents = dfr_ids_type()
         dfr_layers[0].contents[0] = 0
     
+    print("egg dir: ", df.df_cache_dir)
+
     """ Each time a df is written, it is assigned a unique write id, this id is stored both
         within the cache, and the .blend file to which it belongs. This is used by the
         aforementioned dynamic libaray function to ensure that a loaded dfcache file is
@@ -2234,6 +2236,7 @@ def df_load_post_handler(dummy):
     """ Adds a trailing slash as the above os module method does not add one    """
     df_cache_dir_abs = os.path.join(df_cache_dir_abs, '')
 
+    print("egg dir abs: ", df_cache_dir_abs)
 
     """ Calls dynamic library function  """
     return_code = df_lib.call_df_new_blend_handler(ctypes.c_char_p(bytes(df_cache_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(os.path.splitext(bpy.path.basename(bpy.data.filepath))[0], 'utf-8')), ctypes.byref(write_id), ctypes.pointer(dfc_layers), ctypes.pointer(dfr_layers), ctypes.c_bool(df.df_enable_cache))
@@ -2313,6 +2316,8 @@ def df_save_post_handler(dummy):
             df_lib.call_df_weak_unstash_volume_local()
             df_lib.call_df_copy_to_buffer()
             
+        print("egg dir: ", df.df_cache_dir)
+
         """ Ensures cache directory is absolute    """
         """ First Converts to absolute using bpy method for compatibility with blender's relative pathing format   """
         df_cache_dir_abs = bpy.path.abspath(df.df_cache_dir)
@@ -2327,6 +2332,8 @@ def df_save_post_handler(dummy):
 
         """ Adds a trailing slash as the above os module method does not add one    """
         df_cache_dir_abs = os.path.join(df_cache_dir_abs, '')
+
+        print("egg dir abs: ", df_cache_dir_abs)
             
 
         """ Calls the dynamic library function responsible for writing the cache    """
