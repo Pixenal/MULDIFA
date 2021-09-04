@@ -37,13 +37,7 @@ current_platform = sys.platform
 # Handler Functions
 #-------------------------------------------------------------------------------------------------------------#
 
-def df_cache_dir_update(self, context):
-
-    df = context.scene.df
-    if (not df.df_cache_dir_skip_handler):
-    
-        df.df_cache_dir_is_rel = False
-
+""" No handler functions currently  """
 
 # PROPERTY GROUP
 #-------------------------------------------------------------------------------------------------------------#
@@ -105,7 +99,7 @@ of the distance field; greatly affects compute times for both updating of the di
     df_next_dfr_id : bpy.props.IntProperty(default = 1)
     df_write_id_index : bpy.props.IntProperty(default = 0)
     df_write_id_rand : bpy.props.IntProperty(default = 0)
-    df_cache_dir : bpy.props.StringProperty(name = "Cache Dir", subtype = 'DIR_PATH', update = df_cache_dir_update)
+    df_cache_dir : bpy.props.StringProperty(name = "Cache Dir", subtype = 'DIR_PATH')
     df_cache_dir_is_rel : bpy.props.BoolProperty(default = False)
     df_cache_dir_skip_handler : bpy.props.BoolProperty(default = False)
     df_enable_cache : bpy.props.BoolProperty(name = "Enable Cache", default = False)
