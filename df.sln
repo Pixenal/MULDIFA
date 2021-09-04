@@ -7,8 +7,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "df_win", "df_win\df_win.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "df_common", "df_common\df_common.vcxitems", "{C904F9E2-4BDC-4EE4-A0E5-49FC4F4D0100}"
 EndProject
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "df_tool", "df_tool.pyproj", "{1D294B7A-BF0E-4C1D-AFA3-AC26D8530143}"
-EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		df_common\df_common.vcxitems*{c904f9e2-4bdc-4ee4-a0e5-49fc4f4d0100}*SharedItemsImports = 9
@@ -27,10 +25,6 @@ Global
 		{FC7E8818-AF10-4676-A22B-B32487F15349}.Release|Any CPU.ActiveCfg = Release|Win32
 		{FC7E8818-AF10-4676-A22B-B32487F15349}.Release|x64.ActiveCfg = Release|x64
 		{FC7E8818-AF10-4676-A22B-B32487F15349}.Release|x64.Build.0 = Release|x64
-		{1D294B7A-BF0E-4C1D-AFA3-AC26D8530143}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1D294B7A-BF0E-4C1D-AFA3-AC26D8530143}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{1D294B7A-BF0E-4C1D-AFA3-AC26D8530143}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1D294B7A-BF0E-4C1D-AFA3-AC26D8530143}.Release|x64.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
