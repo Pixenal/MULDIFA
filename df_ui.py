@@ -118,7 +118,8 @@ class DF_PT_df(df_parent_panel, bpy.types.Panel):
             col0.prop(df, "df_update_vertex_groups")
             
             col1 = layout.column(align = True)
-            col1.prop(df, "df_update_on_frame")
+            """ Update on frame change is currently disabled    """
+            #col1.prop(df, "df_update_on_frame")
             col1.prop(df, "df_clean_dfr_vert_layers")
         
         else:

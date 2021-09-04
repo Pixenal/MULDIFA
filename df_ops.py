@@ -1266,7 +1266,11 @@ class DF_OT_df_update(bpy.types.Operator):
         expel_nonexistant_ids_python(context, 1)
     
         #Gets current evaluated dependency graph
+        print("getting depsgraph")
+        print("df_times_update_called: ", df.df_times_update_called)
+        df.df_times_update_called += 1
         depsgraph = context.evaluated_depsgraph_get()
+        print("depshgraph gotten")
         if (df.df_volume_initialized == True):
             
             """ Creates misc buffers and objects    """
@@ -1430,8 +1434,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
         
         validate_undo_step(context)
         
-        """ Gets update dependency graph    """
-        depsgraph = context.evaluated_depsgraph_get()
         if (df.df_volume_initialized == True):
             
             """ First checks if either update_vertex_colors or update_vertex_groups are actually set to True """
@@ -2277,6 +2279,7 @@ def df_depsgraph_update_post_handler(dummy):
 
     df = bpy.context.scene.df
 
+    print("from depsgraph")
     """ dfc's and dfr's are verified after every dependency graph update to check for
         object duplication  """
     validate_dfc_dfr_ids()
@@ -2383,7 +2386,8 @@ def register():
             bpy.utils.register_class(cls)
             
         bpy.app.handlers.depsgraph_update_post.append(df_depsgraph_update_post_handler)
-        bpy.app.handlers.frame_change_post.append(frame_change_post_handler)
+        """ Update on frame change is currently disabled    """
+        #bpy.app.handlers.frame_change_post.append(frame_change_post_handler)
         bpy.app.handlers.load_pre.append(df_load_pre_handler)
         bpy.app.handlers.load_post.append(df_load_post_handler)
         bpy.app.timers.register(periodical_volume_check, persistent = True)
@@ -2407,8 +2411,8 @@ def unregister():
             bpy.utils.unregister_class(cls)
             
         bpy.app.handlers.depsgraph_update_post.remove(df_depsgraph_update_post_handler)
-        bpy.app.handlers.frame_change_post.remove(frame_change_post_handler)
-       
+        """ Update on frame change is currently disabled    """
+        #bpy.app.handlers.frame_change_post.remove(frame_change_post_handler)
         bpy.app.handlers.load_pre.remove(df_load_pre_handler)
         bpy.app.handlers.load_post.remove(df_load_post_handler)
         bpy.app.timers.unregister(periodical_volume_check)

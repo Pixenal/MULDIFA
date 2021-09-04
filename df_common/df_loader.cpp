@@ -504,7 +504,7 @@ void df_type::df_loader_type::director_type::buffers_type::buffer_cmprt_data()
 		volume_local.cmprt_data.cmprt_amount.y = get_ushort();
 		volume_local.cmprt_data.cmprt_amount.z = get_ushort();
 
-		unsigned long cmprt_amount_total = volume_local.cmprt_data.cmprt_amount.x * volume_local.cmprt_data.cmprt_amount.y * volume_local.cmprt_data.cmprt_amount.x;
+		unsigned long cmprt_amount_total = volume_local.cmprt_data.cmprt_amount.x * volume_local.cmprt_data.cmprt_amount.y * volume_local.cmprt_data.cmprt_amount.z;
 		volume_local.cmprt_data.cmprts = new df_type::volume_local_type::cmprt_data_type::cmprt_type[cmprt_amount_total];
 		for (unsigned long a = 0u; a < cmprt_amount_total; ++a)
 		{

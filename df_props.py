@@ -112,6 +112,7 @@ of the distance field; greatly affects compute times for both updating of the di
 with the distance field during rendering", default = False)
     df_undo_index : bpy.props.IntProperty(default = 0)
     df_clean_dfr_vert_layers : bpy.props.BoolProperty(name = "Clean Vert Layers", description = "Toggles the removal of respective vert group and vert color layers when a recipient layer is removed", default = False)
+    df_times_update_called : bpy.props.IntProperty(default = 0)
 
 
 
