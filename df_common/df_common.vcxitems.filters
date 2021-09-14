@@ -15,6 +15,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)thread_pool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)deflate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)df_lib.cpp">
@@ -38,5 +41,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)thread_pool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)deflate.cpp" />
   </ItemGroup>
 </Project>

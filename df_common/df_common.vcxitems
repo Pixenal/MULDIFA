@@ -14,6 +14,7 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)deflate.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)df_lib.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)df_loader.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)df_regions_buffer.cpp" />
@@ -23,6 +24,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)thread_pool.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)deflate.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)df_lib.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)thread_pool.h" />
   </ItemGroup>

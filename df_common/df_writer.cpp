@@ -22,6 +22,7 @@
 
 
 #include "../df_common/df_lib.h"
+#include "../df_common/deflate.h"
 
 
 extern shared_type shared;
@@ -64,6 +65,7 @@ void df_type::df_writer_type::write_byte_vec(shared_type::byte_vec_type& byte_ve
 /*	Writes the contents of "regions_buffer" to the file represented by "file" (endianness parameter is false for all calls to "write_byte_vec")	*/
 void df_type::df_writer_type::write_to_file()
 {
+	deflate_code_type deflate_test(regions_buffer->cmprt_data);
 	write_byte_vec(regions_buffer->grid_is_valid, file, false);
 	write_byte_vec(regions_buffer->write_id, file, false);
 	write_byte_vec(regions_buffer->grid_min_coord, file, false);

@@ -168,7 +168,7 @@ void df_type::df_loader_type::director_type::set_file_mode(bool file_mode)
 /*	Reads, and returns, a single unsigned short value from the output stream (from "file")	*/
 unsigned short df_type::df_loader_type::director_type::buffers_type::get_ushort()
 {
-	/*	Reads sv format (the result of the below function is stored in a buffer data member, so no return value)	*/
+	/*	Reads sv format (essentially Type-Length-Value (TLV) encoding but without the type part (just the length and value)) (the result of the below function is stored in a buffer data member, so no return value)	*/
 	df_loader_ptr->reader.read_sv();
 	/*	Interprets the resulting byte string as an unsigned short */
 	return df_loader_ptr->bin_interpretor.intrp_as_ushort();
@@ -188,7 +188,7 @@ unsigned short df_type::df_loader_type::director_type::buffers_type::get_ushort(
 /*	Reads, and returns, a single unsigned long value from the output stream (from "file")	*/
 unsigned long df_type::df_loader_type::director_type::buffers_type::get_ulong()
 {
-	/*	Reads sv format (the result of the below function is stored in a buffer data member, so no return value)	*/
+	/*	Reads sv format (essentially Type-Length-Value (TLV) encoding but without the type part (just the length and value)) (the result of the below function is stored in a buffer data member, so no return value)	*/
 	df_loader_ptr->reader.read_sv();
 	/*	Interprets the resulting byte string as an unsigned long */
 	return df_loader_ptr->bin_interpretor.intrp_as_ulong();
@@ -208,7 +208,7 @@ unsigned long df_type::df_loader_type::director_type::buffers_type::get_ulong(co
 /*	Reads, and returns, a single unsigned long long value from the output stream (from "file")	*/
 unsigned long long df_type::df_loader_type::director_type::buffers_type::get_ullong()
 {
-	/*	Reads sv format (the result of the below function is stored in a buffer data member, so no return value)	*/
+	/*	Reads sv format (essentially Type-Length-Value (TLV) encoding but without the type part (just the length and value)) (the result of the below function is stored in a buffer data member, so no return value)	*/
 	df_loader_ptr->reader.read_sv();
 	/*	Interprets the resulting byte string as an unsigned long long*/
 	return df_loader_ptr->bin_interpretor.intrp_as_ullong();
@@ -218,7 +218,7 @@ unsigned long long df_type::df_loader_type::director_type::buffers_type::get_ull
 /*	Reads, and returns, a single float value from the output stream (from "file")	*/
 float df_type::df_loader_type::director_type::buffers_type::get_float()
 {
-	/*	Reads sv format (the result of the below function is stored in a buffer data member, so no return value)	*/
+	/*	Reads sv format (essentially Type-Length-Value (TLV) encoding but without the type part (just the length and value)) (the result of the below function is stored in a buffer data member, so no return value)	*/
 	df_loader_ptr->reader.read_sv();
 	/*	Interprets the resulting byte string as a float */
 	return df_loader_ptr->bin_interpretor.intrp_as_float();
@@ -228,7 +228,7 @@ float df_type::df_loader_type::director_type::buffers_type::get_float()
 /*	Reads, and returns, a single double value from the output stream (from "file")	*/
 double df_type::df_loader_type::director_type::buffers_type::get_double()
 {
-	/*	Reads sv format (the result of the below function is stored in a buffer data member, so no return value)	*/
+	/*	Reads sv format (essentially Type-Length-Value (TLV) encoding but without the type part (just the length and value)) (the result of the below function is stored in a buffer data member, so no return value)	*/
 	df_loader_ptr->reader.read_sv();
 	/*	Interprets the resulting byte string as a double */
 	return df_loader_ptr->bin_interpretor.intrp_as_double();
@@ -257,7 +257,7 @@ bool df_type::df_loader_type::director_type::buffers_type::get_bool_byte()
 /*	Reads, and returns, a single int value from the output stream (from "file")	*/
 int df_type::df_loader_type::director_type::buffers_type::get_int()
 {
-	/*	Reads sv format (the result of the below function is stored in a buffer data member, so no return value)	*/
+	/*	Reads sv format (essentially Type-Length-Value (TLV) encoding but without the type part (just the length and value)) (the result of the below function is stored in a buffer data member, so no return value)	*/
 	df_loader_ptr->reader.read_sv();
 	/*	Interprets the resulting byte string as an int	*/
 	return df_loader_ptr->bin_interpretor.intrp_as_int();
@@ -897,14 +897,9 @@ void df_type::df_loader_type::reader_type::read_spec_bits(const unsigned short b
 }
 
 
-/*	Reads a single vaule from the output stream (from "file"), a single value (or sv, as abbreviated below (iirc that's whats it
-	means) refers to the specific format used in the dfcache format for storing individual values, the format consists of an initial
-	byte which states the number of bits used to represent the value (starting after said initial byte), and the next n number of
-	bits represent the actual value (some instances of sv found within in the dfcache format may use an amount of bits other than 8
-	to represent the number of bits used to store the value, eg some may use 6 bits for this (though it is always consistant for
-	each variable), however these cases would not be read using the below function, as it assumes 8 bits for the initial component).
-	As a side note, I'm considering globally reducing the number of bits used to represent the number of subsequent bits to 6
-	instead of 8 (with the exception of objects of wider types such as long double).	*/
+/*	Reads a single vaule from the output stream (from "file"), a single value (or sv) refers to the specific format used in the dfcache for storing individual values,
+	the format consists of an initial 6 bits which states the number of bits used to represent the value (starting after said initial 6 bits), and the next n number of
+	bits represent the actual value (essentially Type-Length-Value (TLV) encoding but without the type part (just the length and value)).	*/
 void df_type::df_loader_type::reader_type::read_sv()
 {
 	if (byte_buffer_occupied == false)
