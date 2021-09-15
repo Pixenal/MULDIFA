@@ -41,6 +41,8 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)thread_pool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)deflate.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)deflate.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

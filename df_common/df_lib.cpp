@@ -26,7 +26,7 @@
 
 
 /*Creates main class type objects*/
-shared_type shared;
+inline shared_type shared;
 thread_pool_type thread_pool;
 df_type df;
 
