@@ -9,37 +9,11 @@ int deflate_code_type::quick_sort(unsigned long* array, unsigned long* indices, 
 	/*	Padded as first and last are out of bounds (first = -1 and last = array_size)	*/
 	const unsigned short array_size_padded = array_size + 2u;
 
-	/*	Is for visualization	*/
-	/*unsigned long highest_freq = 0u;
-	for (short a = 0; a < array_size; ++a)
-	{
-		if (array[a] > highest_freq)
-		{
-			highest_freq = array[a];
-		}
-	}*/
 	std::vector<short> pivots;
 	pivots.push_back(-1);
 	pivots.push_back(array_size);
 	bool another_pass = true;
 
-	/*	Visualization	*/
-	/*for (short b = 20; b >= 0; --b)
-	{
-		unsigned long level = (highest_freq / 20ul) * (unsigned long)b;
-		for (short c = 0; c < array_size; c += 1)
-		{
-			if ((array[c] >= level) || (level == 0))
-			{
-				std::cout << "#";
-			}
-			else
-			{
-				std::cout << " ";
-			}
-		}
-		std::cout << std::endl;
-	}*/
 	while (another_pass)
 	{
 		another_pass = false;
@@ -114,25 +88,6 @@ int deflate_code_type::quick_sort(unsigned long* array, unsigned long* indices, 
 				{
 					another_pass = true;
 				}
-
-				/*	Visualization	*/
-				
-				/*for (short b = 20; b >= 0; --b)
-				{
-					unsigned long level = (highest_freq / 20ul) * (unsigned long)b;
-					for (short c = 0; c < array_size; c += 1)
-					{
-						if ((array[c] >= level) || (level == 0))
-						{
-							std::cout << "#";
-						}
-						else
-						{
-							std::cout << " ";
-						}
-					}
-					std::cout << std::endl;
-				}*/
 			}
 		}
 	}
@@ -160,6 +115,19 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 		std::vector<unsigned short> overflowing;
 		{
 			huffman_tree_type* huffman_tree = new huffman_tree_type(alphabet_freqs, alphabet_indices, nonzero_start, alphabet_size);
+			if (huffman_tree->tree == nullptr)
+			{
+				if ((alphabet_size - nonzero_start) == 1u)
+				{
+					codeword_lengths[alphabet_indices[nonzero_start]] = 1u;
+					codewords[alphabet_indices[nonzero_start]].push_back(0);
+					return 1;
+				}
+				else
+				{
+					return 2;
+				}
+			}
 			std::vector<huffman_tree_type::node_type*> node_stack;
 			std::vector<int> bin_stack;
 			node_stack.push_back(huffman_tree->tree);
@@ -228,19 +196,6 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 			overflowing.pop_back();
 		}
 	}
-
-	/*std::cout << std::endl;
-	std::cout << std::endl;
-
-	for (short a = 0; a < alphabet_size; ++a)
-	{
-		std::cout << a << " : " << codeword_lengths[a] << " : ";
-		for (short b = 0; b < codewords[a].size(); ++b)
-		{
-			std::cout << codewords[a][b];
-		}
-		std::cout << std::endl;
-	}*/
 
 	/*	Convert to canonical huffman codewords	*/
 	std::vector<unsigned long> bit_sorted_codewords[16];
@@ -335,11 +290,10 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 {
 	/*	Defines arrays to keep track of the frequency of symbols within the literal-length and distance alphabets	*/
-	unsigned long lit_len_freqs[288] = {};
-	unsigned long dist_freqs[32] = {};
+	unsigned long lit_len_freqs[286] = {};
+	unsigned long dist_freqs[30] = {};
 
 	std::vector<unsigned short> intermediate_code;
-	//std::vector<char> intermediate_code_sizes;
 
 	{
 		unsigned long s_buffer_start = 0ul;
@@ -369,7 +323,6 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 			}
 			intermediate_code.push_back(non_negative);
 		}
-		//intermediate_code_sizes.push_back(8);
 		++lit_len_freqs[message.char_vec[0]];
 
 		while (la_buffer_start < message_size)
@@ -417,7 +370,6 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 						non_negative = message.char_vec[b];
 					}
 					intermediate_code.push_back(non_negative);
-					//intermediate_code_sizes.push_back(8);
 					++lit_len_freqs[non_negative];
 				}
 			}
@@ -452,45 +404,13 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 				}
 
 				{
-					/*shared_type::byte_vec_type length_byte_vec;
-					shared.feed_by_bit(length_byte_vec, 0, length_symbol, 9);
-					intermediate_code.push_back((short)length_byte_vec.char_vec[0]);
-					unsigned short length_extra_bits = 0u;
-					if (length_extra > 0u)
-					{
-						length_extra_bits = std::log2(length_extra) + 1u;
-						shared.feed_by_bit(length_byte_vec, (length_byte_vec.char_vec.size() - 1), length_symbol, length_extra_bits);
-					}*/
-					//length_byte_vec.buffer_to_char_vec();
 					intermediate_code.push_back(length_symbol);
 					intermediate_code.push_back(length_extra);
-					//intermediate_code_sizes.push_back(9u + length_extra_bits);
 				}
 
 				{
-					/*shared_type::byte_vec_type distance_byte_vec;
-					shared.feed_by_bit(distance_byte_vec, 0, distance_symbol, 5);
-					unsigned short distance_extra_bits = 0u;
-					if (distance_extra > 0u)
-					{
-						distance_extra_bits = std::log2(distance_extra) + 1u;
-						shared.feed_by_bit(distance_byte_vec, (distance_byte_vec.char_vec.size() - 1), distance_symbol, distance_extra_bits);
-					}*/
 					intermediate_code.push_back(distance_symbol);
 					intermediate_code.push_back(distance_extra);
-					/*distance_byte_vec.buffer_to_char_vec();
-					for (unsigned short b = 0u; b < 3; ++b)
-					{
-						if (b < distance_byte_vec.char_vec.size())
-						{
-							intermediate_code.push_back((short)distance_byte_vec.char_vec[b]);
-						}
-						else
-						{
-							intermediate_code.push_back(0u);
-						}
-					}*/
-					//intermediate_code_sizes.push_back(9u + distance_extra_bits);
 				}
 			}
 
@@ -510,44 +430,43 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 
 	/*	Add stop codeword to end of code	*/
 	intermediate_code.push_back(256);
-	//intermediate_code_sizes.push_back(9);
 	++lit_len_freqs[256];
 
 	/*	Generate Huffman Trees	*/
 
-	unsigned short lit_len_lengths[288] = {};
-	std::vector<bool>* lit_len_codewords = new std::vector<bool>[288];
+	unsigned short lit_len_lengths[286] = {};
+	std::vector<bool>* lit_len_codewords = new std::vector<bool>[286];
 	{
-		unsigned long lit_len_indices[288];
-		for (unsigned short a = 0u; a < 288; ++a)
+		unsigned long lit_len_indices[286];
+		for (unsigned short a = 0u; a < 286; ++a)
 		{
 			lit_len_indices[a] = a;
 		}
 		std::cout << "Lit Len" << std::endl;
-		this->get_canonical_huffman_codewords(lit_len_codewords, lit_len_lengths, lit_len_freqs, lit_len_indices, 288ul, 15u);
+		this->get_canonical_huffman_codewords(lit_len_codewords, lit_len_lengths, lit_len_freqs, lit_len_indices, 286ul, 15u);
 	}
 
-	unsigned short distance_lengths[32] = {};
-	std::vector<bool>* distance_codewords = new std::vector<bool>[32];
+	unsigned short distance_lengths[30] = {};
+	std::vector<bool>* distance_codewords = new std::vector<bool>[30];
 	{
-		unsigned long distance_indices[32];
-		for (unsigned short a = 0u; a < 32; ++a)
+		unsigned long distance_indices[30];
+		for (unsigned short a = 0u; a < 30; ++a)
 		{
 			distance_indices[a] = a;
 		}
 		std::cout << "Distance" << std::endl;
-		this->get_canonical_huffman_codewords(distance_codewords, distance_lengths, dist_freqs, distance_indices, 32ul, 15u);
+		this->get_canonical_huffman_codewords(distance_codewords, distance_lengths, dist_freqs, distance_indices, 30ul, 15u);
 	}
 
 	unsigned short secondary_len_lengths[19] = {};
 	std::vector<bool>* secondary_len_codewords = new std::vector<bool>[19];
 	{
 		unsigned long secondary_len_freqs[19] = {};
-		for (unsigned short a = 0u; a < 288; ++a)
+		for (unsigned short a = 0u; a < 286; ++a)
 		{
 			++secondary_len_freqs[lit_len_lengths[a]];
 		}
-		for (unsigned short a = 0u; a < 32; ++a)
+		for (unsigned short a = 0u; a < 30; ++a)
 		{
 			++secondary_len_freqs[distance_lengths[a]];
 		}
@@ -561,51 +480,58 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 	}
 
 	/*	Writes final code	*/
-	shared_type::byte_vec_type final_code;
+
+	/*	Writes 3bit Header	*/
+
+	shared.feed_by_bit(this->code, 0u, 5ul, 3u);
 
 	/*	Writes 14bit Header	*/
 
-	unsigned short max_length_code = 0u;
-	unsigned short max_distance_code = 0u;
-	for (unsigned short a = 0u; a < 32u; ++a)
-	{
-		unsigned short length_index = 257u + a;
-		if (lit_len_lengths[length_index] > 0u)
-		{
-			max_length_code = a + 1u;
-		}
-		if (distance_lengths[a] > 0u)
-		{
-			max_length_code = a + 1u;
-		}
-	}
-	shared.feed_by_bit(final_code, 0u, max_length_code, 5u);
-	shared.feed_by_bit(final_code, 0u, max_distance_code, 5u);
-	shared.feed_by_bit(final_code, 0u, 15, 4u);
+	shared.feed_by_bit(this->code, 0u, 29, 5u);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 29, 5u);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 15, 4u);
 
 	/*	Writes Secondary tree	*/
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[16], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[17], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[18], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[0], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[8], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[7], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[9], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[6], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[10], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[5], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[11], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[4], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[12], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[3], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[13], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[2], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[14], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[1], 3);
-	shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), secondary_len_lengths[15], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[16], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[17], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[18], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[0], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[8], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[7], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[9], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[6], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[10], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[5], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[11], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[4], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[12], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[3], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[13], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[2], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[14], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[1], 3);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), secondary_len_lengths[15], 3);
+
+	/*	Writes Literal Length tree*/
+	for (unsigned short a = 0u; a < 286u; ++a)
+	{
+		std::bitset<8> bitset;
+		for (unsigned short b = 0u; b < secondary_len_lengths[lit_len_lengths[a]]; ++b)
+		{
+			bitset[b] = secondary_len_codewords[lit_len_lengths[a]][b];
+		}
+		if (secondary_len_lengths[lit_len_lengths[a]] > 0u)
+		{
+			shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), bitset.to_ulong(), secondary_len_lengths[lit_len_lengths[a]]);
+		}
+		else
+		{
+			shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 0ul, 1u);
+		}
+	}
 
 	/*	Writes Distance tree	*/
-	for (unsigned short a = 0u; a < 32u; ++a)
+	for (unsigned short a = 0u; a < 30u; ++a)
 	{
 		std::bitset<8> bitset;
 		for (unsigned short b = 0u; b < secondary_len_lengths[distance_lengths[a]]; ++b)
@@ -615,29 +541,11 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 		}
 		if (secondary_len_lengths[distance_lengths[a]] > 0u)
 		{
-			shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), bitset.to_ulong(), secondary_len_lengths[distance_lengths[a]]);
+			shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), bitset.to_ulong(), secondary_len_lengths[distance_lengths[a]]);
 		}
 		else
 		{
-			shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), 0ul, 1u);
-		}
-	}
-
-	/*	Writes Literal Length tree*/
-	for (unsigned short a = 0u; a < 288u; ++a)
-	{
-		std::bitset<8> bitset;
-		for (unsigned short b = 0u; b < secondary_len_lengths[lit_len_lengths[a]]; ++b)
-		{
-			bitset[b] = secondary_len_codewords[lit_len_lengths[a]][b];
-		}
-		if (secondary_len_lengths[lit_len_lengths[a]] > 0u)
-		{
-			shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), bitset.to_ulong(), secondary_len_lengths[lit_len_lengths[a]]);
-		}
-		else
-		{
-			shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), 0ul, 1u);
+			shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 0ul, 1u);
 		}
 	}
 
@@ -655,14 +563,14 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 				{
 					bitset[b] = lit_len_codewords[intermediate_code[a]][b];
 				}
-				shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), bitset.to_ulong(), lit_len_lengths[intermediate_code[a]]);
+				shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), bitset.to_ulong(), lit_len_lengths[intermediate_code[a]]);
 				if (intermediate_code[a] > 256)
 				{
 					++a;
 					unsigned short extra_bits = this->len_extra_bits[intermediate_code[a - 1u] - 257u];
 					if (extra_bits > 0u)
 					{
-						shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), intermediate_code[a], extra_bits);
+						shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), intermediate_code[a], extra_bits);
 					}
 					context_flag = 1u;
 				}
@@ -674,23 +582,34 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 				{
 					bitset[b] = distance_codewords[intermediate_code[a]][b];
 				}
-				shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), bitset.to_ulong(), distance_lengths[intermediate_code[a]]);
+				shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), bitset.to_ulong(), distance_lengths[intermediate_code[a]]);
 				++a;
 				unsigned short extra_bits = this->dist_extra_bits[intermediate_code[a - 1u]];
 				if (extra_bits > 0u)
 				{
-					shared.feed_by_bit(final_code, (final_code.char_vec.size() - 1), intermediate_code[a], extra_bits);
+					shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), intermediate_code[a], extra_bits);
 				}
 				context_flag = 0u;
 			}
 		}
 	}
+	unsigned long code_size = this->code.char_vec.size();
+	unsigned char* code_uchar = new unsigned char[code_size];
+	for (unsigned long a = 0u; a < code_size; ++a)
+	{
+		code_uchar[a] = this->code.char_vec[a];
+	}
+	unsigned long message_size = message.char_vec.size();
+	unsigned char* message_decompressed = new unsigned char[message_size] {};
+	/*	Insert decompress test here	*/
+	std::cout << "RESULT!!!!" << std::endl;
+	for (unsigned short a = 0u; a < message_size; ++a)
+	{
+		std::cout << message_decompressed[a];
+	}
+	std::cout << std::endl;
 
-
-
-
-
-	return 1;
+	return 0;
 	/*Only the alphabet symbols themselves are compressed with the huffman tree, not the extra bits (ie the extra bits are not replaced with a huffman codeword)	*/
 }
 
@@ -712,7 +631,14 @@ deflate_code_type::huffman_tree_type::huffman_tree_type(const unsigned long* fre
 	{
 		tree_completed = this->join();
 	}
-	this->tree = (intern_node_type*)this->node_roots[0];
+	if (this->node_roots.size() > 0)
+	{
+		this->tree = (intern_node_type*)this->node_roots[0];
+	}
+	else
+	{
+		this->tree = nullptr;
+	}
 }
 
 

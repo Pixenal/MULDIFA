@@ -23,6 +23,7 @@
 
 #include "../df_common/df_lib.h"
 #include "../df_common/thread_pool.h"
+#include "../df_common/deflate.h"
 #include <chrono>
 #include <limits>
 
@@ -1682,6 +1683,7 @@ int df_type::pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_a
 	}
 
 	thread_pool.set_jobs_per_iteration(23u);
+
 	return 0;
 }
 
@@ -3010,7 +3012,6 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 		shared_type::coord_xyz_type max_vert;
 		max_vert.x = double_nummin;
 		max_vert.y = double_nummin;
-
 		/*	Gets minimum and maximum vert within the grid	*/
 		for (unsigned long a = 1u; a < vert_amount; ++a)
 		{
@@ -3087,7 +3088,6 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 				++max_cmprt_p1.y;
 			}
 		}
-
 		/*	The below 2 for loops iterates through all (x, y)grid indices within the bounding box, and creates a spline at each which
 			goes through each grid point sharing the same (x, y) indices (all vertially aligned grid points)	*/
 		for (unsigned short a = min_cmprt.x; a < max_cmprt_p1.x; ++a)
@@ -3110,7 +3110,6 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 						{
 							/*	Adds spline index to grid point	*/
 							volume_local.grid[current_grid_point.index.x][current_grid_point.index.y][d].temp_spline_indx = zaligned_splines_size;
-
 							/*	Adds grid point's max value to coord (only considering layers belonging to the specified dfcs)	*/
 							coords[d] = volume_local.grid[current_grid_point.index.x][current_grid_point.index.y][d].get_max_value(dfc_ids);
 						}
@@ -3118,17 +3117,14 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 						shared_type::index_xy_type point_indx;
 						point_indx.x = current_grid_point.index.x;
 						point_indx.y = current_grid_point.index.y;
-
 						/*	Creates spline at (x, y) index using gathered knotts	*/
 						zaligned_splines.push_back(shared_type::ncspline_type(coords, volume_local.grid_amount.z, point_indx));
-
 						delete[] coords;
 					}
 				}
 			}
 		}
 	}
-
 	/*	The below for loop iterates through each vert passed to the function (which would be every vert in the current dfr)	*/
 	for (unsigned long a = 0u; a < vert_amount; ++a)
 	{
@@ -3153,7 +3149,6 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 		/*	Adds the value to the current verts respective entry in "verts_buffer"	*/
 		verts_buffer[a].value = value;
 	}
-
 	/*	Resets the "temp_spline_indx" data member in each grid point enclosed within the bounding box to 0	*/
 	if (interp_mode == 0)
 	{
@@ -3179,7 +3174,6 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 			}
 		}
 	}
-
 	return 0;
 }
 
@@ -3341,6 +3335,73 @@ unsigned long df_type::get_dfr_layer_size(const unsigned long& layer_indx)
 /*	Adds a new dfc layers	*/
 int df_type::add_dfc_layer()
 {
+	
+	shared_type::byte_vec_type message;
+	/*
+	message.char_vec.push_back('H');
+	message.char_vec.push_back('e');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('o');
+	message.char_vec.push_back(' ');
+	message.char_vec.push_back('H');
+	message.char_vec.push_back('e');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('o');
+	message.char_vec.push_back(' ');
+	message.char_vec.push_back('W');
+	message.char_vec.push_back('o');
+	message.char_vec.push_back('r');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('d');
+	message.char_vec.push_back('!');
+	message.char_vec.push_back('H');
+	message.char_vec.push_back('e');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('o');
+	message.char_vec.push_back(' ');
+	message.char_vec.push_back('H');
+	message.char_vec.push_back('e');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('o');
+	message.char_vec.push_back(' ');
+	message.char_vec.push_back('W');
+	message.char_vec.push_back('o');
+	message.char_vec.push_back('r');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('d');
+	message.char_vec.push_back('!');
+	message.char_vec.push_back(' ');
+	message.char_vec.push_back('W');
+	message.char_vec.push_back('o');
+	message.char_vec.push_back('r');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('d');
+	message.char_vec.push_back('!');
+	message.char_vec.push_back('H');
+	message.char_vec.push_back('e');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('o');
+	message.char_vec.push_back(' ');
+	message.char_vec.push_back('H');
+	message.char_vec.push_back('e');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('l');
+	message.char_vec.push_back('o');
+	message.char_vec.push_back(' ');
+	message.char_vec.push_back('W');
+	*/
+
+	std::string message_str("Test text");
+	for (unsigned short a = 0u; a < message_str.size(); ++a)
+	{
+		message.char_vec.push_back(message_str[a]);
+	}
+	deflate_code_type deflate_code(message);
 	dfc_layers.push_back(shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>());
 	return 0;
 }
