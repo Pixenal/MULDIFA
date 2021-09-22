@@ -498,13 +498,14 @@ public:
 		double pythag(const coord_xy_type& set);
 		void invert_bit_order(unsigned long long& number);
 		void invert_bit_order(unsigned long& number);
-		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned long long& number, unsigned short bit_size, const int type);
-		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned long& number, unsigned short bit_size);
-		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned short& number, unsigned short bit_size);
-		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const double& number, unsigned short bit_size);
-		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const float& number, unsigned short bit_size);
-		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const bool& number, unsigned short bit_size);
-		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const int& number, unsigned short bit_size);
+		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned long long number, unsigned short bit_size);
+		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned long number, unsigned short bit_size);
+		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned short number, unsigned short bit_size);
+		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const double number, unsigned short bit_size);
+		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const float number, unsigned short bit_size);
+		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const bool number, unsigned short bit_size);
+		void feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const int number, unsigned short bit_size);
+		void write_byte_vec(shared_type::byte_vec_type& byte_vec, std::ofstream& file, const bool& byte_endianness);
 };
 
 
@@ -1077,7 +1078,6 @@ private:
 		/*Member Functions*/
 
 		df_writer_type(const std::string& file_dir, const std::string& file_name, regions_buffer_type& regions_buffer);
-		void write_byte_vec(shared_type::byte_vec_type& byte_vec, std::ofstream& file, const bool& byte_endianness);
 		void write_to_file();
 		~df_writer_type();
 	};

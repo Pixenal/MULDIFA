@@ -427,7 +427,7 @@ void shared_type::invert_bit_order(unsigned long& number)
 	Note that this function is ultimately called for all datatypes (all other "feed_by_bit" overloads'
 	just convert from the  specified values original type (including floating point types) to an
 	unsigned long long before calling this function)	*/
-void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, unsigned long long byte_index, const unsigned long long& number, unsigned short bit_size, const int type)
+void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, unsigned long long byte_index, const unsigned long long number, unsigned short bit_size)
 {
 	if (!((byte_vec.next_bit_index == 0u) && (byte_index == 0u)))
 	{
@@ -504,52 +504,52 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, unsigned lon
 
 
 /*	Serializes specified value (using sv format if "bit_size" == 0, or with a fixed size if > 0)	*/
-void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned long& number, unsigned short bit_size)
+void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned long number, unsigned short bit_size)
 {
 	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long long number_buffer = number;
-	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size, 32);
+	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size);
 }
 
 
-void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned short& number, unsigned short bit_size)
+void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const unsigned short number, unsigned short bit_size)
 {
 	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long long number_buffer = number;
-	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size, 16);
+	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size);
 }
 
 
-void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const double& number, unsigned short bit_size)
+void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const double number, unsigned short bit_size)
 {
 	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long long number_buffer = 0u;
 	std::memcpy(&number_buffer, &number, 8);
 	invert_bit_order(number_buffer);
 
-	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size, 64);
+	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size);
 }
 
 
-void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const float& number, unsigned short bit_size)
+void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const float number, unsigned short bit_size)
 {
 	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long number_buffer = 0u;
 	std::memcpy(&number_buffer, &number, 4);
 	invert_bit_order(number_buffer);
 
-	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size, 32);
+	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size);
 }
 
 
-void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const bool& number, unsigned short bit_size)
+void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const bool number, unsigned short bit_size)
 {
 	/*	Converts value to an unsigned long long and calls ull overload	*/
 	unsigned long long number_buffer = number;
-	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size, 8);
+	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size);
 }
 
-void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const int& number, unsigned short bit_size)
+void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const int number, unsigned short bit_size)
 {
 	/*	Converts value to an unsigned long long and calls ull overload	*/
 	int test = 0u;
@@ -558,7 +558,30 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsign
 
 	std::memcpy(&test, &number_buffer, 4);
 
-	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size, 32);
+	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size);
+}
+
+
+/*	Writes a single byte to the specified file	*/
+void shared_type::write_byte_vec(shared_type::byte_vec_type& byte_vec, std::ofstream& file, const bool& byte_endianness)
+{
+	/*	Loops through and writes each byte in "byte_vec"	*/
+
+	unsigned long long size = byte_vec.char_vec.size();
+	for (unsigned long long a = 0u; a < size; ++a)
+	{
+		unsigned long long byte_index;
+		if (byte_endianness == true)
+		{
+			byte_index = (size - a) - 1u;
+		}
+		else
+		{
+			byte_index = a;
+		}
+
+		file.put(byte_vec.char_vec[byte_index]);
+	}
 }
 
 

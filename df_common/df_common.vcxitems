@@ -20,12 +20,14 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)df_regions_buffer.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)df_writer.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)distance_field.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)png_encoder.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)shared.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)thread_pool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)deflate.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)df_lib.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)png_encoder.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)thread_pool.h" />
   </ItemGroup>
 </Project>
