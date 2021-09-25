@@ -34,27 +34,28 @@ class png_code_type
 		/*	Data Members	*/
 
 		shared_type::byte_vec_type length_byte_vec;
-		shared_type::byte_vec_type type_byte_vec;
 		shared_type::byte_vec_type crc_byte_vec;
 
 		unsigned long long intern_length = 0ull;
 		unsigned long long intern_crc = 0ull;
+
+		//const char generator[5] = { 183, 29, 193, 4, 1 };
+		const unsigned long long generator = 4374732215ull;
 
 	public:
 
 		/*	Data Members	*/
 
 		const unsigned long long& length = intern_length;
-		const std::vector<char>& type = type_byte_vec.char_vec;
 		const unsigned long long& crc = intern_crc;
-		shared_type::byte_vec_type data;
+		shared_type::byte_vec_type type_and_data;
 
 		/*	Length of data segment, not length of whole chunk	*/
 
 		/*	Member Functions	*/
 
 		chunk_type(const char* type);
-		int gen_crc();
+		int calc_crc();
 		int update_meta();
 		int write_to_file(std::ofstream& file);
 	};
@@ -83,7 +84,7 @@ public:
 
 	/*	Member Functions	*/
 
-	png_code_type(const std::string name, const char** image, const unsigned short width, const unsigned short height);
-	int write_to_file(const std::string dir);
+	png_code_type(const std::string& name, unsigned char** image, const unsigned short width, const unsigned short height);
+	int write_to_file(const std::string& dir);
 
 };

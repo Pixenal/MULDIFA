@@ -24,6 +24,7 @@
 #include "../df_common/df_lib.h"
 #include "../df_common/thread_pool.h"
 #include "../df_common/deflate.h"
+#include "../df_common/png_encoder.h"
 #include <chrono>
 #include <limits>
 
@@ -3396,12 +3397,30 @@ int df_type::add_dfc_layer()
 	message.char_vec.push_back('W');
 	*/
 
+	/*
 	std::string message_str("Test text");
 	for (unsigned short a = 0u; a < message_str.size(); ++a)
 	{
 		message.char_vec.push_back(message_str[a]);
 	}
 	deflate_code_type deflate_code(message);
+	*/
+	unsigned char** image = new unsigned char*[512];
+	for (unsigned short a = 0u; a < 512; ++a)
+	{
+		image[a] = new unsigned char[512] {};
+		if ((a >= 100) && (a <= 300))
+		{
+			for (unsigned short b = 0; b < 512; ++b)
+			{
+				image[a][b] = 128;
+			}
+		}
+	}
+	std::string name("png_test");
+	png_code_type png(name, image, 512u, 512u);
+	png.write_to_file(std::string("E:/workshop_folders/lost_cosmonauts/LostCosmonautsTools/LostCosmonautsTools/df_png_export_test/"));
+
 	dfc_layers.push_back(shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>());
 	return 0;
 }

@@ -616,6 +616,8 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 			}
 		}
 	}
+	this->code.buffer_to_char_vec();
+	/*
 	unsigned long code_size = this->code.char_vec.size();
 	unsigned char* code_uchar = new unsigned char[code_size];
 	for (unsigned long a = 0u; a < code_size; ++a)
@@ -624,13 +626,14 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 	}
 	unsigned long message_size = message.char_vec.size();
 	unsigned char* message_decompressed = new unsigned char[message_size] {};
-	/*	Insert decompress test here	*/
+	//Insert decompress test here
 	std::cout << "RESULT!!!!" << std::endl;
 	for (unsigned short a = 0u; a < message_size; ++a)
 	{
 		std::cout << message_decompressed[a];
 	}
 	std::cout << std::endl;
+	*/
 
 	return 0;
 	/*Only the alphabet symbols themselves are compressed with the huffman tree, not the extra bits (ie the extra bits are not replaced with a huffman codeword)	*/

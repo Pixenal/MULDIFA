@@ -533,7 +533,7 @@ void df_type::regions_buffer_type::prep_mesh_cache(volume_local_type& volume_loc
 			for (unsigned long b = 0u; b < mesh_cache_size; ++b)
 			{
 				unsigned long long tris_size = update_local.dfc_cache.mesh_cache[a]->at(b)->tris.size();
-				shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), tris_size, 0u, 64);
+				shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), tris_size, 0u);
 
 				for (unsigned long long c = 0u; c < tris_size; ++c)
 				{
@@ -541,18 +541,18 @@ void df_type::regions_buffer_type::prep_mesh_cache(volume_local_type& volume_loc
 				}
 
 				unsigned long long layer_indices_size = update_local.dfc_cache.mesh_cache[a]->at(b)->layer_indices->size();
-				shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), layer_indices_size, 0u, 64);
+				shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), layer_indices_size, 0u);
 
 				for (unsigned long long c = 0u; c < layer_indices_size; ++c)
 				{
 					shared_type::index_xyzw_type& index = update_local.dfc_cache.mesh_cache[a]->at(b)->layer_indices->at(c);
 					unsigned long long linear_index = (index.z + (volume_local.grid_amount.z * index.y)) + ((volume_local.grid_amount.z * volume_local.grid_amount.y) * index.x);
 
-					shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), linear_index, 0u, 64);
-					shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), index.w, 0u, 16);
+					shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), linear_index, 0u);
+					shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), index.w, 0u);
 				}
 
-				shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), (unsigned long long)update_local.dfc_cache.mesh_cache[a]->at(b)->moved_from_legacy, 1u, 1);
+				shared.feed_by_bit(mesh_cache, (mesh_cache.char_vec.size() - 1), (unsigned long long)update_local.dfc_cache.mesh_cache[a]->at(b)->moved_from_legacy, 1u);
 			}
 		}
 	}
