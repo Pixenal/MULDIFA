@@ -1411,6 +1411,7 @@ class DF_OT_df_update(bpy.types.Operator):
                     
         incrmt_undo_step(context)
         
+        print ("calling update_recipients")
         """ Calls operator "df_update_recipients"   """
         bpy.ops.df.df_update_recipients()
         if (df.df_stashing_enabled):
@@ -1435,9 +1436,9 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
         validate_undo_step(context)
         
         if (df.df_volume_initialized == True):
-            
-            """ First checks if either update_vertex_colors or update_vertex_groups are actually set to True """
-            if ((df.df_update_vertex_colors == True) or (df.df_update_vertex_groups == True)):
+
+            """ Checks if either update_vertex_colors or update_vertex_groups are set to True """
+            if (df.df_update_vertex_colors or df.df_update_vertex_groups or df.df_update_df_maps):
                 
                 dfrs_total_list = []
                 dfrs_total_nxt_indx = 0
@@ -1486,9 +1487,89 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 in_layer = True
                                 break
                         
+                        print ("testing if in layer")
                         """ If said object exists in scene (which it should as expel nonexistent ids was called in "df_update"), proceeds   """
                         if (in_layer == True):
                             
+                            """ Defines and fills a buffer containing all dfc layers that effect the current dfr layer  """
+                            dfc_layers_nxt_indx = ctypes.c_ulong(len(dfr_layer.dfc_layers))
+                            dfc_layers_type = ctypes.c_ulong * dfc_layers_nxt_indx.value
+                            dfc_layers = dfc_layers_type()
+                            dfc_layer_indx = 0
+                            for dfc_layer in dfr_layer.dfc_layers:
+                            
+                                dfc_layers[dfc_layer_indx] = dfc_layer_name_to_indx(context, dfc_layer.dfc_layer)
+                                dfc_layer_indx += 1
+
+                            print ("testing if update df_map enabled")
+                            """ Update DF Map if enabled    """
+                            if (df.df_update_df_maps):
+
+                                #Gets object after dependency graph evaluation (so that modifiers and such are applied)
+                                depsgraph = context.evaluated_depsgraph_get()
+                                obj_eval = obj.evaluated_get(depsgraph)
+                                mesh_eval = obj_eval.data
+
+
+                                """ Not using the custom bmesh wrapper as do not need to switch modes (I dont think so at least)  """
+                                obj_bmesh = bmesh.new()
+                                obj_bmesh.from_mesh(mesh_eval)
+                                uv_layer = obj_bmesh.loops.layers.uv.get("UVMap", 0)
+
+                                print ("testing if uv_layer == None")
+                                if (uv_layer != None):
+
+                                    bmesh.ops.triangulate(obj_bmesh, faces = obj_bmesh.faces)
+                                    tri_amount = ctypes.c_ulong(len(obj_bmesh.faces))
+                                    vert_amount = ctypes.c_ulong(len(obj_bmesh.verts))
+
+                                    #Create ctypes array types (these are only types, not objects)
+                                    verts_buffer_type = coord_xyz_type * vert_amount.value
+                                    verts_uv_buffer_type = coord_xyz_type * vert_amount.value
+                                    tris_buffer_type = tri_info_type * tri_amount.value
+                                    
+                                    #Creates array objects
+                                    verts_buffer = verts_buffer_type()
+                                    verts_uv_buffer = verts_uv_buffer_type()
+                                    tris_buffer = tris_buffer_type()
+
+                                    for vert in obj_bmesh.verts:
+                                    
+                                        vert_coord = obj_eval.matrix_world @ vert.co
+                                        verts_buffer[vert.index].x = vert_coord[0]
+                                        verts_buffer[vert.index].y = vert_coord[1]
+                                        verts_buffer[vert.index].z = vert_coord[2]
+                                    
+                                    for tri in obj_bmesh.faces:
+                                        
+                                        tris_buffer[tri.index].vert_0 = tri.loops[0].vert.index
+                                        verts_uv_buffer[tri.loops[0].vert.index].x = tri.loops[0][uv_layer].uv.x
+                                        verts_uv_buffer[tri.loops[0].vert.index].y = tri.loops[0][uv_layer].uv.y
+                                        tris_buffer[tri.index].vert_1 = tri.loops[1].vert.index
+                                        verts_uv_buffer[tri.loops[1].vert.index].x = tri.loops[1][uv_layer].uv.x
+                                        verts_uv_buffer[tri.loops[1].vert.index].y = tri.loops[1][uv_layer].uv.y
+                                        tris_buffer[tri.index].vert_2 = tri.loops[2].vert.index
+                                        verts_uv_buffer[tri.loops[2].vert.index].x = tri.loops[2][uv_layer].uv.x
+                                        verts_uv_buffer[tri.loops[2].vert.index].y = tri.loops[2][uv_layer].uv.y
+
+                                    """ Ensures map directory is absolute    """
+                                    """ First Converts to absolute using bpy method for compatibility with blender's relative pathing format   """
+                                    df_map_dir_abs = bpy.path.abspath(df.df_df_map_dir)
+
+                                    """ The above bpy method can, on its own, produce artifacts, to fix this, the result is then sent
+                                        through the os module's absolute pathing method (as this seems to fix these artifacts).
+                                        (The artifacts are caused when parent folder notation is present within the relative path
+                                        (ie, //../). For instance, the relative path "//../folder_1" would be converted to
+                                        "C:/folder_0/folder_2/../folder1/". Sending this result through the os module's method
+                                        resolves this issue, giving "C:/folder_0/folder_1")   """
+                                    df_map_dir_abs = os.path.abspath(df_map_dir_abs)
+
+                                    """ Adds a trailing slash as the above os module method does not add one    """
+                                    df_map_dir_abs = os.path.join(df_map_dir_abs, '')
+                                    df_lib.call_df_update_recipient_df_map(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), ctypes.pointer(verts_uv_buffer), vert_amount, ctypes.pointer(tris_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(obj.name + "_" + dfr_layer.name, 'utf-8')))
+                                    obj_bmesh.free()
+
+
                             # Sets up structures
                             #-------------------------------------------------------------------------------------------------------------#
                             
@@ -1534,16 +1615,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                         loops_buffer[loop_index].vert_index = loop.vert.index
                                 
                                         loop_index += 1
-                                
-                            """ Defines and fills a buffer containing all dfc layers that effect the current dfr layer  """
-                            dfc_layers_nxt_indx = ctypes.c_ulong(len(dfr_layer.dfc_layers))
-                            dfc_layers_type = ctypes.c_ulong * dfc_layers_nxt_indx.value
-                            dfc_layers = dfc_layers_type()
-                            dfc_layer_indx = 0
-                            for dfc_layer in dfr_layer.dfc_layers:
-                            
-                                dfc_layers[dfc_layer_indx] = dfc_layer_name_to_indx(context, dfc_layer.dfc_layer)
-                                dfc_layer_indx += 1
                             
                             # Gets values of verts from distance field structure
                             #-------------------------------------------------------------------------------------------------------------#
@@ -1606,7 +1677,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 #Gets bmesh's deform layer (afaik vertex groups are stored wihin deform layers)
                                 df_deform = obj_bmesh.bm_cpy.verts.layers.deform.verify()
                                 
-                                """ Gets vertex group layer (this is different to the deform layer in bmesh (not that
+                                """ Gets vertex group layer (this is different to the deform layer in bmesh (note that
                                     the below statment does not use bmesh)) """
                                 df_vert_group = obj.vertex_groups.get(dfr_layer.name)
                                     

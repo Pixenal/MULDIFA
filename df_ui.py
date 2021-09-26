@@ -114,6 +114,10 @@ class DF_PT_df(df_parent_panel, bpy.types.Panel):
             layout.prop(df, "df_gamma")
             
             col0 = layout.column(align = True)
+            col0.prop(df, "df_update_df_maps")
+            col0_col1 = col0.column()
+            col0_col1.enabled = df.df_update_df_maps
+            col0_col1.prop(df, "df_df_map_dir")
             col0.prop(df, "df_update_vertex_colors")
             col0.prop(df, "df_update_vertex_groups")
             
@@ -192,17 +196,43 @@ class DF_PT_df_layers(df_parent_panel, bpy.types.Panel):
         col0_row1_col0 = col0_row1.column(align = True)
         col0_row1_col0.operator("df.df_add_dfr_layer", text = "", icon = "ADD")
         col0_row1_col0.operator("df.df_remove_dfr_layer", text = "", icon = "REMOVE")
-        
-        col0_row2 = col0.row()
-    
-        if (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers)):
 
-            col0_row2.template_list("DF_UL_df_dfr_layer_dfc_layers", "", context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "dfc_layers", context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "dfc_layers_indx")
+
+#Active DFR layer options
+class DF_PT_dfr_layer_options(df_parent_panel, bpy.types.Panel):
+
+    bl_idname = "DF_PT_dfr_layer_options"
+    bl_label = "Recipient Layer Options"
+    bl_parent_id = "DF_PT_df_layers"
+
+    @classmethod
+    def poll(cls, context):
+
+        return context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers)
+
+    def draw(self, context):
+
+        df = context.scene.df
+        layout = self.layout
+        col0 = layout.column()
+
+        col0.label(text = "Contributor Layers")
+        col0_row2 = col0.row()
+
+        col0.label(text = "DF Map Resolution")
+        col0_col1 = col0.column(align = True)
+        col0_col1.prop(context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "df_map_width")
+        col0_col1.prop(context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "df_map_height")
+
+        #col0.prop_search(context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "df_map_uv", context.scene, "uv_layers", text = "", icon = 'GROUP_UVS')
+
+        col0_row2.template_list("DF_UL_df_dfr_layer_dfc_layers", "", context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "dfc_layers", context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "dfc_layers_indx")
+
+        col0_row2_col0 = col0_row2.column(align = True)
+        add_props = col0_row2_col0.operator("df.df_add_dfr_layer_dfc_layer", text = "", icon = "ADD")
+        add_props.dfr_layer_indx = context.scene.df_dfr_layers_indx
     
-            col0_row2_col0 = col0_row2.column(align = True)
-            add_props = col0_row2_col0.operator("df.df_add_dfr_layer_dfc_layer", text = "", icon = "ADD")
-            add_props.dfr_layer_indx = context.scene.df_dfr_layers_indx
-        
+
 #Cache Dir child panel
 class DF_PT_df_cache(df_parent_panel, bpy.types.Panel):
 
@@ -222,7 +252,6 @@ class DF_PT_df_cache(df_parent_panel, bpy.types.Panel):
         col0.operator("df.df_make_df_cache_dir_rel")
             
         layout.prop(df, "df_enable_cache", icon = 'DISK_DRIVE')
-        
         
         
 #Volume child Panel    
@@ -448,6 +477,7 @@ if 	((current_platform == "win32") or
                 DF_UL_df_dfc_layers,
                 DF_UL_df_dfr_layer_dfc_layers,
                 DF_UL_df_dfr_layers,
+                DF_PT_dfr_layer_options,
                 DF_PT_df_volume,
                 DF_PT_df_cache]
                 

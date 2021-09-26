@@ -1765,7 +1765,7 @@ int df_type::update_grid_points(void* arg_ptr, unsigned short job_index)
 			  */
 
 
-			  /*If the projected point is within the triangle, then the distance is just the previously calculated perpendicular distance between the current grid points position and the plane created bythe triangle*/
+			  /*If the projected point is within the triangle, then the distance is just the previously calculated perpendicular distance between the current grid points position and the plane created by the triangle*/
 			  /*This is the case if all 3 coordinates (u, v, and w) are greater than 0*/
 			if ((nearest_plane_point_bc.u >= 0) && (nearest_plane_point_bc.v >= 0) && (nearest_plane_point_bc.w >= 0))
 			{
@@ -3177,6 +3177,77 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 	}
 	return 0;
 }
+
+
+int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, shared_type::coord_xyz_type* verts_uv_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name)
+{
+	unsigned long texel_amount_total = height * width;
+	shared_type::coord_xy_type texel_dim;
+	shared_type::coord_xy_type texel_half_dim;
+	texel_dim.x = 1.0 / (double)width;
+	texel_half_dim.x = texel_dim.x / 2.0;
+	texel_dim.y = 1.0 / (double)height;
+	texel_half_dim.y = texel_dim.y / 2.0;
+
+	/*	"vert_info_type" is just being used here to represent the texels as that's to be the type expected by "update_recipient"
+		(that function was made before df maps were implemented, back when only vert colors and vert groups were writted to.
+		As a result it was assumed that only vertex info would be passed though it, though obvisously that is no longer the case)	*/
+	shared_type::vert_info_type* df_map_linear = new shared_type::vert_info_type[texel_amount_total];
+
+	shared_type::coord_xyz_type texel_coord;
+	shared_type::coord_xyz_type normal;
+	normal.z = 1.0;
+	for (unsigned short a = 0u; a < height; ++a)
+	{
+		texel_coord.y = texel_half_dim.y + (texel_dim.y * (double)a);
+		for (unsigned short b = 0u; b < width; ++b)
+		{
+			texel_coord.x = texel_half_dim.x + (texel_dim.x * (double)b);
+
+			/*	Find enclosing triangle	*/
+			unsigned long c;
+			shared_type::coord_uvw_type texel_coord_bc;
+			for (c = 0ul; c < tri_amount; ++c)
+			{
+				texel_coord_bc = shared.cartesian_to_barycentric(verts_uv_buffer[tris_buffer[c].vert_0], verts_uv_buffer[tris_buffer[c].vert_1], verts_uv_buffer[tris_buffer[c].vert_2], texel_coord, normal);
+				if (((texel_coord_bc.u >= 0) && (texel_coord_bc.v >= 0) && (texel_coord_bc.w >= 0)))
+				{
+					break;
+				}
+			}
+
+			unsigned long linear_index = (a * width) + b;
+			df_map_linear[linear_index].coord = shared.barycentric_to_cartesian(verts_buffer[tris_buffer[c].vert_0], verts_buffer[tris_buffer[c].vert_1], verts_buffer[tris_buffer[c].vert_2], texel_coord_bc);
+		}
+	}
+
+	this->update_recipient(dfc_layers, dfc_layers_nxt_indx, df_map_linear, texel_amount_total, interp_mode, gamma);
+
+	unsigned char** df_map = new unsigned char* [height];
+	for (unsigned short a = 0u; a < height; ++a)
+	{
+		df_map[a] = new unsigned char[width];
+		for (unsigned short b = 0u; b < width; ++b)
+		{
+			unsigned long linear_index = (a * width) + b;
+			df_map[a][b] = df_map_linear[linear_index].value * 255.0f;
+		}
+	}
+
+	png_code_type png_code(name, df_map, width, height);
+	png_code.write_to_file(dir);
+
+	/*	Deallocate dynamically allocated objects	*/
+	delete[] df_map_linear;
+	for (unsigned short a = 0u; a < height; ++a)
+	{
+		delete[] df_map[a];
+	}
+	delete[] df_map;
+
+	return 0;
+}
+
 
 /*	Currently nop	*/
 int df_type::post_update_recipients()

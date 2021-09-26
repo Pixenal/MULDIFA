@@ -67,6 +67,9 @@ class df_dfr_layer_properties(bpy.types.PropertyGroup):
     name : bpy.props.StringProperty(default = "New Layer")
     dfr_ids_indx : bpy.props.IntProperty(default = 0)
     dfc_layers_indx : bpy.props.IntProperty(default = 0)
+    df_map_height : bpy.props.IntProperty(default = 512, name = "Height")
+    df_map_width : bpy.props.IntProperty(default = 512, name = "Width")
+    df_map_uv : bpy.props.StringProperty()
 
 
 class df_properties(bpy.types.PropertyGroup):
@@ -81,7 +84,8 @@ defines how many grid points per compartment; lower values generally give faster
 end up negatively effecting update times as well")
     df_grid_spacing : bpy.props.FloatProperty(name = "Point Spacing", default = 1, min = .001, soft_min = .2, soft_max = 8, description = "The distance between grid points; determines the resolution \
 of the distance field; greatly affects compute times for both updating of the distance field and initialization of the volume")
-    df_update_vertex_colors : bpy.props.BoolProperty(name = "Update Vertex Colors", default = True)
+    df_update_df_maps : bpy.props.BoolProperty(name = "Update DF Maps", default = True)
+    df_update_vertex_colors : bpy.props.BoolProperty(name = "Update Vertex Colors", default = False)
     df_update_vertex_groups : bpy.props.BoolProperty(name = "Update Vertex Groups", default = False)
     df_distance_last : bpy.props.FloatProperty()
     df_cmprt_size_last : bpy.props.IntProperty()
@@ -99,7 +103,7 @@ of the distance field; greatly affects compute times for both updating of the di
     df_next_dfr_id : bpy.props.IntProperty(default = 1)
     df_write_id_index : bpy.props.IntProperty(default = 0)
     df_write_id_rand : bpy.props.IntProperty(default = 0)
-    df_cache_dir : bpy.props.StringProperty(name = "Cache Dir", subtype = 'DIR_PATH')
+    df_cache_dir : bpy.props.StringProperty(name = "Dir", subtype = 'DIR_PATH')
     df_cache_dir_is_rel : bpy.props.BoolProperty(default = False)
     df_cache_dir_skip_handler : bpy.props.BoolProperty(default = False)
     df_enable_cache : bpy.props.BoolProperty(name = "Enable Cache", default = False)
@@ -113,6 +117,7 @@ with the distance field during rendering", default = False)
     df_undo_index : bpy.props.IntProperty(default = 0)
     df_clean_dfr_vert_layers : bpy.props.BoolProperty(name = "Clean Vert Layers", description = "Toggles the removal of respective vert group and vert color layers when a recipient layer is removed", default = False)
     df_times_update_called : bpy.props.IntProperty(default = 0)
+    df_df_map_dir : bpy.props.StringProperty(name = "Dir", subtype = 'DIR_PATH')
 
 
 

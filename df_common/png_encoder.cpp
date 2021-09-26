@@ -126,18 +126,31 @@ png_code_type::png_code_type(const std::string& name, unsigned char** image, con
 		/*	Alias	*/
 		chunk_type& chunk = this->chunks.back();
 
+		/*	the filtering and conversion to byte_vec for loops are seperated for organization purposes (this is why they are not done in the same for loop)	*/
 		chunk.type_and_data.buffer_to_char_vec();
 		/*	Filtering	*/
+		/*	Using filtering method "sub" (specified as method 1)	*/
 		{
+			this->filtered_image = new unsigned char* [height];
+			unsigned short offset = this->bit_depth / 8;
+			for (unsigned short a = 0u; a < height; ++a)
+			{
+				this->filtered_image[a] = new unsigned char[width];
+				this->filtered_image[a][0] = image[a][0];
+				for (unsigned short b = 1u; b < width; ++b)
+				{
+					this->filtered_image[a][b] = image[a][b] - image[a][b - offset];
+				}
+			}
 			/*	Offset of corresponding byte (eg, would be 1 for 8 bits per pixel)*/
 		}
 		shared_type::byte_vec_type data_byte_vec;
 		for (unsigned short a = 0u; a < height; ++a)
 		{
-			data_byte_vec.char_vec.push_back(0);
+			data_byte_vec.char_vec.push_back(1);
 			for (unsigned short b = 0u; b < width; ++b)
 			{
-				data_byte_vec.char_vec.push_back(image[a][b]);
+				data_byte_vec.char_vec.push_back(this->filtered_image[a][b]);
 			}
 		}
 		deflate_code_type deflated_data(data_byte_vec);

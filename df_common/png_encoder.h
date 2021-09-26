@@ -63,7 +63,7 @@ class png_code_type
 	/*	Data Members	*/
 
 	std::vector<chunk_type> chunks;
-	char** filtered_image = nullptr;
+	unsigned char** filtered_image = nullptr;
 
 	/*	They're unsigned long because the serielizer works with unsigned long longs	
 		bit_depth = 8 bits per sample
@@ -75,7 +75,7 @@ class png_code_type
 	unsigned long long bit_depth = 8ull;
 	unsigned long long color_type = 0ull;
 	unsigned long long compression_method = 0ull;
-	unsigned long long filter_method = 1ull;
+	unsigned long long filter_method = 0ull;
 	unsigned long long interlace_method = 0ull;
 
 public:

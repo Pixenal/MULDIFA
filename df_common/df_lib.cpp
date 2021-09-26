@@ -118,6 +118,13 @@ extern "C"
 	}
 
 
+	int call_df_update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, shared_type::coord_xyz_type* verts_uv_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name)
+	{
+		df.update_recipient_df_map(dfc_layers, dfc_layers_nxt_indx, verts_buffer, verts_uv_buffer, vert_amount, tris_buffer, tri_amount, height, width, interp_mode, gamma, dir, name);
+		return 0;
+	}
+
+
 	EXPORT int call_df_post_update_recipients()
 	{
 		df.post_update_recipients();

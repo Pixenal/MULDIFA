@@ -106,6 +106,16 @@ shared_type::coord_uvw_type shared_type::cartesian_to_barycentric(const shared_t
 }
 
 
+shared_type::coord_xyz_type shared_type::barycentric_to_cartesian(const shared_type::coord_xyz_type& tri_vertex_0, const shared_type::coord_xyz_type& tri_vertex_1, const shared_type::coord_xyz_type& tri_vertex_2, const shared_type::coord_uvw_type& point)
+{
+	shared_type::coord_xyz_type point_cart;
+	point_cart.x = (point.u * tri_vertex_0.x) + (point.v * tri_vertex_1.x) + (point.w * tri_vertex_2.x);
+	point_cart.y = (point.u * tri_vertex_0.y) + (point.v * tri_vertex_1.y) + (point.w * tri_vertex_2.y);
+	point_cart.z = (point.u * tri_vertex_0.z) + (point.v * tri_vertex_1.z) + (point.w * tri_vertex_2.z);
+	return point_cart;
+}
+
+
 double shared_type::lerp(const double& value_0, const double& value_1, const double& lerp_alpha)
 {
 	double lerp_alpha_cpy;

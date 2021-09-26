@@ -491,6 +491,7 @@ public:
 	/*Member functions*/
 	
 		coord_uvw_type cartesian_to_barycentric(const coord_xyz_type& tri_vertex_0, const coord_xyz_type& tri_vertex_1, const coord_xyz_type& tri_vertex_2, const coord_xyz_type& point, const coord_xyz_type& tri_normal);
+		coord_xyz_type barycentric_to_cartesian(const coord_xyz_type& tri_vertex_0, const coord_xyz_type& tri_vertex_1, const coord_xyz_type& tri_vertex_2, const coord_uvw_type& point);
 		double lerp(const double& value_0, const double& value_1, const double& lerp_alpha);
 		coord_xyz_type get_dist_vector(const coord_xyz_type& point_0, const coord_xyz_type& point_1);
 		coord_xy_type get_dist_vector(const coord_xy_type& point_0, const coord_xy_type& point_1);
@@ -1400,6 +1401,7 @@ public:
 	shared_type::index_xyz_type get_enclsing_cmprt(const shared_type::coord_xyz_type& coord);
 	shared_type::index_xyz_type get_enclsing_cmprt_from_indx_space(const shared_type::coord_xyz_type& indx_space_coord);
 	int update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma);
+	int update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, shared_type::coord_xyz_type* verts_uv_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name);
 	int post_update_recipients();
 	int clean();
 	int clean_special();
@@ -1469,6 +1471,7 @@ extern "C"
 	EXPORT int call_df_add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc);
 	EXPORT int call_df_pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount);
 	EXPORT int call_df_update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma);
+	EXPORT int call_df_update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, shared_type::coord_xyz_type* verts_uv_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name);
 	EXPORT int call_df_post_update_recipients();
 	EXPORT int call_df_check_volume(shared_type::coord_xyz_type* verts_buffer);
 	EXPORT int call_df_defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount, int& greatest_id);
