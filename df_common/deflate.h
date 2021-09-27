@@ -170,6 +170,7 @@ public:
 
 	/*	Member Functions	*/
 
+	unsigned long calc_adler32(const shared_type::byte_vec_type& message);
 	int quick_sort(unsigned long* array, unsigned long* indices, const unsigned short array_size);
 	int get_canonical_huffman_codewords(std::vector<bool>* codewords, unsigned short* codeword_lengths, unsigned long* alphabet_freqs, unsigned long* alphabet_indices, const unsigned long alphabet_size, const unsigned short max_length);
 	int encode(const shared_type::byte_vec_type& message);

@@ -252,11 +252,23 @@ void shared_type::vert_info_type::clean()
 
 void shared_type::tri_info_type::clean()
 {
-	vert_0 = 0;
-	vert_1 = 0;
-	vert_2 = 0;
+	vert_0 = 0ul;
+	vert_1 = 0ul;
+	vert_2 = 0ul;
 	normal.clean();
-	d = 0;
+	d = .0;
+}
+
+
+/*shared_type::tri_uv_info_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+void shared_type::tri_uv_info_type::clean()
+{
+	uv_vert_0.clean();
+	uv_vert_1.clean();
+	uv_vert_2.clean();
 }
 
 

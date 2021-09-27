@@ -321,6 +321,12 @@ class tri_info_type(ctypes.Structure):
                 ("d", ctypes.c_double)]
 
 
+class tri_uv_info_type(ctypes.Structure):
+    _fields_ = [("uv_vert_0", coord_xyz_type),
+                ("uv_vert_1", coord_xyz_type),
+                ("uv_vert_2", coord_xyz_type)]
+
+
 class vert_info_type(ctypes.Structure):
     _fields_ = [("coord", coord_xyz_type),
                 ("value", ctypes.c_float)]
@@ -1525,13 +1531,13 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
 
                                     #Create ctypes array types (these are only types, not objects)
                                     verts_buffer_type = coord_xyz_type * vert_amount.value
-                                    verts_uv_buffer_type = coord_xyz_type * vert_amount.value
                                     tris_buffer_type = tri_info_type * tri_amount.value
+                                    tris_uv_buffer_type = tri_uv_info_type * tri_amount.value
                                     
                                     #Creates array objects
                                     verts_buffer = verts_buffer_type()
-                                    verts_uv_buffer = verts_uv_buffer_type()
                                     tris_buffer = tris_buffer_type()
+                                    tris_uv_buffer = tris_uv_buffer_type()
 
                                     for vert in obj_bmesh.verts:
                                     
@@ -1543,14 +1549,14 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                     for tri in obj_bmesh.faces:
                                         
                                         tris_buffer[tri.index].vert_0 = tri.loops[0].vert.index
-                                        verts_uv_buffer[tri.loops[0].vert.index].x = tri.loops[0][uv_layer].uv.x
-                                        verts_uv_buffer[tri.loops[0].vert.index].y = tri.loops[0][uv_layer].uv.y
+                                        tris_uv_buffer[tri.index].uv_vert_0.x = tri.loops[0][uv_layer].uv.x
+                                        tris_uv_buffer[tri.index].uv_vert_0.y = tri.loops[0][uv_layer].uv.y
                                         tris_buffer[tri.index].vert_1 = tri.loops[1].vert.index
-                                        verts_uv_buffer[tri.loops[1].vert.index].x = tri.loops[1][uv_layer].uv.x
-                                        verts_uv_buffer[tri.loops[1].vert.index].y = tri.loops[1][uv_layer].uv.y
+                                        tris_uv_buffer[tri.index].uv_vert_1.x = tri.loops[1][uv_layer].uv.x
+                                        tris_uv_buffer[tri.index].uv_vert_1.y = tri.loops[1][uv_layer].uv.y
                                         tris_buffer[tri.index].vert_2 = tri.loops[2].vert.index
-                                        verts_uv_buffer[tri.loops[2].vert.index].x = tri.loops[2][uv_layer].uv.x
-                                        verts_uv_buffer[tri.loops[2].vert.index].y = tri.loops[2][uv_layer].uv.y
+                                        tris_uv_buffer[tri.index].uv_vert_2.x = tri.loops[2][uv_layer].uv.x
+                                        tris_uv_buffer[tri.index].uv_vert_2.y = tri.loops[2][uv_layer].uv.y
 
                                     """ Ensures map directory is absolute    """
                                     """ First Converts to absolute using bpy method for compatibility with blender's relative pathing format   """
@@ -1566,7 +1572,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
 
                                     """ Adds a trailing slash as the above os module method does not add one    """
                                     df_map_dir_abs = os.path.join(df_map_dir_abs, '')
-                                    df_lib.call_df_update_recipient_df_map(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), ctypes.pointer(verts_uv_buffer), vert_amount, ctypes.pointer(tris_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(obj.name + "_" + dfr_layer.name, 'utf-8')))
+                                    df_lib.call_df_update_recipient_df_map(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), vert_amount, ctypes.pointer(tris_buffer), ctypes.pointer(tris_uv_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(obj.name + "_" + dfr_layer.name, 'utf-8')))
                                     obj_bmesh.free()
 
 

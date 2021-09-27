@@ -44,12 +44,14 @@ png_code_type::chunk_type::chunk_type(const char* type)
 
 int png_code_type::chunk_type::calc_crc()
 {
+	//this->type_and_data.char_vec.swap(std::vector<char>)
+
 	unsigned long crc = 0xFFFFFFFF;
 	{
 		unsigned long long message_size = this->type_and_data.char_vec.size();
 		for (unsigned long long a = 0ull; a < message_size; ++a)
 		{
-			crc ^= this->type_and_data.char_vec[a];
+			crc ^= (unsigned char)this->type_and_data.char_vec[a];
 			for (unsigned short b = 0u; b < 8u; ++b)
 			{
 				if (crc & 1)

@@ -3179,7 +3179,7 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 }
 
 
-int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, shared_type::coord_xyz_type* verts_uv_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name)
+int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name)
 {
 	unsigned long texel_amount_total = height * width;
 	shared_type::coord_xy_type texel_dim;
@@ -3204,20 +3204,32 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 		{
 			texel_coord.x = texel_half_dim.x + (texel_dim.x * (double)b);
 
+			if ((a == 256) && (b == 256))
+			{
+				char e = 1;
+			}
+
 			/*	Find enclosing triangle	*/
 			unsigned long c;
 			shared_type::coord_uvw_type texel_coord_bc;
 			for (c = 0ul; c < tri_amount; ++c)
 			{
-				texel_coord_bc = shared.cartesian_to_barycentric(verts_uv_buffer[tris_buffer[c].vert_0], verts_uv_buffer[tris_buffer[c].vert_1], verts_uv_buffer[tris_buffer[c].vert_2], texel_coord, normal);
+				texel_coord_bc = shared.cartesian_to_barycentric(tris_uv_buffer[c].uv_vert_0, tris_uv_buffer[c].uv_vert_1, tris_uv_buffer[c].uv_vert_2, texel_coord, normal);
 				if (((texel_coord_bc.u >= 0) && (texel_coord_bc.v >= 0) && (texel_coord_bc.w >= 0)))
 				{
 					break;
 				}
 			}
-
 			unsigned long linear_index = (a * width) + b;
-			df_map_linear[linear_index].coord = shared.barycentric_to_cartesian(verts_buffer[tris_buffer[c].vert_0], verts_buffer[tris_buffer[c].vert_1], verts_buffer[tris_buffer[c].vert_2], texel_coord_bc);
+			if (c != tri_amount)
+			{
+				df_map_linear[linear_index].coord = shared.barycentric_to_cartesian(verts_buffer[tris_buffer[c].vert_0], verts_buffer[tris_buffer[c].vert_1], verts_buffer[tris_buffer[c].vert_2], texel_coord_bc);
+			}
+			else
+			{
+				df_map_linear[linear_index].coord = volume_local.min_grid_coord;
+				df_map_linear[linear_index].coord.x -= 1.0;
+			}
 		}
 	}
 
@@ -3476,6 +3488,7 @@ int df_type::add_dfc_layer()
 	}
 	deflate_code_type deflate_code(message);
 	*/
+	/*
 	unsigned char** image = new unsigned char*[512];
 	for (unsigned short a = 0u; a < 512; ++a)
 	{
@@ -3491,6 +3504,7 @@ int df_type::add_dfc_layer()
 	std::string name("png_test");
 	png_code_type png(name, image, 512u, 512u);
 	png.write_to_file(std::string("E:/workshop_folders/lost_cosmonauts/LostCosmonautsTools/LostCosmonautsTools/df_png_export_test/"));
+	*/
 
 	dfc_layers.push_back(shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>());
 	return 0;

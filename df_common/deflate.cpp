@@ -27,6 +27,45 @@
 
 inline shared_type shared;
 
+
+unsigned long deflate_code_type::calc_adler32(const shared_type::byte_vec_type& message)
+{
+	unsigned long message_size = message.char_vec.size();
+	unsigned long long low = 1ull;
+	unsigned long long high = 0ull;
+	unsigned long long high_intermediate_sum = 1ull;
+
+	for (unsigned long a = 0u; a < message_size; ++a)
+	{
+		if (low == (std::numeric_limits<unsigned long long>::max)())
+		{
+			low %= 65521ull;
+		}
+		low += (unsigned char)message.char_vec[a];
+
+		if (high == (std::numeric_limits<unsigned long long>::max)())
+		{
+			high %= 65521ull;
+		}
+		high_intermediate_sum += (unsigned char)message.char_vec[a];
+		high += high_intermediate_sum;
+	}
+	low %= 65521ull;
+	high %= 65521ull;
+	unsigned long checksum = low + (65536ull * high);
+	unsigned long checksum_reversed = 0ul;;
+	for (unsigned short a = 0u; a < 4u; ++a)
+	{
+		unsigned long buffer  =0ul;
+		memcpy(&buffer, &checksum, 1);
+		checksum_reversed ^= (buffer << ((3u - a) * 8u));
+		checksum >>= 8u;
+	}
+
+	return checksum_reversed;
+}
+
+
 int deflate_code_type::quick_sort(unsigned long* array, unsigned long* indices, const unsigned short array_size)
 {
 	/*	Padded as first and last are out of bounds (first = -1 and last = array_size)	*/
@@ -312,6 +351,8 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 
 int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 {
+	unsigned long adler32_checksum = this->calc_adler32(message);
+
 	/*	Defines arrays to keep track of the frequency of symbols within the literal-length and distance alphabets	*/
 	unsigned long lit_len_freqs[286] = {};
 	unsigned long dist_freqs[30] = {};
@@ -504,9 +545,24 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 
 	/*	Writes final code	*/
 
+	/*	Writes Zlib header	*/
+
+		/*	CMF	*/
+
+		/*	Compresion method (deflate)	*/
+		shared.feed_by_bit(this->code, 0u, 8ul, 4u);
+		/*	Compression info (specifies a window size of max 32k)	*/
+		shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 7ul, 4u);
+
+		/*	Flags	*/
+
+		shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 30ul, 5u);
+		shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 0ul, 1u);
+		shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 1ul, 2u);
+
 	/*	Writes 3bit Header	*/
 
-	shared.feed_by_bit(this->code, 0u, 5ul, 3u);
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 5ul, 3u);
 
 	/*	Writes 14bit Header	*/
 
@@ -616,6 +672,14 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 			}
 		}
 	}
+
+	
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 0ull, (7u - this->code.next_bit_index));
+
+	/*	Writes Adler32 Checksum	*/
+
+	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), adler32_checksum, 32u);
+
 	this->code.buffer_to_char_vec();
 	/*
 	unsigned long code_size = this->code.char_vec.size();
