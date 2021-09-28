@@ -1550,13 +1550,13 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                         
                                         tris_buffer[tri.index].vert_0 = tri.loops[0].vert.index
                                         tris_uv_buffer[tri.index].uv_vert_0.x = tri.loops[0][uv_layer].uv.x
-                                        tris_uv_buffer[tri.index].uv_vert_0.y = tri.loops[0][uv_layer].uv.y
+                                        tris_uv_buffer[tri.index].uv_vert_0.y = 1.0 - tri.loops[0][uv_layer].uv.y
                                         tris_buffer[tri.index].vert_1 = tri.loops[1].vert.index
                                         tris_uv_buffer[tri.index].uv_vert_1.x = tri.loops[1][uv_layer].uv.x
-                                        tris_uv_buffer[tri.index].uv_vert_1.y = tri.loops[1][uv_layer].uv.y
+                                        tris_uv_buffer[tri.index].uv_vert_1.y = 1.0 - tri.loops[1][uv_layer].uv.y
                                         tris_buffer[tri.index].vert_2 = tri.loops[2].vert.index
                                         tris_uv_buffer[tri.index].uv_vert_2.x = tri.loops[2][uv_layer].uv.x
-                                        tris_uv_buffer[tri.index].uv_vert_2.y = tri.loops[2][uv_layer].uv.y
+                                        tris_uv_buffer[tri.index].uv_vert_2.y = 1.0 - tri.loops[2][uv_layer].uv.y
 
                                     """ Ensures map directory is absolute    """
                                     """ First Converts to absolute using bpy method for compatibility with blender's relative pathing format   """

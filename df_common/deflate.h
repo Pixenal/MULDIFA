@@ -152,11 +152,11 @@ class deflate_code_type
 	const unsigned long max_lzss_distance = 32768ul;
 	/*	Last element in both alphabets is just padding	*/
 	const unsigned short len_alphabet_size = 31u;
-	const unsigned short dist_alphabet_size = 30u;
+	const unsigned short dist_alphabet_size = 31u;
 	const unsigned short dist_alphabet[31] = {	1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49,
 												65, 97, 129, 193, 257, 385, 513, 769, 1025,
 												1537, 2049, 3073, 4097, 6145, 8193, 12289,
-												16385, 24577, 24578 };
+												16385, 24577, 32769 };
 	const unsigned short dist_extra_bits[31] = {	0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13 };
 	const unsigned short len_alphabet[30] = {	3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17,
 												19, 23, 27, 31, 35, 43, 51, 59, 67, 83,

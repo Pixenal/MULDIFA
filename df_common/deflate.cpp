@@ -233,6 +233,21 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 			delete huffman_tree;
 		}
 
+		std::cout << "PreOverflow" << std::endl;
+		std::cout << std::endl;
+		std::cout << std::endl;
+
+		for (short a = 0; a < alphabet_size; ++a)
+		{
+			std::cout << a << " : " << codeword_lengths[a] << " : ";
+			for (short b = 0; b < codewords[a].size(); ++b)
+			{
+				std::cout << codewords[a][b];
+			}
+			std::cout << std::endl;
+		}
+
+		/*	Rearranges to prevent overflowing (if any overflowing codewords exist)	*/
 		unsigned short overflowing_size = overflowing.size();
 		for (short a = (overflowing_size - 1); a >= 0; --a)
 		{
@@ -257,6 +272,71 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 
 			overflowing.pop_back();
 		}
+
+		/*	Ensures complete set. 
+			The above anti-overflow rearrangement can result in an compomplete set of lengths, eg:
+			  O
+			 / \
+			O   O
+			     \
+			      O
+			The below code checks for any branches like this and moves the codeword up the tree if it encounters one,
+			resulting in this:
+			  O
+			 / \
+			O   O
+			*/
+		{
+			for (unsigned short a = 0u; a < alphabet_size; ++a)
+			{
+				if (codeword_lengths[a] < 2)
+				{
+					continue;
+				}
+				unsigned short parent_node_len = codeword_lengths[a] - 1u;
+				for (unsigned short b = 0u; b < alphabet_size; ++b)
+				{
+					if ((b != a) && (codeword_lengths[b] > parent_node_len))
+					{
+						for (unsigned short c = 0u; c < parent_node_len; ++c)
+						{
+							if (codewords[a][c] != codewords[b][c])
+							{
+								goto doesnt_match;
+							}
+						}
+						goto parent_node_is_valid;
+
+					doesnt_match:
+
+						continue;
+					}
+				}
+				/*	Parent node is invalid
+					(codeword[a] is the only child node of parent node)	*/
+				codewords[a].pop_back();
+				codeword_lengths[a] -= 1u;
+
+			parent_node_is_valid:
+
+				continue;
+			}
+		}
+	}
+
+
+	std::cout << "AfterOverflow" << std::endl;
+	std::cout << std::endl;
+	std::cout << std::endl;
+
+	for (short a = 0; a < alphabet_size; ++a)
+	{
+		std::cout << a << " : " << codeword_lengths[a] << " : ";
+		for (short b = 0; b < codewords[a].size(); ++b)
+		{
+			std::cout << codewords[a][b];
+		}
+		std::cout << std::endl;
 	}
 
 	/*	Convert to canonical huffman codewords	*/
@@ -396,6 +476,11 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 			unsigned long match_index = la_buffer_start;
 			for (long b = (la_buffer_start - 1); b >= (long)s_buffer_start; --b)
 			{
+				if (b == ((513 * 399) + 195))
+				{
+					int e = 1;
+				}
+
 				if (message.char_vec[b] == message.char_vec[la_buffer_start])
 				{
 					match_index = b;
@@ -541,6 +626,7 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 		}
 		std::cout << "Secondary" << std::endl;
 		this->get_canonical_huffman_codewords(secondary_len_codewords, secondary_len_lengths, secondary_len_freqs, secondary_len_indices, 19ul, 7u);
+		int e = 1;
 	}
 
 	/*	Writes final code	*/
