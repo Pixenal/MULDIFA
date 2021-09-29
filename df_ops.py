@@ -1570,9 +1570,16 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                         resolves this issue, giving "C:/folder_0/folder_1")   """
                                     df_map_dir_abs = os.path.abspath(df_map_dir_abs)
 
+                                    padding = ctypes.c_float(-1 if dfr_layer.df_map_padding_infinite else dfr_layer.df_map_padding)
+                                    print("padding_debug")
+                                    print(dfr_layer.df_map_padding)
+                                    print(padding)
+
                                     """ Adds a trailing slash as the above os module method does not add one    """
                                     df_map_dir_abs = os.path.join(df_map_dir_abs, '')
-                                    df_lib.call_df_update_recipient_df_map(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), vert_amount, ctypes.pointer(tris_buffer), ctypes.pointer(tris_uv_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(obj.name + "_" + dfr_layer.name, 'utf-8')))
+                                    name = obj.name + "_" + dfr_layer.name + "_df.png"
+                                    df_lib.call_df_update_recipient_df_map(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), vert_amount, ctypes.pointer(tris_buffer), ctypes.pointer(tris_uv_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(name, 'utf-8')), padding)
+                                    bpy.data.images.load(df_map_dir_abs + name, check_existing = False)
                                     obj_bmesh.free()
 
 

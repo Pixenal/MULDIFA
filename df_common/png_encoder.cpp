@@ -137,6 +137,10 @@ png_code_type::png_code_type(const std::string& name, unsigned char** image, con
 			unsigned short offset = this->bit_depth / 8;
 			for (unsigned short a = 0u; a < height; ++a)
 			{
+				if (a == 399)
+				{
+					int e = 1;
+				}
 				this->filtered_image[a] = new unsigned char[width];
 				this->filtered_image[a][0] = image[a][0];
 				for (unsigned short b = 1u; b < width; ++b)
@@ -175,7 +179,7 @@ png_code_type::png_code_type(const std::string& name, unsigned char** image, con
 
 int png_code_type::write_to_file(const std::string& dir)
 {
-	std::ofstream file(dir + this->name + std::string(".png"), std::ios::binary);
+	std::ofstream file(dir + this->name, std::ios::binary);
 
 	/*	Writes signiture	*/
 

@@ -151,7 +151,7 @@ class deflate_code_type
 	const unsigned long max_lzss_length = 258ul;
 	const unsigned long max_lzss_distance = 32768ul;
 	/*	Last element in both alphabets is just padding	*/
-	const unsigned short len_alphabet_size = 31u;
+	const unsigned short len_alphabet_size = 30u;
 	const unsigned short dist_alphabet_size = 31u;
 	const unsigned short dist_alphabet[31] = {	1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49,
 												65, 97, 129, 193, 257, 385, 513, 769, 1025,
@@ -172,6 +172,8 @@ public:
 
 	unsigned long calc_adler32(const shared_type::byte_vec_type& message);
 	int quick_sort(unsigned long* array, unsigned long* indices, const unsigned short array_size);
+	int move_up_codeword(std::vector<bool>* codewords, unsigned short* codeword_lengths, const unsigned short index, const unsigned short alphabet_size, const unsigned short max_length);
+	int check_if_complete_set(const unsigned short* codeword_lengths, const unsigned short alphabet_size, const unsigned short max_length);
 	int get_canonical_huffman_codewords(std::vector<bool>* codewords, unsigned short* codeword_lengths, unsigned long* alphabet_freqs, unsigned long* alphabet_indices, const unsigned long alphabet_size, const unsigned short max_length);
 	int encode(const shared_type::byte_vec_type& message);
 	deflate_code_type(const shared_type::byte_vec_type& message);

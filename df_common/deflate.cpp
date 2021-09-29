@@ -158,6 +158,53 @@ int deflate_code_type::quick_sort(unsigned long* array, unsigned long* indices, 
 }
 
 
+int deflate_code_type::move_up_codeword(std::vector<bool>* codewords, unsigned short* codeword_lengths, const unsigned short index, const unsigned short alphabet_size, const unsigned short max_length)
+{
+	unsigned short margin = 0u;
+	while (true)
+	{
+		++margin;
+		for (unsigned short b = 0u; b < alphabet_size; ++b)
+		{
+			if (codeword_lengths[b] == (max_length - margin))
+			{
+				codewords[index] = codewords[b];
+				codewords[index].push_back(0);
+				codewords[b].push_back(1);
+				codeword_lengths[index] = codewords[index].size();
+				++codeword_lengths[b];
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
+
+int deflate_code_type::check_if_complete_set(const unsigned short* codeword_lengths, const unsigned short alphabet_size, const unsigned short max_length)
+{
+	unsigned long left = 1ul;;
+	unsigned long* len_count = new unsigned long[max_length + 1u]{};
+	for (unsigned short a = 0u; a < alphabet_size; ++a)
+	{
+		++len_count[codeword_lengths[a]];
+	}
+
+	for (unsigned short a = 0u; a <= max_length; ++a)
+	{
+		left <<= 1;
+		left -= len_count[a];
+		if (left < 0u)
+		{
+			return 1;
+		}
+	}
+	delete[] len_count;
+
+	return (left == 0ul) ? 0 : 1;
+}
+
+
 int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewords, unsigned short* codeword_lengths, unsigned long* alphabet_freqs, unsigned long* alphabet_indices, const unsigned long alphabet_size, const unsigned short max_length)
 {
 	{
@@ -198,7 +245,6 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 			{
 				if (node_stack.back()->extern_node)
 				{
-					std::cout << ((huffman_tree_type::extern_node_type*)node_stack.back())->symbol << " : ";
 					bin_stack.pop_back();
 					unsigned short index = ((huffman_tree_type::extern_node_type*)node_stack.back())->symbol;
 					codeword_lengths[index] = bin_stack.size();
@@ -233,53 +279,21 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 			delete huffman_tree;
 		}
 
-		std::cout << "PreOverflow" << std::endl;
-		std::cout << std::endl;
-		std::cout << std::endl;
-
-		for (short a = 0; a < alphabet_size; ++a)
-		{
-			std::cout << a << " : " << codeword_lengths[a] << " : ";
-			for (short b = 0; b < codewords[a].size(); ++b)
-			{
-				std::cout << codewords[a][b];
-			}
-			std::cout << std::endl;
-		}
-
 		/*	Rearranges to prevent overflowing (if any overflowing codewords exist)	*/
 		unsigned short overflowing_size = overflowing.size();
 		for (short a = (overflowing_size - 1); a >= 0; --a)
 		{
-			unsigned short margin = 0u;
-			while (true)
-			{
-				++margin;
-				for (unsigned short b = 0u; b < alphabet_size; ++b)
-				{
-					if (codeword_lengths[b] == (max_length - margin))
-					{
-						codewords[overflowing[a]] = codewords[b];
-						codewords[overflowing[a]].push_back(0);
-						codewords[b].push_back(1);
-						codeword_lengths[overflowing[a]] = codewords[overflowing[a]].size();
-						++codeword_lengths[b];
-						goto moved_up_tree;
-					}
-				}
-			}
-		moved_up_tree:
-
+			this->move_up_codeword(codewords, codeword_lengths, overflowing[a], alphabet_size, max_length);
 			overflowing.pop_back();
 		}
 
-		/*	Ensures complete set. 
+		/*	Ensures complete set.
 			The above anti-overflow rearrangement can result in an compomplete set of lengths, eg:
 			  O
 			 / \
 			O   O
-			     \
-			      O
+				 \
+				  O
 			The below code checks for any branches like this and moves the codeword up the tree if it encounters one,
 			resulting in this:
 			  O
@@ -287,7 +301,7 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 			O   O
 			*/
 		{
-			for (unsigned short a = 0u; a < alphabet_size; ++a)
+			for (short a = 0; a < (short)alphabet_size; ++a)
 			{
 				if (codeword_lengths[a] < 2)
 				{
@@ -315,17 +329,19 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 				/*	Parent node is invalid
 					(codeword[a] is the only child node of parent node)	*/
 				codewords[a].pop_back();
-				codeword_lengths[a] -= 1u;
+				--codeword_lengths[a];
+				--a;
 
 			parent_node_is_valid:
 
 				continue;
 			}
+
+			this->check_if_complete_set(codeword_lengths, alphabet_size, max_length);
 		}
 	}
 
-
-	std::cout << "AfterOverflow" << std::endl;
+	std::cout << "PostCompleCheck" << std::endl;
 	std::cout << std::endl;
 	std::cout << std::endl;
 
@@ -384,7 +400,7 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 		}
 	}
 
-	
+	/*
 	std::cout << "CANONICAL" << std::endl;
 	std::cout << std::endl;
 	std::cout << std::endl;
@@ -398,6 +414,7 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 		}
 		std::cout << std::endl;
 	}
+	*/
 
 	for (unsigned short a = 0u; a < alphabet_size; ++a)
 	{
@@ -624,6 +641,7 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 		{
 			secondary_len_indices[a] = a;
 		}
+
 		std::cout << "Secondary" << std::endl;
 		this->get_canonical_huffman_codewords(secondary_len_codewords, secondary_len_lengths, secondary_len_freqs, secondary_len_indices, 19ul, 7u);
 		int e = 1;
@@ -759,8 +777,10 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 		}
 	}
 
-	
-	shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 0ull, (7u - this->code.next_bit_index));
+	if (this->code.next_bit_index != 7u)
+	{
+		shared.feed_by_bit(this->code, (this->code.char_vec.size() - 1), 0ull, (7u - this->code.next_bit_index));
+	}
 
 	/*	Writes Adler32 Checksum	*/
 
@@ -831,8 +851,13 @@ int deflate_code_type::huffman_tree_type::join()
 			entries_to_join[a] = dual_index_type((freqs_start + freq_index_offset), false);
 			for (unsigned short b = 0u; b < node_roots_size; ++b)
 			{
+				if (entries_to_join[a].index >= this->freqs_next)
+				{
+					goto use_root_node_if_not_repeat;
+				}
 				if (node_roots[b]->weight < freqs[entries_to_join[a].index])
 				{
+				use_root_node_if_not_repeat:
 					if (a == 1u)
 					{
 						if (entries_to_join[0].array)
@@ -843,11 +868,11 @@ int deflate_code_type::huffman_tree_type::join()
 							}
 						}
 					}
+
 					entries_to_join[a] = dual_index_type(b, true);
 					break;
 				}
 			}
-
 			if (entries_to_join[a].array)
 			{
 				child_nodes[a] = this->node_roots[entries_to_join[a].index];
@@ -861,7 +886,6 @@ int deflate_code_type::huffman_tree_type::join()
 				++freq_index_offset;
 			}
 		}
-
 		this->intern_nodes[this->intern_nodes_size].weight = child_nodes[0]->weight + child_nodes[1]->weight;
 		this->intern_nodes[this->intern_nodes_size].child_nodes.push_back(child_nodes[0]);
 		this->intern_nodes[this->intern_nodes_size].child_nodes.push_back(child_nodes[1]);

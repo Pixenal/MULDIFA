@@ -224,6 +224,12 @@ class DF_PT_dfr_layer_options(df_parent_panel, bpy.types.Panel):
         col0_col1.prop(context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "df_map_width")
         col0_col1.prop(context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "df_map_height")
 
+        col0_col2 = col0.column(align = True)
+        col0_col2.prop(context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "df_map_padding_infinite")
+        col0_col2_col0 = col0_col2.column()
+        col0_col2_col0.enabled = not context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx].df_map_padding_infinite
+        col0_col2_col0.prop(context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "df_map_padding")
+
         #col0.prop_search(context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "df_map_uv", context.scene, "uv_layers", text = "", icon = 'GROUP_UVS')
 
         col0_row2.template_list("DF_UL_df_dfr_layer_dfc_layers", "", context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "dfc_layers", context.scene.df_dfr_layers[context.scene.df_dfr_layers_indx], "dfc_layers_indx")

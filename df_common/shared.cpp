@@ -178,29 +178,28 @@ double shared_type::pythag(const coord_xy_type& set)
 /*-------------------------------------------------------------------------------------------------------------*/
 
 
+shared_type::coord_xyz_type::coord_xyz_type()
+{
+}
+
+
+shared_type::coord_xyz_type::coord_xyz_type(const double x, const double y, const double z)
+{
+	this->x = x;
+	this->y = y;
+	this->z = z;
+}
+
+
 bool shared_type::coord_xyz_type::operator==(const coord_xyz_type& operand)
 {
-	if ((this->x == operand.x) && (this->y == operand.y) && (this->z == operand.z))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return ((this->x == operand.x) && (this->y == operand.y) && (this->z == operand.z));
 }
 
 
 bool shared_type::coord_xyz_type::operator==(coord_xyz_type& operand)
 {
-	if ((this->x == operand.x) && (this->y == operand.y) && (this->z == operand.z))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return ((this->x == operand.x) && (this->y == operand.y) && (this->z == operand.z));
 }
 
 
@@ -216,6 +215,18 @@ void shared_type::coord_xyz_type::clean()
 /*-------------------------------------------------------------------------------------------------------------*/
 
 
+shared_type::coord_xy_type::coord_xy_type()
+{
+}
+
+
+shared_type::coord_xy_type::coord_xy_type(const double x, const double y)
+{
+	this->x = x;
+	this->y = y;
+}
+
+
 void shared_type::coord_xy_type::clean()
 {
 	x = .0;
@@ -227,11 +238,36 @@ void shared_type::coord_xy_type::clean()
 /*-------------------------------------------------------------------------------------------------------------*/
 
 
+shared_type::coord_uvw_type::coord_uvw_type()
+{
+}
+
+
+shared_type::coord_uvw_type::coord_uvw_type(const double u, const double v, const double w)
+{
+	this->u = u;
+	this->v = v;
+	this->w = w;
+}
+
+
 void shared_type::coord_uvw_type::clean()
 {
 	u = .0;
 	v = .0;
 	w = .0;
+}
+
+
+bool shared_type::coord_uvw_type::operator==(const coord_uvw_type& operand)
+{
+	return (this->u == operand.u) && (this->v == operand.v) && (this->w == operand.w);
+}
+
+
+bool shared_type::coord_uvw_type::operator!=(const coord_uvw_type& operand)
+{
+	return !(*this == operand);
 }
 
 
@@ -335,16 +371,27 @@ void shared_type::index_xyz_type::clean()
 /*-------------------------------------------------------------------------------------------------------------*/
 
 
+shared_type::index_xy_type::index_xy_type()
+{
+}
+
+
+shared_type::index_xy_type::index_xy_type(const unsigned short x, const unsigned short y)
+{
+	this->x = x;
+	this->y = y;
+}
+
+
 bool shared_type::index_xy_type::operator==(const index_xy_type& operand)
 {
-	if ((this->x == operand.x) && (this->y == operand.y))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return ((this->x == operand.x) && (this->y == operand.y));
+}
+
+
+bool shared_type::index_xy_type::operator!=(const index_xy_type& operand)
+{
+	return !(*this == operand);
 }
 
 

@@ -3179,8 +3179,10 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 }
 
 
-int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name)
+int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
 {
+	/*	Recently discovered single line conditions. Is big epic	*/
+	padding = (padding < .0f) ? (padding = (std::numeric_limits<float>::max)()) : padding;
 	unsigned long texel_amount_total = height * width;
 	shared_type::coord_xy_type texel_dim;
 	shared_type::coord_xy_type texel_half_dim;
@@ -3192,43 +3194,99 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 	/*	"vert_info_type" is just being used here to represent the texels as that's to be the type expected by "update_recipient"
 		(that function was made before df maps were implemented, back when only vert colors and vert groups were writted to.
 		As a result it was assumed that only vertex info would be passed though it, though obvisously that is no longer the case)	*/
+
 	shared_type::vert_info_type* df_map_linear = new shared_type::vert_info_type[texel_amount_total];
-
-	shared_type::coord_xyz_type texel_coord;
-	shared_type::coord_xyz_type normal;
-	normal.z = 1.0;
-	for (unsigned short a = 0u; a < height; ++a)
+	shared_type::index_xy_type* extern_texels_proj = new shared_type::index_xy_type[texel_amount_total];
+	shared_type::coord_xyz_type* texel_coord_cache = new shared_type::coord_xyz_type[texel_amount_total];
 	{
-		texel_coord.y = texel_half_dim.y + (texel_dim.y * (double)a);
-		for (unsigned short b = 0u; b < width; ++b)
+		shared_type::coord_xyz_type normal;
+		normal.z = 1.0;
+		for (unsigned short a = 0u; a < height; ++a)
 		{
-			texel_coord.x = texel_half_dim.x + (texel_dim.x * (double)b);
-
-			if ((a == 256) && (b == 256))
+			shared_type::coord_xyz_type texel_coord;
+			texel_coord.y = texel_half_dim.y + (texel_dim.y * (double)a);
+			for (unsigned short b = 0u; b < width; ++b)
 			{
-				char e = 1;
-			}
+				texel_coord.x = texel_half_dim.x + (texel_dim.x * (double)b);
 
-			/*	Find enclosing triangle	*/
-			unsigned long c;
-			shared_type::coord_uvw_type texel_coord_bc;
-			for (c = 0ul; c < tri_amount; ++c)
-			{
-				texel_coord_bc = shared.cartesian_to_barycentric(tris_uv_buffer[c].uv_vert_0, tris_uv_buffer[c].uv_vert_1, tris_uv_buffer[c].uv_vert_2, texel_coord, normal);
-				if (((texel_coord_bc.u >= 0) && (texel_coord_bc.v >= 0) && (texel_coord_bc.w >= 0)))
+				if ((b >= 510))
 				{
-					break;
+					int e = 1;
 				}
-			}
-			unsigned long linear_index = (a * width) + b;
-			if (c != tri_amount)
-			{
-				df_map_linear[linear_index].coord = shared.barycentric_to_cartesian(verts_buffer[tris_buffer[c].vert_0], verts_buffer[tris_buffer[c].vert_1], verts_buffer[tris_buffer[c].vert_2], texel_coord_bc);
-			}
-			else
-			{
-				df_map_linear[linear_index].coord = volume_local.min_grid_coord;
-				df_map_linear[linear_index].coord.x -= 1.0;
+
+				/*	Find enclosing triangle	*/
+				unsigned long c;
+				shared_type::coord_uvw_type* bc_coord_cache = new shared_type::coord_uvw_type[tri_amount];
+				for (c = 0ul; c < tri_amount; ++c)
+				{
+					bc_coord_cache[c] = shared.cartesian_to_barycentric(tris_uv_buffer[c].uv_vert_0, tris_uv_buffer[c].uv_vert_1, tris_uv_buffer[c].uv_vert_2, texel_coord, normal);
+					if (((bc_coord_cache[c].u >= 0) && (bc_coord_cache[c].v >= 0) && (bc_coord_cache[c].w >= 0)))
+					{
+						break;
+					}
+				}
+				unsigned long linear_index = (a * width) + b;
+				if (c != tri_amount)
+				{
+					df_map_linear[linear_index].coord = shared.barycentric_to_cartesian(verts_buffer[tris_buffer[c].vert_0], verts_buffer[tris_buffer[c].vert_1], verts_buffer[tris_buffer[c].vert_2], bc_coord_cache[c]);
+					extern_texels_proj[linear_index] = shared_type::index_xy_type(2u, 2u);
+				}
+				else
+				{
+					shared_type::coord_xyz_type nearest_proj_point;
+					unsigned long nearest_tri = 0ul;
+					double min_dist_sqr = (std::numeric_limits<double>::max)();
+					for (unsigned long d = 0u; d < tri_amount; ++d)
+					{
+						shared_type::coord_xyz_type* edge_vert_a = nullptr;
+						shared_type::coord_xyz_type* edge_vert_b = nullptr;
+						if (bc_coord_cache[d].u < .0)
+						{
+							edge_vert_a = &tris_uv_buffer[d].uv_vert_1;
+							edge_vert_b = &tris_uv_buffer[d].uv_vert_2;
+						}
+						else if (bc_coord_cache[d].v < .0)
+						{
+							edge_vert_a = &tris_uv_buffer[d].uv_vert_0;
+							edge_vert_b = &tris_uv_buffer[d].uv_vert_2;
+						}
+						else if (bc_coord_cache[d].w < .0)
+						{
+							edge_vert_a = &tris_uv_buffer[d].uv_vert_0;
+							edge_vert_b = &tris_uv_buffer[d].uv_vert_1;
+						}
+						else
+						{
+							std::cout << "Invalid extern texel" << std::endl;
+						}
+						if ((b == 139u) && (a == 0u))
+						{
+							int e = 1;
+						}
+						/*	"at_dist" is the distance vector from edge_vert_a to the current texel	*/
+						shared_type::coord_xy_type at_dist(texel_coord.x - edge_vert_a->x, texel_coord.y - edge_vert_a->y);
+						/*	"at_dist" is the distance vector from edge_vert_a to edge_vert_b	*/
+						shared_type::coord_xy_type ab_dist(edge_vert_b->x - edge_vert_a->x, edge_vert_b->y - edge_vert_a->y);
+						double ab_len = std::sqrt((ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y));
+						shared_type::coord_xy_type ab_normal(ab_dist.x / ab_len, ab_dist.y / ab_len);
+						double t = (ab_normal.x * at_dist.x) + (ab_normal.y * at_dist.y);
+						shared_type::coord_xy_type ap_dist(ab_normal.x * t, ab_normal.y * t);
+						double ab_dot_ab = (ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y);
+						double ab_dot_ap = (ab_dist.x * ap_dist.x) + (ab_dist.y * ap_dist.y);
+						shared_type::coord_xyz_type proj_point = (ab_dot_ap < .0) ? *edge_vert_a : ((ab_dot_ap > ab_dot_ab) ? *edge_vert_b : shared_type::coord_xyz_type(edge_vert_a->x + ap_dist.x, edge_vert_a->y + ap_dist.y, .0));
+						shared_type::coord_xy_type pt_dist(texel_coord.x - proj_point.x, texel_coord.y - proj_point.y);
+						double dist_sqr = (pt_dist.x * pt_dist.x) + (pt_dist.y * pt_dist.y);
+						if (dist_sqr < min_dist_sqr)
+						{
+							min_dist_sqr = dist_sqr;
+							nearest_proj_point = proj_point;
+						}
+					}
+					extern_texels_proj[linear_index] = (std::sqrt(min_dist_sqr) <= padding) ? shared_type::index_xy_type(width * nearest_proj_point.x, height * nearest_proj_point.y) : shared_type::index_xy_type(2u, 2u);
+					df_map_linear[linear_index].coord = volume_local.min_grid_coord;
+					df_map_linear[linear_index].coord.x -= 1.0;
+				}
+				delete[] bc_coord_cache;
 			}
 		}
 	}
@@ -3241,7 +3299,36 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 		df_map[a] = new unsigned char[width];
 		for (unsigned short b = 0u; b < width; ++b)
 		{
+			if ((b >= 510))
+			{
+				int e = 1;
+			}
 			unsigned long linear_index = (a * width) + b;
+			/*	if bc_coord is not all zeros then is external (internal texels are left as all zeros)
+				(a valid bc coord of all zeros is impossible, so this is a safe test)	*/
+
+			if (extern_texels_proj[linear_index] != shared_type::index_xy_type(2u, 2u))
+			{
+				for (short c = -1; c < 2; ++c)
+				{
+					shared_type::index_xy_type& proj_index = extern_texels_proj[linear_index];
+					short offset_y = ((c == -1) && (proj_index.y == 0u)) ? 0u : (((c == 1) && (proj_index.y == (height - 1u))) ? 0u : c);
+					for (short d = -1; d < 2; ++d)
+					{
+
+
+						short offset_x = ((d == -1) && (proj_index.x == 0u)) ? 0u : (((d == 1) && (proj_index.y == (height - 1u))) ? 0u : d);
+						shared_type::index_xy_type kernal_texel_index((short)proj_index.x + offset_x, (short)proj_index.y + offset_y);
+						unsigned long kernal_linear_index = (kernal_texel_index.y * width) + kernal_texel_index.x;
+;						if (extern_texels_proj[kernal_linear_index] == shared_type::index_xy_type(2u, 2u))
+						{
+							df_map_linear[linear_index].value = df_map_linear[kernal_linear_index].value;
+							goto set_df_map_value;
+						}
+					}
+				}
+			}
+		set_df_map_value:
 			df_map[a][b] = df_map_linear[linear_index].value * 255.0f;
 		}
 	}
@@ -3256,6 +3343,7 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 		delete[] df_map[a];
 	}
 	delete[] df_map;
+	delete[] texel_coord_cache;
 
 	return 0;
 }
