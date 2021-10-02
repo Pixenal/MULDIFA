@@ -1,6 +1,6 @@
 /*
  -------------------------------------------------------------------------------------------------------------
-	This file is part of blend_df_tool.
+	This file is part of MULDIFA.
 
 	blend_df_tool is free software : you can redistribute it and /or modify
 	it under the terms of the GNU General Public License as published by
