@@ -183,23 +183,23 @@ int deflate_code_type::move_up_codeword(std::vector<bool>* codewords, unsigned s
 
 int deflate_code_type::check_if_complete_set(const unsigned short* codeword_lengths, const unsigned short alphabet_size, const unsigned short max_length)
 {
-	unsigned long left = 1ul;;
-	unsigned long* len_count = new unsigned long[max_length + 1u]{};
+	long left = 1ul;;
+	long len_count[16]{};
 	for (unsigned short a = 0u; a < alphabet_size; ++a)
 	{
 		++len_count[codeword_lengths[a]];
 	}
 
-	for (unsigned short a = 0u; a <= max_length; ++a)
+	for (short a = 1u; a <= max_length; ++a)
 	{
 		left <<= 1;
 		left -= len_count[a];
-		if (left < 0u)
+		if (left < 0)
 		{
 			return 1;
 		}
 	}
-	delete[] len_count;
+	//delete[] len_count;
 
 	return (left == 0ul) ? 0 : 1;
 }
@@ -301,46 +301,72 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 			O   O
 			*/
 		{
-			for (short a = 0; a < (short)alphabet_size; ++a)
+			if (this->check_if_complete_set(codeword_lengths, alphabet_size, max_length))
 			{
-				if (codeword_lengths[a] < 2)
+				for (unsigned short a = 0u; a < alphabet_size; ++a)
 				{
-					continue;
-				}
-				unsigned short parent_node_len = codeword_lengths[a] - 1u;
-				for (unsigned short b = 0u; b < alphabet_size; ++b)
-				{
-					if ((b != a) && (codeword_lengths[b] > parent_node_len))
+					if (codeword_lengths[a] > 1u)
 					{
-						for (unsigned short c = 0u; c < parent_node_len; ++c)
+						for (short node_len = codeword_lengths[a] - 1; node_len > 0; --node_len)
 						{
-							if (codewords[a][c] != codewords[b][c])
+							unsigned short matches[286] = {};
+							matches[0] = a;
+							unsigned short matches_size = 1u;
+							bool last_match_child = codewords[a][node_len];
+							for (unsigned short b = 0u; b < alphabet_size; ++b)
 							{
-								goto doesnt_match;
+								if ((b != a) && (codeword_lengths[b] > node_len))
+								{
+									for (unsigned short c = 0u; c < node_len; ++c)
+									{
+										if (codewords[a][c] != codewords[b][c])
+										{
+											goto adoesnt_match;
+										}
+									}
+									matches[matches_size] = b;
+									++matches_size;
+									if (last_match_child != codewords[b][node_len])
+									{
+										goto is_full_node;
+									}
+
+								adoesnt_match:
+
+									continue;
+								}
 							}
+							if (matches_size == 1u)
+							{
+								/*	No other codeword is a child the current parent node	*/
+								codewords[a].pop_back();
+								--codeword_lengths[a];
+							}
+							else
+							{
+								/*	Other codewords are grand children of the current parent node,
+									but the parent node has only one child	*/
+								for (unsigned short b = 0u; b < matches_size; ++b)
+								{
+									codewords[matches[b]].erase(codewords[matches[b]].begin() + node_len);
+									--codeword_lengths[matches[b]];
+								}
+							}
+
+						is_full_node:
+
+							continue;
 						}
-						goto parent_node_is_valid;
-
-					doesnt_match:
-
-						continue;
 					}
 				}
-				/*	Parent node is invalid
-					(codeword[a] is the only child node of parent node)	*/
-				codewords[a].pop_back();
-				--codeword_lengths[a];
-				--a;
 
-			parent_node_is_valid:
-
-				continue;
+				int complete_test = this->check_if_complete_set(codeword_lengths, alphabet_size, max_length);
+				int e = 1;
 			}
-
-			this->check_if_complete_set(codeword_lengths, alphabet_size, max_length);
 		}
 	}
 
+	/*
 	std::cout << "PostCompleCheck" << std::endl;
 	std::cout << std::endl;
 	std::cout << std::endl;
@@ -353,7 +379,7 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 			std::cout << codewords[a][b];
 		}
 		std::cout << std::endl;
-	}
+	}*/
 
 	/*	Convert to canonical huffman codewords	*/
 	std::vector<unsigned long> bit_sorted_codewords[16];
@@ -400,7 +426,7 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 		}
 	}
 
-	/*
+	
 	std::cout << "CANONICAL" << std::endl;
 	std::cout << std::endl;
 	std::cout << std::endl;
@@ -414,7 +440,7 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 		}
 		std::cout << std::endl;
 	}
-	*/
+	
 
 	for (unsigned short a = 0u; a < alphabet_size; ++a)
 	{

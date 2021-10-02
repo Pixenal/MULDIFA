@@ -365,3 +365,12 @@ void call_delete_rlvncy_buffers(void* args_ptr, unsigned short job_index)
 	df.delete_rlvncy_buffers(args_ptr, job_index);
 }
 
+void call_df_get_lerped_point_value(void* args_ptr, unsigned short job_index)
+{
+	df.call_get_lerped_point_value(args_ptr, job_index);
+}
+
+void call_df_df_map_map_texel(void* args_ptr, unsigned short job_index)
+{
+	df.df_map_map_texel(args_ptr, job_index);
+}

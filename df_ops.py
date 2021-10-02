@@ -1578,8 +1578,25 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                     """ Adds a trailing slash as the above os module method does not add one    """
                                     df_map_dir_abs = os.path.join(df_map_dir_abs, '')
                                     name = obj.name + "_" + dfr_layer.name + "_df.png"
+                                    time_start = time.time()
                                     df_lib.call_df_update_recipient_df_map(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), vert_amount, ctypes.pointer(tris_buffer), ctypes.pointer(tris_uv_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(name, 'utf-8')), padding)
-                                    bpy.data.images.load(df_map_dir_abs + name, check_existing = False)
+                                    time_end = time.time()
+                                    print("Update DF Map Time: ", (time_end - time_start))
+                                    image_found = False
+                                    for image in bpy.data.images:
+
+                                        if (image.name == (name)):
+
+                                            print("RELOADING IMAGE")
+                                            image.reload()
+                                            image_found = True
+                                            break
+
+                                    if (not image_found):
+
+                                        print("LOADING IMAGE")
+                                        bpy.data.images.load(df_map_dir_abs + name)
+                                    
                                     obj_bmesh.free()
 
 

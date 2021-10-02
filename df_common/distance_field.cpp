@@ -1524,7 +1524,7 @@ has_changed:
 		/*Attempts to sends batch of jobs to thread pool*/
 		thread_pool.set_jobs_per_iteration(1u);
 	attempt_to_add_job_batch:
-		add_jobs_success = thread_pool.add_jobs(jobs_ptr, &delete_rlvncy_buffers_shared_local);
+		add_jobs_success = thread_pool.add_jobs(jobs_ptr, thread_pool.thread_count, &delete_rlvncy_buffers_shared_local);
 
 		if (do_once)
 		{
@@ -2544,7 +2544,7 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 
 			/*Attempts to sends batch of jobs to thread pool*/
 		attempt_to_add_job_batch:
-			add_jobs_success = thread_pool.add_jobs(jobs_ptr, tri_local);
+			add_jobs_success = thread_pool.add_jobs(jobs_ptr, thread_pool.thread_count, tri_local);
 
 
 			/*Checks if attempt to add jobs was successfull*/
@@ -2781,6 +2781,14 @@ float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_co
 
 		/*	Gets the final interpolated value by sampling from the x aligned spline at the current vert's index space x coord	*/
 		float return_value = xaligned_spline.sample(current_vert_indx_space.x - min_knott.x);
+		if (return_value < .0f)
+		{
+			return_value = .0f;
+		}
+		else if (return_value > 1.0f)
+		{
+			return_value = 1.0f;
+		}
 		
 		/*	Deletes dynamically allocated memory	*/
 		for (int a = 0u; a < local_spline_length; ++a)
@@ -2866,6 +2874,21 @@ float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_co
 
 		return .0f;
 	}
+}
+
+
+void df_type::call_get_lerped_point_value(void* args_ptr, unsigned short job_index)
+{
+	get_lerped_point_value_args_type* args = (get_lerped_point_value_args_type*)args_ptr;
+	*args->value = this->get_lerped_point_value(*args->vert_coord, *args->dfc_ids, args->mode, *args->zaligned_splines, args->local_spline_length);
+	if (args->gamma != 1.0f)
+	{
+		*args->value = std::pow(*args->value, args->gamma);
+	}
+	args->token->lock();
+	++*args->jobs_completed;
+	args->token->unlock();
+	delete args;
 }
 
 
@@ -3126,6 +3149,9 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 			}
 		}
 	}
+	unsigned long jobs_completed = 0ul;
+	std::mutex token;
+	thread_pool.set_jobs_per_iteration(10u);
 	/*	The below for loop iterates through each vert passed to the function (which would be every vert in the current dfr)	*/
 	for (unsigned long a = 0u; a < vert_amount; ++a)
 	{
@@ -3135,21 +3161,67 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 		/*	Checks if current vert sits outside of the grid, if so, skips	*/
 		if (!grid_bounds_check(verts_buffer[a].coord))
 		{
+			token.lock();
+			++jobs_completed;
+			token.unlock();
 			continue;
 		}
 
-		/*	Gets the value of the current vert (the result is the maximum value of all dfc ids, and is lerped so as to smooth the
-			transition between grid points	*/
-		float value = get_lerped_point_value(verts_buffer[a].coord, dfc_ids, interp_mode, zaligned_splines, local_spline_length);
+		/*	Probably isnt optimal adding a single job at a time, collect into batches and then send those like in df map function	*/
 
-		if (gamma != 1.0f)
+		get_lerped_point_value_args_type* args = new get_lerped_point_value_args_type();
+		args->vert_coord = &verts_buffer[a].coord;
+		args->dfc_ids = &dfc_ids;
+		args->mode = interp_mode;
+		args->gamma = gamma;
+		args->zaligned_splines = &zaligned_splines;
+		args->local_spline_length = local_spline_length;
+		args->value = &verts_buffer[a].value;
+		args->jobs_completed = &jobs_completed;
+		args->token = &token;
+		typedef void (*job)(void*, unsigned short);
+		job job_ptr = &call_df_get_lerped_point_value;
+		job* job_ptr_ptr = &job_ptr;
+		bool add_job_success = false;
+		/*	Attempts to send job to thread pool	*/
+	attempt_to_add_job:
+		add_job_success = thread_pool.add_jobs(job_ptr_ptr, 1u, (void*)args);
+		/*	Checks if attempt was successfull	*/
+		if (add_job_success)
 		{
-			value = std::pow(value, gamma);
+			goto job_sent;
+		}
+		else
+		{
+			goto wait_for_space_in_job_stack;
 		}
 
-		/*	Adds the value to the current verts respective entry in "verts_buffer"	*/
-		verts_buffer[a].value = value;
+	wait_for_space_in_job_stack:
+		while (true)
+		{
+			std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
+			if (thread_pool.job_amount < 10)
+			{
+				goto attempt_to_add_job;
+			}
+		}
+		job_sent:
+
+		continue;
 	}
+	
+	while (true)
+	{
+		std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
+		token.lock();
+		if (jobs_completed == vert_amount)
+		{
+			token.unlock();
+			break;
+		}
+		token.unlock();
+	}
+
 	/*	Resets the "temp_spline_indx" data member in each grid point enclosed within the bounding box to 0	*/
 	if (interp_mode == 0)
 	{
@@ -3179,6 +3251,97 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 }
 
 
+int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
+{
+	df_map_map_texel_local_args_type* args_ptr_convrtd = (df_map_map_texel_local_args_type*)args_ptr;
+	df_map_map_texel_local_args_type* local_args = &args_ptr_convrtd[job_index];
+	df_map_map_texel_args_type* args = local_args->args;
+
+	/*	Find enclosing triangle	*/
+	unsigned long c;
+	shared_type::coord_uvw_type* bc_coord_cache = new shared_type::coord_uvw_type[args->tri_amount];
+	shared_type::coord_xyz_type normal(0, 0, 1.0);
+	for (c = 0ul; c < args->tri_amount; ++c)
+	{
+		bc_coord_cache[c] = shared.cartesian_to_barycentric(args->tris_uv_buffer[c].uv_vert_0, args->tris_uv_buffer[c].uv_vert_1, args->tris_uv_buffer[c].uv_vert_2, local_args->texel_coord, normal);
+		if (((bc_coord_cache[c].u >= 0) && (bc_coord_cache[c].v >= 0) && (bc_coord_cache[c].w >= 0)))
+		{
+			break;
+		}
+	}
+	if (c != args->tri_amount)
+	{
+		args->df_map_linear[local_args->linear_index].coord = shared.barycentric_to_cartesian(args->verts_buffer[args->tris_buffer[c].vert_0], args->verts_buffer[args->tris_buffer[c].vert_1], args->verts_buffer[args->tris_buffer[c].vert_2], bc_coord_cache[c]);
+		args->extern_texels_proj[local_args->linear_index] = shared_type::index_xy_type(2u, 2u);
+	}
+	else
+	{
+		shared_type::coord_xyz_type nearest_proj_point;
+		unsigned long nearest_tri = 0ul;
+		double min_dist_sqr = (std::numeric_limits<double>::max)();
+		for (unsigned long d = 0u; d < args->tri_amount; ++d)
+		{
+			shared_type::coord_xyz_type* edge_vert_a = nullptr;
+			shared_type::coord_xyz_type* edge_vert_b = nullptr;
+			if (bc_coord_cache[d].u < .0)
+			{
+				edge_vert_a = &args->tris_uv_buffer[d].uv_vert_1;
+				edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
+			}
+			else if (bc_coord_cache[d].v < .0)
+			{
+				edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
+				edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
+			}
+			else if (bc_coord_cache[d].w < .0)
+			{
+				edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
+				edge_vert_b = &args->tris_uv_buffer[d].uv_vert_1;
+			}
+			else
+			{
+				std::cout << "Invalid extern texel" << std::endl;
+			}
+			/*	"at_dist" is the distance vector from edge_vert_a to the current texel	*/
+			shared_type::coord_xy_type at_dist(local_args->texel_coord.x - edge_vert_a->x, local_args->texel_coord.y - edge_vert_a->y);
+			/*	"at_dist" is the distance vector from edge_vert_a to edge_vert_b	*/
+			shared_type::coord_xy_type ab_dist(edge_vert_b->x - edge_vert_a->x, edge_vert_b->y - edge_vert_a->y);
+			double ab_len = std::sqrt((ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y));
+			shared_type::coord_xy_type ab_normal(ab_dist.x / ab_len, ab_dist.y / ab_len);
+			double t = (ab_normal.x * at_dist.x) + (ab_normal.y * at_dist.y);
+			shared_type::coord_xy_type ap_dist(ab_normal.x * t, ab_normal.y * t);
+			double ab_dot_ab = (ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y);
+			double ab_dot_ap = (ab_dist.x * ap_dist.x) + (ab_dist.y * ap_dist.y);
+			shared_type::coord_xyz_type proj_point = (ab_dot_ap < .0) ? *edge_vert_a : ((ab_dot_ap > ab_dot_ab) ? *edge_vert_b : shared_type::coord_xyz_type(edge_vert_a->x + ap_dist.x, edge_vert_a->y + ap_dist.y, .0));
+			shared_type::coord_xy_type pt_dist(local_args->texel_coord.x - proj_point.x, local_args->texel_coord.y - proj_point.y);
+			double dist_sqr = (pt_dist.x * pt_dist.x) + (pt_dist.y * pt_dist.y);
+			if (dist_sqr < min_dist_sqr)
+			{
+				min_dist_sqr = dist_sqr;
+				nearest_proj_point = proj_point;
+			}
+		}
+		args->extern_texels_proj[local_args->linear_index] = (std::sqrt(min_dist_sqr) <= args->padding) ? shared_type::index_xy_type(args->width * nearest_proj_point.x, args->height * nearest_proj_point.y) : shared_type::index_xy_type(2u, 2u);
+		args->df_map_linear[local_args->linear_index].coord = volume_local.min_grid_coord;
+		args->df_map_linear[local_args->linear_index].coord.x -= 1.0;
+	}
+	delete[] bc_coord_cache;
+	args->token->lock();
+	++*args->jobs_completed;
+	++args->jobs_completed_table[local_args->a];
+	if (args->jobs_completed_table[local_args->a] == args->width)
+	{
+		args->token->unlock();
+		delete[] args_ptr;
+		return 0;
+	}
+	args->token->unlock();
+
+	return 0;
+}
+
+
+
 int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
 {
 	/*	Recently discovered single line conditions. Is big epic	*/
@@ -3195,103 +3358,99 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 		(that function was made before df maps were implemented, back when only vert colors and vert groups were writted to.
 		As a result it was assumed that only vertex info would be passed though it, though obvisously that is no longer the case)	*/
 
+	std::cout << "BEGINNING OF DF MAP" << std::endl;
+
 	shared_type::vert_info_type* df_map_linear = new shared_type::vert_info_type[texel_amount_total];
 	shared_type::index_xy_type* extern_texels_proj = new shared_type::index_xy_type[texel_amount_total];
 	shared_type::coord_xyz_type* texel_coord_cache = new shared_type::coord_xyz_type[texel_amount_total];
 	{
-		shared_type::coord_xyz_type normal;
-		normal.z = 1.0;
+		typedef void (*job)(void*, unsigned short);
+		
+		job* jobs = new job[width];
+		for (unsigned short a = 0u; a < width; ++a)
+		{
+			jobs[a] = &call_df_df_map_map_texel;
+		}
+		unsigned long jobs_completed = 0ul;
+		std::mutex token;
+		df_map_map_texel_args_type arg;
+		arg.df_map_linear = df_map_linear;
+		arg.extern_texels_proj = extern_texels_proj;
+		arg.height = height;
+		arg.width = width;
+		arg.jobs_completed = &jobs_completed;
+		arg.padding = padding;
+		arg.token = &token;
+		arg.tris_buffer = tris_buffer;
+		arg.tris_uv_buffer = tris_uv_buffer;
+		arg.tri_amount = tri_amount;
+		arg.verts_buffer = verts_buffer;
+		arg.jobs_completed_table = new unsigned short[height] {};
+
+		/*	Number is based on profiling	*/
+		thread_pool.set_jobs_per_iteration(60u);
+
 		for (unsigned short a = 0u; a < height; ++a)
 		{
 			shared_type::coord_xyz_type texel_coord;
 			texel_coord.y = texel_half_dim.y + (texel_dim.y * (double)a);
+			df_map_map_texel_local_args_type* args = new df_map_map_texel_local_args_type[width];
 			for (unsigned short b = 0u; b < width; ++b)
 			{
 				texel_coord.x = texel_half_dim.x + (texel_dim.x * (double)b);
-
-				if ((b >= 510))
-				{
-					int e = 1;
-				}
-
-				/*	Find enclosing triangle	*/
-				unsigned long c;
-				shared_type::coord_uvw_type* bc_coord_cache = new shared_type::coord_uvw_type[tri_amount];
-				for (c = 0ul; c < tri_amount; ++c)
-				{
-					bc_coord_cache[c] = shared.cartesian_to_barycentric(tris_uv_buffer[c].uv_vert_0, tris_uv_buffer[c].uv_vert_1, tris_uv_buffer[c].uv_vert_2, texel_coord, normal);
-					if (((bc_coord_cache[c].u >= 0) && (bc_coord_cache[c].v >= 0) && (bc_coord_cache[c].w >= 0)))
-					{
-						break;
-					}
-				}
 				unsigned long linear_index = (a * width) + b;
-				if (c != tri_amount)
-				{
-					df_map_linear[linear_index].coord = shared.barycentric_to_cartesian(verts_buffer[tris_buffer[c].vert_0], verts_buffer[tris_buffer[c].vert_1], verts_buffer[tris_buffer[c].vert_2], bc_coord_cache[c]);
-					extern_texels_proj[linear_index] = shared_type::index_xy_type(2u, 2u);
-				}
-				else
-				{
-					shared_type::coord_xyz_type nearest_proj_point;
-					unsigned long nearest_tri = 0ul;
-					double min_dist_sqr = (std::numeric_limits<double>::max)();
-					for (unsigned long d = 0u; d < tri_amount; ++d)
-					{
-						shared_type::coord_xyz_type* edge_vert_a = nullptr;
-						shared_type::coord_xyz_type* edge_vert_b = nullptr;
-						if (bc_coord_cache[d].u < .0)
-						{
-							edge_vert_a = &tris_uv_buffer[d].uv_vert_1;
-							edge_vert_b = &tris_uv_buffer[d].uv_vert_2;
-						}
-						else if (bc_coord_cache[d].v < .0)
-						{
-							edge_vert_a = &tris_uv_buffer[d].uv_vert_0;
-							edge_vert_b = &tris_uv_buffer[d].uv_vert_2;
-						}
-						else if (bc_coord_cache[d].w < .0)
-						{
-							edge_vert_a = &tris_uv_buffer[d].uv_vert_0;
-							edge_vert_b = &tris_uv_buffer[d].uv_vert_1;
-						}
-						else
-						{
-							std::cout << "Invalid extern texel" << std::endl;
-						}
-						if ((b == 139u) && (a == 0u))
-						{
-							int e = 1;
-						}
-						/*	"at_dist" is the distance vector from edge_vert_a to the current texel	*/
-						shared_type::coord_xy_type at_dist(texel_coord.x - edge_vert_a->x, texel_coord.y - edge_vert_a->y);
-						/*	"at_dist" is the distance vector from edge_vert_a to edge_vert_b	*/
-						shared_type::coord_xy_type ab_dist(edge_vert_b->x - edge_vert_a->x, edge_vert_b->y - edge_vert_a->y);
-						double ab_len = std::sqrt((ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y));
-						shared_type::coord_xy_type ab_normal(ab_dist.x / ab_len, ab_dist.y / ab_len);
-						double t = (ab_normal.x * at_dist.x) + (ab_normal.y * at_dist.y);
-						shared_type::coord_xy_type ap_dist(ab_normal.x * t, ab_normal.y * t);
-						double ab_dot_ab = (ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y);
-						double ab_dot_ap = (ab_dist.x * ap_dist.x) + (ab_dist.y * ap_dist.y);
-						shared_type::coord_xyz_type proj_point = (ab_dot_ap < .0) ? *edge_vert_a : ((ab_dot_ap > ab_dot_ab) ? *edge_vert_b : shared_type::coord_xyz_type(edge_vert_a->x + ap_dist.x, edge_vert_a->y + ap_dist.y, .0));
-						shared_type::coord_xy_type pt_dist(texel_coord.x - proj_point.x, texel_coord.y - proj_point.y);
-						double dist_sqr = (pt_dist.x * pt_dist.x) + (pt_dist.y * pt_dist.y);
-						if (dist_sqr < min_dist_sqr)
-						{
-							min_dist_sqr = dist_sqr;
-							nearest_proj_point = proj_point;
-						}
-					}
-					extern_texels_proj[linear_index] = (std::sqrt(min_dist_sqr) <= padding) ? shared_type::index_xy_type(width * nearest_proj_point.x, height * nearest_proj_point.y) : shared_type::index_xy_type(2u, 2u);
-					df_map_linear[linear_index].coord = volume_local.min_grid_coord;
-					df_map_linear[linear_index].coord.x -= 1.0;
-				}
-				delete[] bc_coord_cache;
+				args[b].a = a;
+				args[b].texel_coord = texel_coord;
+				args[b].linear_index = linear_index;
+				args[b].args = &arg;
 			}
+			/*	Attempts to send job to thread pool	*/
+			bool add_job_success = false;
+		attempt_to_add_job:
+			add_job_success = thread_pool.add_jobs(jobs, width, (void*)args);
+			/*	Checks if attempt was successfull	*/
+			if (add_job_success)
+			{
+				goto job_sent;
+			}
+			else
+			{
+				goto wait_for_space_in_job_stack;
+			}
+
+		wait_for_space_in_job_stack:
+			while (true)
+			{
+				std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
+				if (thread_pool.job_amount < (width * 2u))
+				{
+					goto attempt_to_add_job;
+				}
+			}
+		job_sent:
+
+			continue;
+		}
+		delete[] jobs;
+		while (true)
+		{
+			std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
+			token.lock();
+			if (jobs_completed == ((unsigned long)width * (unsigned long)height))
+			{
+				token.unlock();
+				break;
+			}
+			token.unlock();
 		}
 	}
 
+	
+
+	std::cout << "CALLING UPDATE RECIPIENT FROM WITHIN DF MAP" << std::endl;
 	this->update_recipient(dfc_layers, dfc_layers_nxt_indx, df_map_linear, texel_amount_total, interp_mode, gamma);
+
+	std::cout << "UPDATE RECIPIENT FINISHED FROM WITHIN DF MAP" << std::endl;
 
 	unsigned char** df_map = new unsigned char* [height];
 	for (unsigned short a = 0u; a < height; ++a)
@@ -3299,31 +3458,34 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 		df_map[a] = new unsigned char[width];
 		for (unsigned short b = 0u; b < width; ++b)
 		{
-			if ((b >= 510))
-			{
-				int e = 1;
-			}
 			unsigned long linear_index = (a * width) + b;
 			/*	if bc_coord is not all zeros then is external (internal texels are left as all zeros)
 				(a valid bc coord of all zeros is impossible, so this is a safe test)	*/
 
 			if (extern_texels_proj[linear_index] != shared_type::index_xy_type(2u, 2u))
 			{
-				for (short c = -1; c < 2; ++c)
+				shared_type::index_xy_type& proj_index = extern_texels_proj[linear_index];
+				unsigned long proj_linear_index = (proj_index.y * width) + proj_index.x;
+				if (extern_texels_proj[proj_linear_index] == shared_type::index_xy_type(2u, 2u))
 				{
-					shared_type::index_xy_type& proj_index = extern_texels_proj[linear_index];
-					short offset_y = ((c == -1) && (proj_index.y == 0u)) ? 0u : (((c == 1) && (proj_index.y == (height - 1u))) ? 0u : c);
-					for (short d = -1; d < 2; ++d)
+					df_map_linear[linear_index].value = df_map_linear[proj_linear_index].value;
+					goto set_df_map_value;
+				}
+				else
+				{
+					for (short c = -1; c < 2; ++c)
 					{
-
-
-						short offset_x = ((d == -1) && (proj_index.x == 0u)) ? 0u : (((d == 1) && (proj_index.y == (height - 1u))) ? 0u : d);
-						shared_type::index_xy_type kernal_texel_index((short)proj_index.x + offset_x, (short)proj_index.y + offset_y);
-						unsigned long kernal_linear_index = (kernal_texel_index.y * width) + kernal_texel_index.x;
-;						if (extern_texels_proj[kernal_linear_index] == shared_type::index_xy_type(2u, 2u))
+						short offset_y = ((c == -1) && (proj_index.y == 0u)) ? 0u : (((c == 1) && (proj_index.y == (height - 1u))) ? 0u : c);
+						for (short d = -1; d < 2; ++d)
 						{
-							df_map_linear[linear_index].value = df_map_linear[kernal_linear_index].value;
-							goto set_df_map_value;
+							short offset_x = ((d == -1) && (proj_index.x == 0u)) ? 0u : (((d == 1) && (proj_index.y == (height - 1u))) ? 0u : d);
+							shared_type::index_xy_type kernal_texel_index((short)proj_index.x + offset_x, (short)proj_index.y + offset_y);
+							unsigned long kernal_linear_index = (kernal_texel_index.y * width) + kernal_texel_index.x;
+							if (extern_texels_proj[kernal_linear_index] == shared_type::index_xy_type(2u, 2u))
+							{
+								df_map_linear[linear_index].value = df_map_linear[kernal_linear_index].value;
+								goto set_df_map_value;
+							}
 						}
 					}
 				}

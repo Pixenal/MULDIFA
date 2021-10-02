@@ -200,5 +200,7 @@ int png_code_type::write_to_file(const std::string& dir)
 		this->chunks[a].write_to_file(file);
 	}
 
+	file.close();
+
 	return 0;
 }

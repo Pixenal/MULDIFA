@@ -147,7 +147,7 @@ thread_pool_type::~thread_pool_type()
 
 
 /*	Adds jobs to the job stack */
-bool thread_pool_type::add_jobs(void(**jobs)(void*, unsigned short), void* arg_ptr)
+bool thread_pool_type::add_jobs(void(**jobs)(void*, unsigned short), unsigned short job_amount, void* arg_ptr)
 {
 	token.lock();
 
@@ -155,10 +155,10 @@ bool thread_pool_type::add_jobs(void(**jobs)(void*, unsigned short), void* arg_p
 
 	/*	Checks if the amount of jobs to be added can fit within the job stack
 		(the amount added is equal to the number of threads (legacy reasons))	*/
-	if ((job_stack.stack_top + thread_count) <= max_job_amount)
+	if ((job_stack.stack_top + job_amount) <= max_job_amount)
 	{
 		/*	If so, add jobs, wakeup threads, and return true */
-		for (unsigned short a = 0; a < thread_count; ++a)
+		for (unsigned short a = 0; a < job_amount; ++a)
 		{
 			job_stack.push(jobs[a], arg_ptr, a);
 		}

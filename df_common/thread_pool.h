@@ -80,6 +80,6 @@ public:
 
 	thread_pool_type();
 	~thread_pool_type();
-	bool add_jobs(void(**jobs)(void*, unsigned short), void* tri_local_state);
+	bool add_jobs(void(**jobs)(void*, unsigned short), unsigned short job_amount, void* tri_local_state);
 	int set_jobs_per_iteration(const unsigned short amount);
 };

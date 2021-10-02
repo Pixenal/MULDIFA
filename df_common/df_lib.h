@@ -1373,6 +1373,43 @@ private:
 	};
 
 
+	struct get_lerped_point_value_args_type
+	{
+		shared_type::coord_xyz_type* vert_coord = nullptr;
+		std::vector<unsigned long>* dfc_ids = nullptr;
+		char mode = 0;
+		float gamma = .0f;
+		std::vector<shared_type::ncspline_type>* zaligned_splines = nullptr;
+		int local_spline_length = 0;
+		float* value = nullptr;
+		unsigned long* jobs_completed = nullptr;
+		std::mutex* token = nullptr;
+	};
+
+	struct df_map_map_texel_args_type
+	{
+		unsigned short height = 0u;
+		unsigned short width = 0u;
+		float padding = .0f;
+		shared_type::coord_xyz_type* verts_buffer = nullptr;
+		shared_type::tri_uv_info_type* tris_uv_buffer = nullptr;
+		shared_type::tri_info_type* tris_buffer = nullptr;
+		unsigned long tri_amount = 0ul;
+		shared_type::vert_info_type* df_map_linear = nullptr;
+		shared_type::index_xy_type* extern_texels_proj = nullptr;
+		unsigned long* jobs_completed = nullptr;
+		std::mutex* token = nullptr;
+		unsigned short* jobs_completed_table = nullptr;
+	};
+
+	struct df_map_map_texel_local_args_type
+	{
+		unsigned short a = 0u;
+		unsigned long linear_index = 0ul;
+		shared_type::coord_xyz_type texel_coord;
+		df_map_map_texel_args_type* args = nullptr;
+	};
+
 	/*Data Members*/
 
 	const unsigned short max_gb = 12u;
@@ -1422,10 +1459,12 @@ public:
 	int pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount);
 	shared_type::coord_xyz_type wrld_space_to_grid_indx_space(const shared_type::coord_xyz_type coord);
 	float get_lerped_point_value(const shared_type::coord_xyz_type& vert_coord, const std::vector<unsigned long>& dfc_ids, const char mode, std::vector<shared_type::ncspline_type>& zaligned_splines, const int local_spline_length);
+	void call_get_lerped_point_value(void* args_ptr, unsigned short job_index);
 	bool grid_bounds_check(const shared_type::coord_xyz_type& coord);
 	shared_type::index_xyz_type get_enclsing_cmprt(const shared_type::coord_xyz_type& coord);
 	shared_type::index_xyz_type get_enclsing_cmprt_from_indx_space(const shared_type::coord_xyz_type& indx_space_coord);
 	int update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma);
+	int df_map_map_texel(void* args_ptr, unsigned short job_index);
 	int update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding);
 	int post_update_recipients();
 	int clean();
@@ -1479,6 +1518,8 @@ private:
 
 void call_update_grid_points(void* arg_ptr, unsigned short job_index);
 void call_delete_rlvncy_buffers(void* args_ptr, unsigned short job_index);
+void call_df_get_lerped_point_value(void* args_ptr, unsigned short job_index);
+void call_df_df_map_map_texel(void* args_ptr, unsigned short job_index);
 
 
 /*Exported function prototypes*/
