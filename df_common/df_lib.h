@@ -1375,15 +1375,23 @@ private:
 
 	struct get_lerped_point_value_args_type
 	{
-		shared_type::coord_xyz_type* vert_coord = nullptr;
 		std::vector<unsigned long>* dfc_ids = nullptr;
 		char mode = 0;
 		float gamma = .0f;
 		std::vector<shared_type::ncspline_type>* zaligned_splines = nullptr;
 		int local_spline_length = 0;
-		float* value = nullptr;
 		unsigned long* jobs_completed = nullptr;
+		unsigned long* jobs_completed_table = nullptr;
 		std::mutex* token = nullptr;
+	};
+
+	struct get_lerped_point_value_local_args_type
+	{
+		unsigned short a = 0u;
+		unsigned short current_batch_size = 0u;
+		shared_type::coord_xyz_type* vert_coord = nullptr;
+		float* value = nullptr;
+		get_lerped_point_value_args_type* args = nullptr;
 	};
 
 	struct df_map_map_texel_args_type

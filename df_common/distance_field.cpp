@@ -1513,11 +1513,7 @@ has_changed:
 		}
 
 		typedef void (*jobs)(void*, unsigned short);
-		jobs* jobs_ptr = new jobs[thread_pool.thread_count];
-		for (unsigned long a = 0u; a < thread_pool.thread_count; ++a)
-		{
-			jobs_ptr[a] = &call_delete_rlvncy_buffers;
-		}
+		jobs jobs_ptr = &call_delete_rlvncy_buffers;
 
 		bool add_jobs_success = false;
 		bool do_once = true;
@@ -1556,8 +1552,6 @@ has_changed:
 
 
 	batch_sent:
-
-		delete[] jobs_ptr;
 
 
 		while (true)
@@ -2530,17 +2524,11 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 			delete[] job_cmprt_table;
 
 			bool add_jobs_success;
-
 			typedef void (*jobs)(void*, unsigned short);
-
-			jobs* jobs_ptr = new jobs[thread_pool.thread_count];
+			jobs jobs_ptr = &call_update_grid_points;
 
 			/*Cretes a copy of the current tri_local state, each job batch gets a pointer to its respective tri_local state/ instance*/
 
-			for (unsigned int c = 0; c < thread_pool.thread_count; ++c)
-			{
-				jobs_ptr[c] = &call_update_grid_points;
-			}
 
 			/*Attempts to sends batch of jobs to thread pool*/
 		attempt_to_add_job_batch:
@@ -2573,9 +2561,7 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 
 		batch_sent:
 
-			delete[] jobs_ptr;
-
-
+			continue;
 		}
 
 		/*	If the current mesh has not been flagged as changed nor new, then set the array of layer indices in the current mesh's entry in the dfc cache to equal that if it's legacy counterpart,
@@ -2879,16 +2865,21 @@ float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_co
 
 void df_type::call_get_lerped_point_value(void* args_ptr, unsigned short job_index)
 {
-	get_lerped_point_value_args_type* args = (get_lerped_point_value_args_type*)args_ptr;
-	*args->value = this->get_lerped_point_value(*args->vert_coord, *args->dfc_ids, args->mode, *args->zaligned_splines, args->local_spline_length);
+	get_lerped_point_value_local_args_type* local_args = &((get_lerped_point_value_local_args_type*)args_ptr)[job_index];
+	get_lerped_point_value_args_type* args = local_args->args;
+	*local_args->value = this->get_lerped_point_value(*local_args->vert_coord, *args->dfc_ids, args->mode, *args->zaligned_splines, args->local_spline_length);
 	if (args->gamma != 1.0f)
 	{
-		*args->value = std::pow(*args->value, args->gamma);
+		*local_args->value = std::pow(*local_args->value, args->gamma);
 	}
 	args->token->lock();
 	++*args->jobs_completed;
+	++args->jobs_completed_table[local_args->a];
+	if (args->jobs_completed_table[local_args->a] == local_args->current_batch_size)
+	{
+		delete[] args_ptr;
+	}
 	args->token->unlock();
-	delete args;
 }
 
 
@@ -3149,77 +3140,98 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 			}
 		}
 	}
-	unsigned long jobs_completed = 0ul;
-	std::mutex token;
-	thread_pool.set_jobs_per_iteration(10u);
-	/*	The below for loop iterates through each vert passed to the function (which would be every vert in the current dfr)	*/
+
+	unsigned long internal_vert_amount = 0ul;
+	/*	Checks if current vert sits outside of the grid	*/
 	for (unsigned long a = 0u; a < vert_amount; ++a)
 	{
-		/*	Defines alias	*/
-		grid_type***& grid = volume_local.grid;
-
-		/*	Checks if current vert sits outside of the grid, if so, skips	*/
-		if (!grid_bounds_check(verts_buffer[a].coord))
+		if (grid_bounds_check(verts_buffer[a].coord))
 		{
-			token.lock();
-			++jobs_completed;
-			token.unlock();
-			continue;
-		}
-
-		/*	Probably isnt optimal adding a single job at a time, collect into batches and then send those like in df map function	*/
-
-		get_lerped_point_value_args_type* args = new get_lerped_point_value_args_type();
-		args->vert_coord = &verts_buffer[a].coord;
-		args->dfc_ids = &dfc_ids;
-		args->mode = interp_mode;
-		args->gamma = gamma;
-		args->zaligned_splines = &zaligned_splines;
-		args->local_spline_length = local_spline_length;
-		args->value = &verts_buffer[a].value;
-		args->jobs_completed = &jobs_completed;
-		args->token = &token;
-		typedef void (*job)(void*, unsigned short);
-		job job_ptr = &call_df_get_lerped_point_value;
-		job* job_ptr_ptr = &job_ptr;
-		bool add_job_success = false;
-		/*	Attempts to send job to thread pool	*/
-	attempt_to_add_job:
-		add_job_success = thread_pool.add_jobs(job_ptr_ptr, 1u, (void*)args);
-		/*	Checks if attempt was successfull	*/
-		if (add_job_success)
-		{
-			goto job_sent;
+			++internal_vert_amount;
 		}
 		else
 		{
-			goto wait_for_space_in_job_stack;
+			verts_buffer[a].value = 2.0f;
+		}
+	}
+
+	{
+		unsigned long jobs_completed = 0ul;
+		std::mutex token;
+		thread_pool.set_jobs_per_iteration(10u);
+		typedef void (*job)(void*, unsigned short);
+		job job_ptr = &call_df_get_lerped_point_value;
+		const unsigned long batch_max_size = 200;
+		const unsigned long batch_amount = (internal_vert_amount / batch_max_size) + 1ul;
+		get_lerped_point_value_args_type args;
+		args.dfc_ids = &dfc_ids;
+		args.mode = interp_mode;
+		args.gamma = gamma;
+		args.zaligned_splines = &zaligned_splines;
+		args.local_spline_length = local_spline_length;
+		args.jobs_completed = &jobs_completed;
+		args.jobs_completed_table = new unsigned long[batch_amount] {};
+		args.token = &token;
+		unsigned long vert_index = 0ul;
+		/*	The below for loop iterates through each vert passed to the function (which would be every vert in the current dfr)	*/
+		for (unsigned long a = 0ul; a < batch_amount; ++a)
+		{
+			const unsigned long current_batch_size = (a == (batch_amount - 1ul)) ? (internal_vert_amount % batch_max_size) : batch_max_size;
+			get_lerped_point_value_local_args_type* local_args = new get_lerped_point_value_local_args_type[current_batch_size];
+			for (unsigned long b = 0ul; b < current_batch_size; ++vert_index)
+			{
+				if (verts_buffer[vert_index].value == 2.0f)
+				{
+					verts_buffer[vert_index].value = .0f;
+					continue;
+				}
+				local_args[b].a = a;
+				local_args[b].current_batch_size = current_batch_size;
+				local_args[b].vert_coord = &verts_buffer[vert_index].coord;
+				local_args[b].value = &verts_buffer[vert_index].value;
+				local_args[b].args = &args;
+				++b;
+			}
+			bool add_job_success = false;
+			/*	Attempts to send job to thread pool	*/
+		attempt_to_add_job:
+			add_job_success = thread_pool.add_jobs(job_ptr, current_batch_size, (void*)local_args);
+			/*	Checks if attempt was successfull	*/
+			if (add_job_success)
+			{
+				goto job_sent;
+			}
+			else
+			{
+				goto wait_for_space_in_job_stack;
+			}
+
+		wait_for_space_in_job_stack:
+			while (true)
+			{
+				std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
+				if (thread_pool.job_amount < (batch_max_size * 2))
+				{
+					goto attempt_to_add_job;
+				}
+			}
+		job_sent:
+
+			continue;
 		}
 
-	wait_for_space_in_job_stack:
 		while (true)
 		{
 			std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
-			if (thread_pool.job_amount < 10)
+			token.lock();
+			if (jobs_completed == internal_vert_amount)
 			{
-				goto attempt_to_add_job;
+				token.unlock();
+				break;
 			}
-		}
-		job_sent:
-
-		continue;
-	}
-	
-	while (true)
-	{
-		std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
-		token.lock();
-		if (jobs_completed == vert_amount)
-		{
 			token.unlock();
-			break;
 		}
-		token.unlock();
+		delete[] args.jobs_completed_table;
 	}
 
 	/*	Resets the "temp_spline_indx" data member in each grid point enclosed within the bounding box to 0	*/
@@ -3365,12 +3377,7 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 	shared_type::coord_xyz_type* texel_coord_cache = new shared_type::coord_xyz_type[texel_amount_total];
 	{
 		typedef void (*job)(void*, unsigned short);
-		
-		job* jobs = new job[width];
-		for (unsigned short a = 0u; a < width; ++a)
-		{
-			jobs[a] = &call_df_df_map_map_texel;
-		}
+		job job_ptr = &call_df_df_map_map_texel;;
 		unsigned long jobs_completed = 0ul;
 		std::mutex token;
 		df_map_map_texel_args_type arg;
@@ -3407,7 +3414,7 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 			/*	Attempts to send job to thread pool	*/
 			bool add_job_success = false;
 		attempt_to_add_job:
-			add_job_success = thread_pool.add_jobs(jobs, width, (void*)args);
+			add_job_success = thread_pool.add_jobs(job_ptr, width, (void*)args);
 			/*	Checks if attempt was successfull	*/
 			if (add_job_success)
 			{
@@ -3431,7 +3438,7 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 
 			continue;
 		}
-		delete[] jobs;
+
 		while (true)
 		{
 			std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
