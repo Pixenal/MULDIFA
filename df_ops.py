@@ -1579,7 +1579,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                     df_map_dir_abs = os.path.join(df_map_dir_abs, '')
                                     name = obj.name + "_" + dfr_layer.name + "_df.png"
                                     time_start = time.time()
-                                    df_lib.call_df_update_recipient_df_map(ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), vert_amount, ctypes.pointer(tris_buffer), ctypes.pointer(tris_uv_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(name, 'utf-8')), padding)
+                                    df_lib.call_df_update_recipient_df_map(obj.dfr_id, ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), vert_amount, ctypes.pointer(tris_buffer), ctypes.pointer(tris_uv_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(name, 'utf-8')), padding)
                                     time_end = time.time()
                                     print("Update DF Map Time: ", (time_end - time_start))
                                     image_found = False
@@ -1730,7 +1730,8 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                         indx_counter_layer_cont += 1
                               
                     dfr_layer_indx += 1
-                            
+        
+        df_lib.call_df_post_update_recipients()
         incrmt_undo_step(context)
                             
         return {'FINISHED'}

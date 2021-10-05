@@ -308,6 +308,18 @@ void shared_type::tri_uv_info_type::clean()
 }
 
 
+bool shared_type::tri_uv_info_type::operator==(const tri_uv_info_type& operand)
+{
+	return ((this->uv_vert_0 == operand.uv_vert_0) && (this->uv_vert_1 == operand.uv_vert_1) && (this->uv_vert_2 == operand.uv_vert_2));
+}
+
+
+bool shared_type::tri_uv_info_type::operator!=(const tri_uv_info_type& operand)
+{
+	return !(*this == operand);
+}
+
+
 /*shared_type::loop_info_type*/
 /*-------------------------------------------------------------------------------------------------------------*/
 

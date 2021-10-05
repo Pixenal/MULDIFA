@@ -2614,6 +2614,8 @@ recheck_if_batches_completed:
 int df_type::pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount)
 {
 	update_recipients_local.clean();
+	update_local.dfr_cache.move_to_legacy();
+	update_local.dfr_cache.dfr_cache = new std::vector<update_local_type::dfr_cache_type::dfr_cache_entry_type>;
 
 	/*	Checks for deleted dfrs	*/
 
@@ -3268,76 +3270,104 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 	df_map_map_texel_local_args_type* args_ptr_convrtd = (df_map_map_texel_local_args_type*)args_ptr;
 	df_map_map_texel_local_args_type* local_args = &args_ptr_convrtd[job_index];
 	df_map_map_texel_args_type* args = local_args->args;
+	update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_texel_type* texel_cache = &(*update_local.dfr_cache.dfr_cache)[args->cache_index].texel_cache[args->texel_cache_index].cache[local_args->linear_index];
 
 	/*	Find enclosing triangle	*/
-	unsigned long c;
-	shared_type::coord_uvw_type* bc_coord_cache = new shared_type::coord_uvw_type[args->tri_amount];
-	shared_type::coord_xyz_type normal(0, 0, 1.0);
-	for (c = 0ul; c < args->tri_amount; ++c)
+	unsigned long c = 0ul;
+	shared_type::coord_uvw_type* bc_coord_cache = nullptr;
+	if (!args->is_in_sync)
 	{
-		bc_coord_cache[c] = shared.cartesian_to_barycentric(args->tris_uv_buffer[c].uv_vert_0, args->tris_uv_buffer[c].uv_vert_1, args->tris_uv_buffer[c].uv_vert_2, local_args->texel_coord, normal);
-		if (((bc_coord_cache[c].u >= 0) && (bc_coord_cache[c].v >= 0) && (bc_coord_cache[c].w >= 0)))
+		bc_coord_cache = new shared_type::coord_uvw_type[args->tri_amount];
+		shared_type::coord_xyz_type normal(0, 0, 1.0);
+		for (c; c < args->tri_amount; ++c)
 		{
-			break;
+			bc_coord_cache[c] = shared.cartesian_to_barycentric(args->tris_uv_buffer[c].uv_vert_0, args->tris_uv_buffer[c].uv_vert_1, args->tris_uv_buffer[c].uv_vert_2, local_args->texel_coord, normal);
+			if (((bc_coord_cache[c].u >= 0) && (bc_coord_cache[c].v >= 0) && (bc_coord_cache[c].w >= 0)))
+			{
+				break;
+			}
 		}
+		texel_cache->bc_coord = bc_coord_cache[c];
+		texel_cache->tri_index = c;
+	}
+	else
+	{
+		c = texel_cache->internal ? texel_cache->tri_index : args->tri_amount;
 	}
 	if (c != args->tri_amount)
 	{
-		args->df_map_linear[local_args->linear_index].coord = shared.barycentric_to_cartesian(args->verts_buffer[args->tris_buffer[c].vert_0], args->verts_buffer[args->tris_buffer[c].vert_1], args->verts_buffer[args->tris_buffer[c].vert_2], bc_coord_cache[c]);
+		texel_cache->internal = true;
+		args->df_map_linear[local_args->linear_index].coord = shared.barycentric_to_cartesian	(args->verts_buffer[args->tris_buffer[c].vert_0], args->verts_buffer[args->tris_buffer[c].vert_1], args->verts_buffer[args->tris_buffer[c].vert_2], texel_cache->bc_coord);
 		args->extern_texels_proj[local_args->linear_index] = shared_type::index_xy_type(2u, 2u);
 	}
 	else
 	{
-		shared_type::coord_xyz_type nearest_proj_point;
-		unsigned long nearest_tri = 0ul;
-		double min_dist_sqr = (std::numeric_limits<double>::max)();
-		for (unsigned long d = 0u; d < args->tri_amount; ++d)
+		double dist_normed;
+		if (!args->is_in_sync)
 		{
-			shared_type::coord_xyz_type* edge_vert_a = nullptr;
-			shared_type::coord_xyz_type* edge_vert_b = nullptr;
-			if (bc_coord_cache[d].u < .0)
+			texel_cache->internal = false;
+			texel_cache->min_dist_sqr = (std::numeric_limits<double>::max)();
+			for (unsigned long d = 0u; d < args->tri_amount; ++d)
 			{
-				edge_vert_a = &args->tris_uv_buffer[d].uv_vert_1;
-				edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
+				shared_type::coord_xyz_type* edge_vert_a = nullptr;
+				shared_type::coord_xyz_type* edge_vert_b = nullptr;
+				if (bc_coord_cache[d].u < .0)
+				{
+					edge_vert_a = &args->tris_uv_buffer[d].uv_vert_1;
+					edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
+				}
+				else if (bc_coord_cache[d].v < .0)
+				{
+					edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
+					edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
+				}
+				else if (bc_coord_cache[d].w < .0)
+				{
+					edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
+					edge_vert_b = &args->tris_uv_buffer[d].uv_vert_1;
+				}
+				else
+				{
+					std::cout << "Invalid extern texel" << std::endl;
+				}
+				/*	"at_dist" is the distance vector from edge_vert_a to the current texel	*/
+				shared_type::coord_xy_type at_dist(local_args->texel_coord.x - edge_vert_a->x, local_args->texel_coord.y - edge_vert_a->y);
+				/*	"at_dist" is the distance vector from edge_vert_a to edge_vert_b	*/
+				shared_type::coord_xy_type ab_dist(edge_vert_b->x - edge_vert_a->x, edge_vert_b->y - edge_vert_a->y);
+				double ab_len = std::sqrt((ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y));
+				shared_type::coord_xy_type ab_normal(ab_dist.x / ab_len, ab_dist.y / ab_len);
+				double t = (ab_normal.x * at_dist.x) + (ab_normal.y * at_dist.y);
+				shared_type::coord_xy_type ap_dist(ab_normal.x * t, ab_normal.y * t);
+				double ab_dot_ab = (ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y);
+				double ab_dot_ap = (ab_dist.x * ap_dist.x) + (ab_dist.y * ap_dist.y);
+				shared_type::coord_xyz_type proj_point = (ab_dot_ap < .0) ? *edge_vert_a : ((ab_dot_ap > ab_dot_ab) ? *edge_vert_b : shared_type::coord_xyz_type(edge_vert_a->x + ap_dist.x, edge_vert_a->y + ap_dist.y, .0));
+				shared_type::coord_xy_type pt_dist(local_args->texel_coord.x - proj_point.x, local_args->texel_coord.y - proj_point.y);
+				double dist_sqr = (pt_dist.x * pt_dist.x) + (pt_dist.y * pt_dist.y);
+				if (dist_sqr < texel_cache->min_dist_sqr)
+				{
+					texel_cache->min_dist_vec = pt_dist;
+					texel_cache->min_dist_sqr = dist_sqr;
+					texel_cache->nearest_proj_point = proj_point;
+				}
 			}
-			else if (bc_coord_cache[d].v < .0)
-			{
-				edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
-				edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
-			}
-			else if (bc_coord_cache[d].w < .0)
-			{
-				edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
-				edge_vert_b = &args->tris_uv_buffer[d].uv_vert_1;
-			}
-			else
-			{
-				std::cout << "Invalid extern texel" << std::endl;
-			}
-			/*	"at_dist" is the distance vector from edge_vert_a to the current texel	*/
-			shared_type::coord_xy_type at_dist(local_args->texel_coord.x - edge_vert_a->x, local_args->texel_coord.y - edge_vert_a->y);
-			/*	"at_dist" is the distance vector from edge_vert_a to edge_vert_b	*/
-			shared_type::coord_xy_type ab_dist(edge_vert_b->x - edge_vert_a->x, edge_vert_b->y - edge_vert_a->y);
-			double ab_len = std::sqrt((ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y));
-			shared_type::coord_xy_type ab_normal(ab_dist.x / ab_len, ab_dist.y / ab_len);
-			double t = (ab_normal.x * at_dist.x) + (ab_normal.y * at_dist.y);
-			shared_type::coord_xy_type ap_dist(ab_normal.x * t, ab_normal.y * t);
-			double ab_dot_ab = (ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y);
-			double ab_dot_ap = (ab_dist.x * ap_dist.x) + (ab_dist.y * ap_dist.y);
-			shared_type::coord_xyz_type proj_point = (ab_dot_ap < .0) ? *edge_vert_a : ((ab_dot_ap > ab_dot_ab) ? *edge_vert_b : shared_type::coord_xyz_type(edge_vert_a->x + ap_dist.x, edge_vert_a->y + ap_dist.y, .0));
-			shared_type::coord_xy_type pt_dist(local_args->texel_coord.x - proj_point.x, local_args->texel_coord.y - proj_point.y);
-			double dist_sqr = (pt_dist.x * pt_dist.x) + (pt_dist.y * pt_dist.y);
-			if (dist_sqr < min_dist_sqr)
-			{
-				min_dist_sqr = dist_sqr;
-				nearest_proj_point = proj_point;
-			}
+			dist_normed = std::sqrt(texel_cache->min_dist_sqr);
+			texel_cache->min_dist_vec.x /= dist_normed;
+			texel_cache->min_dist_vec.x *= -1.0;
+			texel_cache->min_dist_vec.y /= dist_normed;
+			texel_cache->min_dist_vec.y *= -1.0;
 		}
-		args->extern_texels_proj[local_args->linear_index] = (std::sqrt(min_dist_sqr) <= args->padding) ? shared_type::index_xy_type(args->width * nearest_proj_point.x, args->height * nearest_proj_point.y) : shared_type::index_xy_type(2u, 2u);
+		else
+		{
+			dist_normed = std::sqrt(texel_cache->min_dist_sqr);
+		}		
+		args->extern_texels_proj[local_args->linear_index] = (dist_normed <= args->padding) ? shared_type::index_xy_type(args->width * texel_cache->nearest_proj_point.x, args->height * texel_cache->nearest_proj_point.y) : shared_type::index_xy_type(2u, 2u);
 		args->df_map_linear[local_args->linear_index].coord = volume_local.min_grid_coord;
 		args->df_map_linear[local_args->linear_index].coord.x -= 1.0;
 	}
-	delete[] bc_coord_cache;
+	if (bc_coord_cache != nullptr)
+	{
+		delete[] bc_coord_cache;
+	}
 	args->token->lock();
 	++*args->jobs_completed;
 	++args->jobs_completed_table[local_args->a];
@@ -3354,8 +3384,106 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 
 
 
-int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
+int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
 {
+	bool exists_in_legacy = false;
+	unsigned long legacy_index = 0ul;
+	{
+		unsigned long legacy_cache_size = update_local.dfr_cache.dfr_cache_legacy->size();
+		for (legacy_index; legacy_index < legacy_cache_size; ++legacy_index)
+		{
+			if ((*update_local.dfr_cache.dfr_cache_legacy)[legacy_index].id == dfr_id)
+			{
+				exists_in_legacy = true;
+				break;
+			}
+		}
+	}
+	bool is_in_sync = exists_in_legacy;
+	unsigned long cache_index = 0ul;
+	short texel_cache_index = -1;
+	bool exists_in_texel_cache = exists_in_legacy;
+	if (exists_in_legacy)
+	{
+		if (!(*update_local.dfr_cache.dfr_cache_legacy)[legacy_index].moved_from_legacy)
+		{
+			if ((*update_local.dfr_cache.dfr_cache_legacy)[legacy_index].tri_cache_size == tri_amount)
+			{
+				for (unsigned long a = 0ul; a < tri_amount; ++a)
+				{
+					if ((*update_local.dfr_cache.dfr_cache_legacy)[legacy_index].tri_cache[a] != tris_uv_buffer[a])
+					{
+						is_in_sync = false;
+						break;
+					}
+				}
+			}
+			else
+			{
+				is_in_sync = false;
+			}
+			if (is_in_sync)
+			{
+				cache_index = update_local.dfr_cache.dfr_cache->size();
+				typedef df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type cache_entry_type;
+				update_local.dfr_cache.dfr_cache->push_back(cache_entry_type((*update_local.dfr_cache.dfr_cache_legacy)[legacy_index]));
+				(*update_local.dfr_cache.dfr_cache_legacy)[legacy_index].moved_from_legacy = true;
+				(*update_local.dfr_cache.dfr_cache_legacy)[legacy_index].cache_index = cache_index;
+			}
+			else
+			{
+				update_local.dfr_cache.dfr_cache_legacy->erase(update_local.dfr_cache.dfr_cache_legacy->begin() + legacy_index);
+				goto add_new_entry;
+			}
+		}
+		else
+		{
+			cache_index = (*update_local.dfr_cache.dfr_cache_legacy)[legacy_index].cache_index;
+		}
+		if (is_in_sync)
+		{
+			unsigned short texel_cache_size = (*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.size();
+			for (short a = 0; a < texel_cache_size; ++a)
+			{
+				if (((*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[a].height == height) && ((*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[a].width == width))
+				{
+					texel_cache_index = a;
+					(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[a].relevant = true;
+					break;
+				}
+			}
+			if (texel_cache_index < 0)
+			{
+				typedef df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_type texel_cache_type;
+				texel_cache_index = (*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.size();
+				(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.push_back(texel_cache_type(width, height));
+				(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[texel_cache_index].relevant = true;
+				is_in_sync = false;
+			}
+		}
+	}
+	else
+	{
+	add_new_entry:
+
+		/*	Create new dfr entry in cache	*/
+		cache_index = update_local.dfr_cache.dfr_cache->size();
+		typedef df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type cache_entry_type;
+		update_local.dfr_cache.dfr_cache->push_back(cache_entry_type(dfr_id, tris_uv_buffer, tri_amount));
+
+		/*	Create new dfr entry in legacy cache	*/
+		legacy_index = update_local.dfr_cache.dfr_cache_legacy->size();
+		update_local.dfr_cache.dfr_cache_legacy->push_back(cache_entry_type(dfr_id, tris_uv_buffer, 1));
+		(*update_local.dfr_cache.dfr_cache_legacy)[legacy_index].moved_from_legacy = true;
+		(*update_local.dfr_cache.dfr_cache_legacy)[legacy_index].cache_index = cache_index;
+
+		/*	Add entry to said dfr cache entries texel cache	*/
+		typedef df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_type texel_cache_type;
+		(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.push_back(texel_cache_type(width, height));
+		texel_cache_index = 0;
+		(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[0].relevant = true;
+	}
+
 	/*	Recently discovered single line conditions. Is big epic	*/
 	padding = (padding < .0f) ? (padding = (std::numeric_limits<float>::max)()) : padding;
 	unsigned long texel_amount_total = height * width;
@@ -3381,6 +3509,9 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 		unsigned long jobs_completed = 0ul;
 		std::mutex token;
 		df_map_map_texel_args_type arg;
+		arg.is_in_sync = is_in_sync;
+		arg.texel_cache_index = texel_cache_index;
+		arg.cache_index = cache_index;
 		arg.df_map_linear = df_map_linear;
 		arg.extern_texels_proj = extern_texels_proj;
 		arg.height = height;
@@ -3459,6 +3590,7 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 
 	std::cout << "UPDATE RECIPIENT FINISHED FROM WITHIN DF MAP" << std::endl;
 
+	shared_type::coord_xy_type texel_dist(1.0 / (double)width, 1.0 / (double)height);
 	unsigned char** df_map = new unsigned char* [height];
 	for (unsigned short a = 0u; a < height; ++a)
 	{
@@ -3466,6 +3598,8 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 		for (unsigned short b = 0u; b < width; ++b)
 		{
 			unsigned long linear_index = (a * width) + b;
+			typedef df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_texel_type texel_cache_texel_type;
+			const texel_cache_texel_type& texel_cache = (*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[texel_cache_index].cache[linear_index];
 			/*	if bc_coord is not all zeros then is external (internal texels are left as all zeros)
 				(a valid bc coord of all zeros is impossible, so this is a safe test)	*/
 
@@ -3480,6 +3614,18 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 				}
 				else
 				{
+					for (double c = 1.0; c <= 2.0; ++c)
+					{
+						shared_type::coord_xy_type slid_coord((texel_cache.nearest_proj_point.x + (texel_cache.min_dist_vec.x * (texel_dist.x * c))), (texel_cache.nearest_proj_point.y + (texel_cache.min_dist_vec.y * (texel_dist.y * c))));
+						shared_type::index_xy_type slid_index((slid_coord.x < .0) ? 0 : ((slid_coord.x > 1.0) ? (width - 1) : ((double)width * slid_coord.x)), (slid_coord.y < .0) ? 0 : ((slid_coord.y > 1.0) ? (width - 1) : ((double)height * slid_coord.y)));
+						unsigned long slid_linear_index = (slid_index.y * width) + slid_index.x;
+						if (extern_texels_proj[slid_linear_index] == shared_type::index_xy_type(2u, 2u))
+						{
+							df_map_linear[linear_index].value = df_map_linear[slid_linear_index].value;
+							goto set_df_map_value;
+						}
+					}
+					
 					for (short c = -1; c < 2; ++c)
 					{
 						short offset_y = ((c == -1) && (proj_index.y == 0u)) ? 0u : (((c == 1) && (proj_index.y == (height - 1u))) ? 0u : c);
@@ -3495,6 +3641,7 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 							}
 						}
 					}
+					df_map_linear[linear_index].value = .0f;
 				}
 			}
 		set_df_map_value:
@@ -3521,6 +3668,23 @@ int df_type::update_recipient_df_map(const unsigned long* dfc_layers, const unsi
 /*	Currently nop	*/
 int df_type::post_update_recipients()
 {
+	update_local.dfr_cache.clean_legacy();
+	unsigned long dfr_cache_size = update_local.dfr_cache.dfr_cache->size();
+	for (unsigned long a = 0u; a < dfr_cache_size; ++a)
+	{
+		for (unsigned short b = 0u; b < (*update_local.dfr_cache.dfr_cache)[a].texel_cache.size(); ++b)
+		{
+			if (!(*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].relevant)
+			{
+				(*update_local.dfr_cache.dfr_cache)[a].texel_cache.erase((*update_local.dfr_cache.dfr_cache)[a].texel_cache.begin() + b);
+				--b;
+			}
+			else
+			{
+				(*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].relevant = false;
+			}
+		}
+	}
 	return 0;
 }
 
@@ -6314,6 +6478,27 @@ df_type::update_local_type::dfc_cache_type::mesh_info_type::~mesh_info_type()
 
 /*df_type::update_local_type::dfr_cache_type*/
 /*-------------------------------------------------------------------------------------------------------------*/
+
+
+void df_type::update_local_type::dfr_cache_type::clean()
+{
+	if (this->dfr_cache != nullptr)
+	{
+		delete this->dfr_cache;
+		this->dfr_cache = nullptr;
+	}
+	this->clean_legacy();
+}
+
+
+void df_type::update_local_type::dfr_cache_type::clean_legacy()
+{
+	if (this->dfr_cache_legacy != nullptr)
+	{
+		delete this->dfr_cache_legacy;
+		this->dfr_cache_legacy = nullptr;
+	}
+}
 
 
 /*	Returns a pointer to the actual "dfr_id_index_type" object of the speficied dfr id, returns	nullptr if canot be found	*/

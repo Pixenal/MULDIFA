@@ -118,7 +118,7 @@ thread_pool_type::thread_pool_type()
 	intern_thread_count = std::thread::hardware_concurrency() - 1;
 
 	/*	Is for debugging, uncomment to run single threaded	*/
-	/*	intern_thread_count = 1u;	*/
+	/*	intern_thread_count = 1u;*/
 
 	/* Dynamically create array in which to store threads */
 	threads = new std::thread[intern_thread_count];

@@ -118,9 +118,9 @@ extern "C"
 	}
 
 
-	int call_df_update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
+	int call_df_update_recipient_df_map(const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
 	{
-		df.update_recipient_df_map(dfc_layers, dfc_layers_nxt_indx, verts_buffer, vert_amount, tris_buffer, tris_uv_buffer, tri_amount, height, width, interp_mode, gamma, dir, name, padding);
+		df.update_recipient_df_map(dfr_id, dfc_layers, dfc_layers_nxt_indx, verts_buffer, vert_amount, tris_buffer, tris_uv_buffer, tri_amount, height, width, interp_mode, gamma, dir, name, padding);
 		return 0;
 	}
 

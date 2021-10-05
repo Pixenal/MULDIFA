@@ -129,6 +129,8 @@ public:
 		/*Member Functions*/
 
 		void clean();
+		bool operator==(const tri_uv_info_type& operand);
+		bool operator!=(const tri_uv_info_type& operand);
 	};
 
 
@@ -859,15 +861,99 @@ private:
 
 		struct dfr_cache_type
 		{
+			/*	Types	*/
+
+			class dfr_cache_entry_type
+			{
+			public:
+
+				/* Types */
+
+				struct texel_cache_texel_type
+				{
+					unsigned long tri_index = 0ul;
+					shared_type::coord_uvw_type bc_coord;
+					shared_type::coord_xyz_type nearest_proj_point;
+					shared_type::coord_xy_type min_dist_vec;
+					double min_dist_sqr = .0;
+					bool internal = false;
+				};
+
+				struct texel_cache_type
+				{
+					unsigned short height = 0u;
+					unsigned short width = 0u;
+					unsigned long cache_size = 0ul;
+					std::vector<texel_cache_texel_type> cache;
+					bool relevant = false;
+
+					void clean()
+					{
+						return;
+					}
+
+					texel_cache_type(const unsigned short width, const unsigned short height)
+					{
+						this->height = height;
+						this->width = width;
+						this->cache_size = height * width;
+						this->cache.resize(this->cache_size);
+					}
+				};
+
+				/*	Data Members	*/
+
+				std::vector<shared_type::tri_uv_info_type> tri_cache;
+				unsigned long tri_cache_size = 0ul;
+				std::vector<texel_cache_type> texel_cache;
+				unsigned long id = 0ul;
+				bool moved_from_legacy = false;
+				unsigned long cache_index = 0ul;
+
+				/*	Member Functions	*/
+
+				dfr_cache_entry_type(const unsigned long id, shared_type::tri_uv_info_type* tri_uv_cache, const unsigned long tri_uv_cache_size)
+				{
+					this->tri_cache.resize(tri_uv_cache_size);
+					for (unsigned long a = 0ul; a < tri_uv_cache_size; ++a)
+					{
+						this->tri_cache[a] = tri_uv_cache[a];
+					}
+					this->tri_cache_size = tri_uv_cache_size;
+					this->id = id;
+				}
+
+				void clean()
+				{
+					return;
+				}
+			};
+
 			/*Data Members*/
 
+			std::vector<dfr_cache_entry_type>* dfr_cache = nullptr;
+			std::vector<dfr_cache_entry_type>* dfr_cache_legacy = nullptr;
 			shared_type::invrse_jenga_type<dfr_id_indx_type*, unsigned long> dfr_ids;
 
 			/*Member Functions*/
 
+			void move_to_legacy()
+			{
+				if (this->dfr_cache != nullptr)
+				{
+					this->dfr_cache_legacy = this->dfr_cache;
+					this->dfr_cache = nullptr;
+				}
+				else
+				{
+					this->dfr_cache_legacy = new std::vector<dfr_cache_entry_type>;
+				}
+			}
 			dfr_id_indx_type* get_dfr_id(const unsigned long& dfr_id);
 			void clean_dfr_ids();
 			void deep_clean_dfr_ids();
+			void clean();
+			void clean_legacy();
 		};
 
 		struct buffer_type
@@ -955,10 +1041,6 @@ private:
 
 	struct update_recipients_local_type
 	{
-		/*Data Members*/
-
-		/*Member Functions*/
-
 		void clean();
 	};
 
@@ -1396,6 +1478,9 @@ private:
 
 	struct df_map_map_texel_args_type
 	{
+		bool is_in_sync = false;
+		unsigned short texel_cache_index = 0u;
+		unsigned long cache_index = 0ul;
 		unsigned short height = 0u;
 		unsigned short width = 0u;
 		float padding = .0f;
@@ -1473,7 +1558,7 @@ public:
 	shared_type::index_xyz_type get_enclsing_cmprt_from_indx_space(const shared_type::coord_xyz_type& indx_space_coord);
 	int update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma);
 	int df_map_map_texel(void* args_ptr, unsigned short job_index);
-	int update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding);
+	int update_recipient_df_map(const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding);
 	int post_update_recipients();
 	int clean();
 	int clean_special();
@@ -1545,7 +1630,7 @@ extern "C"
 	EXPORT int call_df_add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc);
 	EXPORT int call_df_pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount);
 	EXPORT int call_df_update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma);
-	EXPORT int call_df_update_recipient_df_map(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding);
+	EXPORT int call_df_update_recipient_df_map(const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding);
 	EXPORT int call_df_post_update_recipients();
 	EXPORT int call_df_check_volume(shared_type::coord_xyz_type* verts_buffer);
 	EXPORT int call_df_defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount, int& greatest_id);
