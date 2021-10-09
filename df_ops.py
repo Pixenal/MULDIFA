@@ -1520,7 +1520,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 """ Not using the custom bmesh wrapper as do not need to switch modes (I dont think so at least)  """
                                 obj_bmesh = bmesh.new()
                                 obj_bmesh.from_mesh(mesh_eval)
-                                uv_layer = obj_bmesh.loops.layers.uv.get("UVMap", 0)
+                                uv_layer = obj_bmesh.loops.layers.uv.get(dfr_layer.df_map_uvchannel, 0)
 
                                 print ("testing if uv_layer == None")
                                 if (uv_layer != None):

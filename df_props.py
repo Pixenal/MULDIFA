@@ -71,7 +71,7 @@ class df_dfr_layer_properties(bpy.types.PropertyGroup):
     df_map_width : bpy.props.IntProperty(default = 512, name = "Width")
     df_map_padding_infinite : bpy.props.BoolProperty(name = "Padding Infinite", default = True)
     df_map_padding : bpy.props.FloatProperty(name = "Padding Distance")
-    df_map_uv : bpy.props.StringProperty()
+    df_map_uvchannel : bpy.props.StringProperty(name = "UV")
 
 
 class df_properties(bpy.types.PropertyGroup):

@@ -27,36 +27,44 @@
 
 inline shared_type shared;
 
-
+/*	Returns Adler32 checksum
+	(this is uesd in the zlib specification)	*/
 unsigned long deflate_code_type::calc_adler32(const shared_type::byte_vec_type& message)
 {
-	unsigned long message_size = message.char_vec.size();
-	unsigned long long low = 1ull;
-	unsigned long long high = 0ull;
-	unsigned long long high_intermediate_sum = 1ull;
+	/*	The algorithm for calculating the Adler32 checksum can be described as:
+		sum_0 + (65536 * sum_1),
+		Where sum_0 = (1 + byte_0 + byte_1 + .... + byte_n-1) % 65521
+		and sum_1 = ((1 + byte_0) + (1 + byte_0 + byte_1) + .... + (1 + byte_0 + .... + byte_n-1)) % 65521	*/
 
+	/*	Calculates the checksum	*/
+	unsigned long message_size = message.char_vec.size();
+	unsigned long long sum_0 = 1ull;
+	unsigned long long sum_1 = 0ull;
+	unsigned long long sum_1_intermediate_sum = 1ull;
 	for (unsigned long a = 0u; a < message_size; ++a)
 	{
-		if (low == (std::numeric_limits<unsigned long long>::max)())
+		if (sum_0 == (std::numeric_limits<unsigned long long>::max)())
 		{
-			low %= 65521ull;
+			sum_0 %= 65521ull;
 		}
-		low += (unsigned char)message.char_vec[a];
+		sum_0 += (unsigned char)message.char_vec[a];
 
-		if (high == (std::numeric_limits<unsigned long long>::max)())
+		if (sum_1 == (std::numeric_limits<unsigned long long>::max)())
 		{
-			high %= 65521ull;
+			sum_1 %= 65521ull;
 		}
-		high_intermediate_sum += (unsigned char)message.char_vec[a];
-		high += high_intermediate_sum;
+		sum_1_intermediate_sum += (unsigned char)message.char_vec[a];
+		sum_1 += sum_1_intermediate_sum;
 	}
-	low %= 65521ull;
-	high %= 65521ull;
-	unsigned long checksum = low + (65536ull * high);
+	sum_0 %= 65521ull;
+	sum_1 %= 65521ull;
+	unsigned long checksum = sum_0 + (65536ull * sum_1);
+
+	/*	Reverses the byte order of the checksum	*/
 	unsigned long checksum_reversed = 0ul;;
 	for (unsigned short a = 0u; a < 4u; ++a)
 	{
-		unsigned long buffer  =0ul;
+		unsigned long buffer = 0ul;
 		memcpy(&buffer, &checksum, 1);
 		checksum_reversed ^= (buffer << ((3u - a) * 8u));
 		checksum >>= 8u;
@@ -66,6 +74,7 @@ unsigned long deflate_code_type::calc_adler32(const shared_type::byte_vec_type& 
 }
 
 
+/*	Performs a quicksort on the specified array. The "indices" parameter stores the new position of each element after sorting	*/
 int deflate_code_type::quick_sort(unsigned long* array, unsigned long* indices, const unsigned short array_size)
 {
 	/*	Padded as first and last are out of bounds (first = -1 and last = array_size)	*/
@@ -153,13 +162,17 @@ int deflate_code_type::quick_sort(unsigned long* array, unsigned long* indices, 
 			}
 		}
 	}
-
 	return 0;
 }
 
 
+/*	Moves the specified huffman codeword up the tree. This is done by taking the longest codeword with a length shorter than the specified maximum, and creating a new branch at that codeword which
+	contains both the found and specified codewords. Note that this function does not handle the codewords fellow child (if one exists), so as such, can, and usually will, leave the tree in an incomplete
+	state	(in practice this is taken care of by the calling function)	*/
 int deflate_code_type::move_up_codeword(std::vector<bool>* codewords, unsigned short* codeword_lengths, const unsigned short index, const unsigned short alphabet_size, const unsigned short max_length)
 {
+	/*	As mentioned above, this function swaps the codeword with the longest codeword below "max length". To do this, the below while loop iterates through each length between ("max_length" - 1) and 0,
+		where "margin" represents the current distance from "max_length". If no codeword is found to be of the current length, then margin is incremented by 1.	*/
 	unsigned short margin = 0u;
 	while (true)
 	{
@@ -181,15 +194,15 @@ int deflate_code_type::move_up_codeword(std::vector<bool>* codewords, unsigned s
 }
 
 
+/*	This function exists to test wether or not the specified huffman tree is complete (this algorithm is used within the zlib library)	*/
 int deflate_code_type::check_if_complete_set(const unsigned short* codeword_lengths, const unsigned short alphabet_size, const unsigned short max_length)
 {
 	long left = 1ul;;
-	long len_count[16]{};
+	long* len_count = new long[alphabet_size]{};
 	for (unsigned short a = 0u; a < alphabet_size; ++a)
 	{
 		++len_count[codeword_lengths[a]];
 	}
-
 	for (short a = 1u; a <= max_length; ++a)
 	{
 		left <<= 1;
@@ -199,16 +212,21 @@ int deflate_code_type::check_if_complete_set(const unsigned short* codeword_leng
 			return 1;
 		}
 	}
-	//delete[] len_count;
-
+	delete[] len_count;
 	return (left == 0ul) ? 0 : 1;
 }
 
 
+/*	Generates cannonical huffman codewords	*/
 int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewords, unsigned short* codeword_lengths, unsigned long* alphabet_freqs, unsigned long* alphabet_indices, const unsigned long alphabet_size, const unsigned short max_length)
 {
 	{
+		/*	The list of frequencies is first sorted fro low to high	*/
 		this->quick_sort(alphabet_freqs, alphabet_indices, alphabet_size);
+		
+		/*	Gets the index of the first non zero character in the (now sorted) list of frequencies (there are often quite a few characters with frequencies of zero,
+			meaning the first however many characters in the list are often 0).
+			This is used by the next block of code	*/
 		unsigned short nonzero_start = 0u;
 		for (unsigned short a = 0u; a < alphabet_size; ++a)
 		{
@@ -221,9 +239,18 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 				++nonzero_start;
 			}
 		}
+
+		/*	At a high level, the below block of code first creates a huffman tree structure by creating an object of type "huffman_tree_type"
+			(whose constructor generates a tree in memory from the specified frequencies), then walks this tree in order to get the actual
+			codewords themselves.	
+			Unfortunately, (because I'm a big dumbus) the codewords are stored as objects of type std::vector<bool> (where each element
+			represents a bit). I wasn't properly aware of the concept of manipluating binary data using bitwise operations when I wrote this.	*/
+		/*	The overflowing vector stores a list of any codewords whose length exceeds the max (the deflate specification defines max lengths for codewords)	*/
 		std::vector<unsigned short> overflowing;
 		{
+			/*	Creates huffman tree object	*/
 			huffman_tree_type* huffman_tree = new huffman_tree_type(alphabet_freqs, alphabet_indices, nonzero_start, alphabet_size);
+			/*	Ensures tree generation was successful, returns with error code if not	*/
 			if (huffman_tree->tree == nullptr)
 			{
 				if ((alphabet_size - nonzero_start) == 1u)
@@ -237,21 +264,30 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 					return 2;
 				}
 			}
+			/*	Gets the huffman codewords by walking the tree	*/
 			std::vector<huffman_tree_type::node_type*> node_stack;
 			std::vector<int> bin_stack;
+			/*	The node stack keeps track of the actual nodes themselves	*/
 			node_stack.push_back(huffman_tree->tree);
+			/*	The binary stack keeps track of the value of parent nodes (wether a node represents 0 or 1)	*/
 			bin_stack.push_back(0);
 			while (node_stack.size() > 0)
 			{
+				/*	Check wether current node is external or internal	*/
 				if (node_stack.back()->extern_node)
 				{
+					/*	External node	*/
 					bin_stack.pop_back();
 					unsigned short index = ((huffman_tree_type::extern_node_type*)node_stack.back())->symbol;
 					codeword_lengths[index] = bin_stack.size();
+
+					/*	Gets codeword by looping through binary stack	*/
 					for (short a = 0; a < codeword_lengths[index]; ++a)
 					{
 						codewords[index].push_back(bin_stack[a]);
 					}
+
+					/*	If codeword exceeds max length, add it to "overflowing"	*/
 					if (codeword_lengths[index] > max_length)
 					{
 						overflowing.push_back(index);
@@ -259,17 +295,26 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 				}
 				else
 				{
+					/*	Internal Node	*/
+					/*	Checks if both child nodes have already been processed (see comment at bottom of while loop for why 2 denotes this)	*/
 					if (bin_stack.back() < 2)
 					{
+						/*	If not, adds the first child of the current node to the node and binary stacks	*/
 						node_stack.push_back(((huffman_tree_type::intern_node_type*)node_stack.back())->child_nodes[bin_stack.back()]);
 						bin_stack.push_back(0);
 						continue;
 					}
 					else
 					{
+						/*	Otherwise, pops the current node off of the binary stack	*/
 						bin_stack.pop_back();
 					}
 				}
+
+				/*	Removes node from the node stack, and switches to next child of the current parent node
+				(this will be the the node processed in the next loop iteration). 
+				If the current node is the second child node, then the last element in the binary stack will be incremented
+				to 2, signifying to the above code in the next iteration that both childen have been processed.	*/
 				node_stack.pop_back();
 				if (bin_stack.size() > 0)
 				{
@@ -279,7 +324,7 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 			delete huffman_tree;
 		}
 
-		/*	Rearranges to prevent overflowing (if any overflowing codewords exist)	*/
+		/*	Rearranges tree (in an abstract sense atleast, the actual tree doesn't exist in memory anymore) to prevent overflowing (if any overflowing codewords exist)	*/
 		unsigned short overflowing_size = overflowing.size();
 		for (short a = (overflowing_size - 1); a >= 0; --a)
 		{
@@ -288,27 +333,40 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 		}
 
 		/*	Ensures complete set.
-			The above anti-overflow rearrangement can result in an compomplete set of lengths, eg:
+			The above anti-overflow rearrangement can result in an incompomplete set of lengths, eg:
 			  O
 			 / \
-			O   O
+			0   O
 				 \
-				  O
+				  0
 			The below code checks for any branches like this and moves the codeword up the tree if it encounters one,
 			resulting in this:
 			  O
 			 / \
-			O   O
+			0   0
+			(Where 0 denotes an external node, and O denotes an internal node)
 			*/
 		{
+			/*	First check if tree is incomplete (can skip if not)	*/
 			if (this->check_if_complete_set(codeword_lengths, alphabet_size, max_length))
 			{
+				/*	If so, fixes tree	*/
+				/*	This is done by iterating through every character, and for each, iterating through each parent node of the
+					character'ss respective external node. Each parent node is then check agaist every other character's codeword
+					in order to determine if said node has one or two children. If it is found that the parent node has only one
+					child, then the child node of said parent node is removed, and the children of the removed node are made children of
+					the parent node (this is the equivalent to just removing the child node's respective bit from the codewords of all
+					characters whose codewwords contain it)	*/
+				/*	The below for loop iterates through each character	*/
 				for (unsigned short a = 0u; a < alphabet_size; ++a)
 				{
 					if (codeword_lengths[a] > 1u)
 					{
+						/*	The below for loop iterates through each of the character's parent nodes	*/
 						for (short node_len = codeword_lengths[a] - 1; node_len > 0; --node_len)
 						{
+							/*	The below for loop iterates through each character in order to determine how many children the current
+								parent node has	*/
 							unsigned short matches[286] = {};
 							matches[0] = a;
 							unsigned short matches_size = 1u;
@@ -317,6 +375,8 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 							{
 								if ((b != a) && (codeword_lengths[b] > node_len))
 								{
+									/*	As mentioned above, the codewords are stored as vectors. The below for loop iterates through
+										each bit and compares it to the current serchee codeword	*/
 									for (unsigned short c = 0u; c < node_len; ++c)
 									{
 										if (codewords[a][c] != codewords[b][c])
@@ -338,14 +398,16 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 							}
 							if (matches_size == 1u)
 							{
-								/*	No other codeword is a child the current parent node	*/
+								/*	If the parent node only has one child, and that child happens to be the current character's respective node,
+									then just remove the last bit from the character's codeword	*/
 								codewords[a].pop_back();
 								--codeword_lengths[a];
 							}
 							else
 							{
-								/*	Other codewords are grand children of the current parent node,
-									but the parent node has only one child	*/
+								/*	If other codewords are grand children of the current parent node, but the parent node has only one child,
+									then remove the parent nodes child node's respective bit from each character's codeword that contains it
+									/ remove it from all the grand children	*/
 								for (unsigned short b = 0u; b < matches_size; ++b)
 								{
 									codewords[matches[b]].erase(codewords[matches[b]].begin() + node_len);
@@ -359,69 +421,53 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 						}
 					}
 				}
-
-				int complete_test = this->check_if_complete_set(codeword_lengths, alphabet_size, max_length);
-				int e = 1;
 			}
 		}
 	}
 
-	/*
-	std::cout << "PostCompleCheck" << std::endl;
-	std::cout << std::endl;
-	std::cout << std::endl;
-
-	for (short a = 0; a < alphabet_size; ++a)
+	/*	Convert to canonical huffman codewords */
 	{
-		std::cout << a << " : " << codeword_lengths[a] << " : ";
-		for (short b = 0; b < codewords[a].size(); ++b)
+		std::vector<unsigned long> bit_sorted_codewords[16];
+		for (unsigned short a = 1u; a < 16u; ++a)
 		{
-			std::cout << codewords[a][b];
-		}
-		std::cout << std::endl;
-	}*/
-
-	/*	Convert to canonical huffman codewords	*/
-	std::vector<unsigned long> bit_sorted_codewords[16];
-	for (unsigned short a = 1u; a < 16u; ++a)
-	{
-		for (unsigned short b = 0u; b < alphabet_size; ++b)
-		{
-			if (codeword_lengths[b] == a)
+			for (unsigned short b = 0u; b < alphabet_size; ++b)
 			{
-				bit_sorted_codewords[a].push_back(b);
-			}
-		}
-	}
-	unsigned long counter = (std::numeric_limits<unsigned long>::max)();
-	for (unsigned short a = 1u; a < 16u; ++a)
-	{
-		for (unsigned short b = 0u; b < bit_sorted_codewords[a].size(); ++b)
-		{
-			++counter;
-			if (b == 0u)
-			{
-				unsigned short last_bit_len;
-				for (short c = a - 1; c >= 0; --c)
+				if (codeword_lengths[b] == a)
 				{
-					if (bit_sorted_codewords[c].size() > 0)
-					{
-						last_bit_len = c;
-						goto last_found;
-					}
+					bit_sorted_codewords[a].push_back(b);
 				}
-				/*	No last found, set last_bit_len to a so that a - last_bit_len == 0	*/
-				last_bit_len = a;
-
-			last_found:
-
-				counter = counter << (a - last_bit_len);
 			}
-			std::bitset<16> bitset(counter);
-			for (unsigned short c = 0u; c < codeword_lengths[bit_sorted_codewords[a][b]]; ++c)
+		}
+		unsigned long counter = (std::numeric_limits<unsigned long>::max)();
+		for (unsigned short a = 1u; a < 16u; ++a)
+		{
+			for (unsigned short b = 0u; b < bit_sorted_codewords[a].size(); ++b)
 			{
-				unsigned short bitset_index = (codeword_lengths[bit_sorted_codewords[a][b]] - 1u) - c;
-				codewords[bit_sorted_codewords[a][b]][c] = bitset[bitset_index];
+				++counter;
+				if (b == 0u)
+				{
+					unsigned short last_bit_len;
+					for (short c = a - 1; c >= 0; --c)
+					{
+						if (bit_sorted_codewords[c].size() > 0)
+						{
+							last_bit_len = c;
+							goto last_found;
+						}
+					}
+					/*	No last found, set last_bit_len to a so that a - last_bit_len == 0	*/
+					last_bit_len = a;
+
+				last_found:
+
+					counter = counter << (a - last_bit_len);
+				}
+				std::bitset<16> bitset(counter);
+				for (unsigned short c = 0u; c < codeword_lengths[bit_sorted_codewords[a][b]]; ++c)
+				{
+					unsigned short bitset_index = (codeword_lengths[bit_sorted_codewords[a][b]] - 1u) - c;
+					codewords[bit_sorted_codewords[a][b]][c] = bitset[bitset_index];
+				}
 			}
 		}
 	}
@@ -441,7 +487,7 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 		std::cout << std::endl;
 	}
 	
-
+	/*	Checks if any prefixes exist within the canonical codewords	*/
 	for (unsigned short a = 0u; a < alphabet_size; ++a)
 	{
 		for (unsigned short b = 0u; b < alphabet_size; ++b)
