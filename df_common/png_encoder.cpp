@@ -28,11 +28,7 @@
 inline shared_type shared;
 
 
-/*	TODO:
-	- Implement crc in "calc_crc"
-	- Filter image, then deflate, then move to chunk data (use std::move)
-*/
-
+/*	chunk_type constructor	*/
 png_code_type::chunk_type::chunk_type(const char* type)
 {
 	for (unsigned short a = 0; a < 4; ++a)
@@ -42,6 +38,9 @@ png_code_type::chunk_type::chunk_type(const char* type)
 }
 
 
+/*	Calculates CRC32 (this is placed at the end of each chunk, and represents both
+	the type and data components (this is why type and data are stoyed within
+	the same byte_vec))	*/
 int png_code_type::chunk_type::calc_crc()
 {
 	//this->type_and_data.char_vec.swap(std::vector<char>)
@@ -73,6 +72,7 @@ int png_code_type::chunk_type::calc_crc()
 }
 
 
+/*	Updates both the length and CRC components of the chunk	*/
 int png_code_type::chunk_type::update_meta()
 {
 	/*	Updates length of data segmnet	*/
@@ -88,6 +88,7 @@ int png_code_type::chunk_type::update_meta()
 }
 
 
+/*	Writes the chunk to the specified file	*/
 int png_code_type::chunk_type::write_to_file(std::ofstream& file)
 {
 	shared.write_byte_vec(this->length_byte_vec, file, true);
@@ -97,7 +98,10 @@ int png_code_type::chunk_type::write_to_file(std::ofstream& file)
 	return 0;
 }
 
-/*	Doesn't support less than 8 bits per sample	*/
+
+/*	png_code_type constructor. This function encodes the png file and stores it in memory, but does not write it to a file.
+	In order to write to a file, "write_to_file" must be called	*/
+/*	Currently only supports 8 bits per sample	*/
 png_code_type::png_code_type(const std::string& name, unsigned char** image, const unsigned short width, const unsigned short height)
 {
 	this->name = name;
@@ -128,12 +132,14 @@ png_code_type::png_code_type(const std::string& name, unsigned char** image, con
 		/*	Alias	*/
 		chunk_type& chunk = this->chunks.back();
 
-		/*	the filtering and conversion to byte_vec for loops are seperated for organization purposes (this is why they are not done in the same for loop)	*/
 		chunk.type_and_data.buffer_to_char_vec();
+
 		/*	Filtering	*/
 		/*	Using filtering method "sub" (specified as method 1)	*/
 		{
 			this->filtered_image = new unsigned char* [height];
+
+			/*	Offset of corresponding byte (eg, would be 1 for 8 bits per pixel)*/
 			unsigned short offset = this->bit_depth / 8;
 			for (unsigned short a = 0u; a < height; ++a)
 			{
@@ -148,8 +154,9 @@ png_code_type::png_code_type(const std::string& name, unsigned char** image, con
 					this->filtered_image[a][b] = image[a][b] - image[a][b - offset];
 				}
 			}
-			/*	Offset of corresponding byte (eg, would be 1 for 8 bits per pixel)*/
 		}
+
+		/*	Serializes filtered image	*/
 		shared_type::byte_vec_type data_byte_vec;
 		for (unsigned short a = 0u; a < height; ++a)
 		{
@@ -159,12 +166,17 @@ png_code_type::png_code_type(const std::string& name, unsigned char** image, con
 				data_byte_vec.char_vec.push_back(this->filtered_image[a][b]);
 			}
 		}
+
+		/*	Compresses filtered images using DEFLATE compression	*/
 		deflate_code_type deflated_data(data_byte_vec);
+
+		/*	Copy DEFLATE code into "type_and_data"	*/
 		const unsigned long deflated_data_size = deflated_data.code.char_vec.size();
 		for (unsigned long a = 0u; a < deflated_data_size; ++a)
 		{
 			chunk.type_and_data.char_vec.push_back(deflated_data.code.char_vec[a]);
 		}
+
 		chunk.update_meta();
 	}
 
@@ -182,7 +194,6 @@ int png_code_type::write_to_file(const std::string& dir)
 	std::ofstream file(dir + this->name, std::ios::binary);
 
 	/*	Writes signiture	*/
-
 	file.put((char)137);
 	file.put((char)80);
 	file.put((char)78);
@@ -193,7 +204,6 @@ int png_code_type::write_to_file(const std::string& dir)
 	file.put((char)10);
 
 	/*	Writes chunks	*/
-
 	unsigned short chunks_size = this->chunks.size();
 	for (unsigned short a = 0u; a < chunks_size; ++a)
 	{

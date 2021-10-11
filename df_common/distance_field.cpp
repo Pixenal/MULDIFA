@@ -3265,18 +3265,25 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 }
 
 
+/*	This function gets the world space coordinates of each texel (ie, converts each pixel from image space to world space).
+	The function also does some computation related to padding (for texels that do not lie within a triangle)	*/
 int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 {
+	/*	As this function is called from the thread pool, the current functions arguments are first fetched	*/
 	df_map_map_texel_local_args_type* args_ptr_convrtd = (df_map_map_texel_local_args_type*)args_ptr;
 	df_map_map_texel_local_args_type* local_args = &args_ptr_convrtd[job_index];
 	df_map_map_texel_args_type* args = local_args->args;
 	update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_texel_type* texel_cache = &(*update_local.dfr_cache.dfr_cache)[args->cache_index].texel_cache[args->texel_cache_index].cache[local_args->linear_index];
 
-	/*	Find enclosing triangle	*/
+	/*	Finds enclosing triangle	*/
+	/*	Keep in mind that the DF map feature makes use of a cache, which stores the barycentric coordinates of each texel in image space
+		(as well as obvisouly which triangle encloses it)	*/
 	unsigned long c = 0ul;
 	shared_type::coord_uvw_type* bc_coord_cache = nullptr;
+	/*	Checks if cache is in sync */
 	if (!args->is_in_sync)
 	{
+		/*	if not recomputes barycentric coord	*/
 		bc_coord_cache = new shared_type::coord_uvw_type[args->tri_amount];
 		shared_type::coord_xyz_type normal(0, 0, 1.0);
 		for (c; c < args->tri_amount; ++c)
@@ -3292,19 +3299,27 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 	}
 	else
 	{
+		/*	If so, use values in cache	*/
 		c = texel_cache->internal ? texel_cache->tri_index : args->tri_amount;
 	}
+
+	/*	Checks if current texel is inside a triangle	*/
 	if (c != args->tri_amount)
 	{
+		/*	If so, gets world space coordinate of current texel	*/
 		texel_cache->internal = true;
 		args->df_map_linear[local_args->linear_index].coord = shared.barycentric_to_cartesian	(args->verts_buffer[args->tris_buffer[c].vert_0], args->verts_buffer[args->tris_buffer[c].vert_1], args->verts_buffer[args->tris_buffer[c].vert_2], texel_cache->bc_coord);
 		args->extern_texels_proj[local_args->linear_index] = shared_type::index_xy_type(2u, 2u);
 	}
 	else
 	{
+		/*	If not, then finds nearest texel that lies within a triangle	*/
 		double dist_normed;
+
+		/*	Checks if cache is in sync	*/
 		if (!args->is_in_sync)
 		{
+			/*	If not, recompute	*/
 			texel_cache->internal = false;
 			texel_cache->min_dist_sqr = (std::numeric_limits<double>::max)();
 			for (unsigned long d = 0u; d < args->tri_amount; ++d)
@@ -3358,8 +3373,12 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 		}
 		else
 		{
+			/*	If so, use cache	*/
 			dist_normed = std::sqrt(texel_cache->min_dist_sqr);
-		}		
+		}
+
+		/*	Add values for current cache to arrays (these arrays will be used by the calling function
+			(calling via thread pool that is) "update_recipient_df_map")	*/
 		args->extern_texels_proj[local_args->linear_index] = (dist_normed <= args->padding) ? shared_type::index_xy_type(args->width * texel_cache->nearest_proj_point.x, args->height * texel_cache->nearest_proj_point.y) : shared_type::index_xy_type(2u, 2u);
 		args->df_map_linear[local_args->linear_index].coord = volume_local.min_grid_coord;
 		args->df_map_linear[local_args->linear_index].coord.x -= 1.0;
@@ -3368,6 +3387,8 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 	{
 		delete[] bc_coord_cache;
 	}
+
+	/*	Multithreading book keeping	*/
 	args->token->lock();
 	++*args->jobs_completed;
 	++args->jobs_completed_table[local_args->a];
@@ -3381,6 +3402,7 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 
 	return 0;
 }
+
 
 
 

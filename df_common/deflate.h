@@ -164,6 +164,7 @@ class deflate_code_type
 	const unsigned short len_extra_bits[30] = { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5 };
 
 public:
+
 	/*	Data Members	*/
 
 	shared_type::byte_vec_type code;
