@@ -3265,8 +3265,9 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 }
 
 
-/*	This function gets the world space coordinates of each texel (ie, converts each pixel from image space to world space).
-	The function also does some computation related to padding (for texels that do not lie within a triangle)	*/
+/*	This function handles a single texel. It first determines which triangle encloses the texel, then does one of two things:
+	if the texel lies within a triangle, then it converts the texel from image space to world space, otherwise if the texel
+	does not lie within any triangle, it finds the closest texel that lies within a triangle (this allows for padding)	*/
 int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 {
 	/*	As this function is called from the thread pool, the current functions arguments are first fetched	*/
@@ -3277,7 +3278,7 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 
 	/*	Finds enclosing triangle	*/
 	/*	Keep in mind that the DF map feature makes use of a cache, which stores the barycentric coordinates of each texel in image space
-		(as well as obvisouly which triangle encloses it)	*/
+		(as well as obvisouly which triangle encloses it), as well as some other misc info per texel	*/
 	unsigned long c = 0ul;
 	shared_type::coord_uvw_type* bc_coord_cache = nullptr;
 	/*	Checks if cache is in sync */
@@ -3404,10 +3405,10 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 }
 
 
-
-
+/*	Updates (or creates) the DF map for the specified DFR	*/
 int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
 {
+	/*	Determines if cache is in sync	*/
 	bool exists_in_legacy = false;
 	unsigned long legacy_index = 0ul;
 	{
@@ -3506,6 +3507,20 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 		(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[0].relevant = true;
 	}
 
+
+	/*	At a high level, the rest of this function is structured as follows:
+		1.	first determine world space locations for every texel (ie, convert texel
+			coorinates from 2D to 3D). Texels that do not lie withina triangle are
+			given an out of bounds coordinate (coord outside of df volume) so that
+			they are ignored by the "update_recipient" function. This step is multi-
+			threaded
+		2.	Send texels through "update_recipient" function. This funtion samples
+			the distance field
+		3.	Assign each texel it's appropriate value
+		4.	Write PNG
+		
+		Note that step 2 does not handle padding, this is handled by step 1 and 3	*/
+
 	/*	Recently discovered single line conditions. Is big epic	*/
 	padding = (padding < .0f) ? (padding = (std::numeric_limits<float>::max)()) : padding;
 	unsigned long texel_amount_total = height * width;
@@ -3516,20 +3531,22 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 	texel_dim.y = 1.0 / (double)height;
 	texel_half_dim.y = texel_dim.y / 2.0;
 
-	/*	"vert_info_type" is just being used here to represent the texels as that's to be the type expected by "update_recipient"
+	/*	"vert_info_type" is just being used here to represent the texels as that's the type expected by "update_recipient"
 		(that function was made before df maps were implemented, back when only vert colors and vert groups were writted to.
 		As a result it was assumed that only vertex info would be passed though it, though obvisously that is no longer the case)	*/
-
-	std::cout << "BEGINNING OF DF MAP" << std::endl;
-
 	shared_type::vert_info_type* df_map_linear = new shared_type::vert_info_type[texel_amount_total];
 	shared_type::index_xy_type* extern_texels_proj = new shared_type::index_xy_type[texel_amount_total];
 	shared_type::coord_xyz_type* texel_coord_cache = new shared_type::coord_xyz_type[texel_amount_total];
+
+	/*	Setp 1	*/
 	{
+		/*	Sets up objects for multithreading	*/
 		typedef void (*job)(void*, unsigned short);
 		job job_ptr = &call_df_df_map_map_texel;;
 		unsigned long jobs_completed = 0ul;
 		std::mutex token;
+		/*	Creates a common argument object (each texel's function call has access
+			to a unique argument object, as well as this common argument)	*/
 		df_map_map_texel_args_type arg;
 		arg.is_in_sync = is_in_sync;
 		arg.texel_cache_index = texel_cache_index;
@@ -3550,11 +3567,15 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 		/*	Number is based on profiling	*/
 		thread_pool.set_jobs_per_iteration(60u);
 
+		/*	The below for loop iterates through each row in the image, and sends
+			each to the thread pool as a single batch	*/
 		for (unsigned short a = 0u; a < height; ++a)
 		{
 			shared_type::coord_xyz_type texel_coord;
 			texel_coord.y = texel_half_dim.y + (texel_dim.y * (double)a);
 			df_map_map_texel_local_args_type* args = new df_map_map_texel_local_args_type[width];
+
+			/*	Adds each texels unique argument object to this rows list of arguments	*/
 			for (unsigned short b = 0u; b < width; ++b)
 			{
 				texel_coord.x = texel_half_dim.x + (texel_dim.x * (double)b);
@@ -3592,6 +3613,7 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 			continue;
 		}
 
+		/*	Now that all rows havve been sent, waits for jobs to be completed	*/
 		while (true)
 		{
 			std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
@@ -3605,13 +3627,14 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 		}
 	}
 
-	
-
 	std::cout << "CALLING UPDATE RECIPIENT FROM WITHIN DF MAP" << std::endl;
+
+	/*	Step 2	*/
 	this->update_recipient(dfc_layers, dfc_layers_nxt_indx, df_map_linear, texel_amount_total, interp_mode, gamma);
 
 	std::cout << "UPDATE RECIPIENT FINISHED FROM WITHIN DF MAP" << std::endl;
 
+	/*	Step 3	*/
 	shared_type::coord_xy_type texel_dist(1.0 / (double)width, 1.0 / (double)height);
 	unsigned char** df_map = new unsigned char* [height];
 	for (unsigned short a = 0u; a < height; ++a)
@@ -3622,11 +3645,19 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 			unsigned long linear_index = (a * width) + b;
 			typedef df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_texel_type texel_cache_texel_type;
 			const texel_cache_texel_type& texel_cache = (*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[texel_cache_index].cache[linear_index];
-			/*	if bc_coord is not all zeros then is external (internal texels are left as all zeros)
-				(a valid bc coord of all zeros is impossible, so this is a safe test)	*/
 
+			/*	Checks if current texel is external (does not lie within a triangle)	*/
 			if (extern_texels_proj[linear_index] != shared_type::index_xy_type(2u, 2u))
 			{
+				/*	If so, then set value of current texel to value of nearest internal texel
+					(nearest texel that lies within a triangle)	*/
+
+				/*	The point gotten by projecting the current texel onto the nearest triangle is calculated in step 1.
+					This is just a floating point coordinate, and has yet been truncated to get said points enclosing texel.
+					It is commonly the case that the projected points enclosing texel doesn't actually lie within the triangle
+					(as the projected point sits on the edge of the triangle). As such multple tests are performed to try and
+					find the most suitable texel for the current projected point	*/
+				/*	The first step, as seen below, is to simply truncate the point and see if it is internal	*/
 				shared_type::index_xy_type& proj_index = extern_texels_proj[linear_index];
 				unsigned long proj_linear_index = (proj_index.y * width) + proj_index.x;
 				if (extern_texels_proj[proj_linear_index] == shared_type::index_xy_type(2u, 2u))
@@ -3636,6 +3667,8 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 				}
 				else
 				{
+					/*	If this fails, then the next texel along the vector between the current texel and the projected point is gotten,
+						and that is tested (this is attempted twice)	*/
 					for (double c = 1.0; c <= 2.0; ++c)
 					{
 						shared_type::coord_xy_type slid_coord((texel_cache.nearest_proj_point.x + (texel_cache.min_dist_vec.x * (texel_dist.x * c))), (texel_cache.nearest_proj_point.y + (texel_cache.min_dist_vec.y * (texel_dist.y * c))));
@@ -3648,6 +3681,8 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 						}
 					}
 					
+					/*	If that fails, then a 3x3 kernal is created around the projected point, and each texel within it is tested,
+						and the first internal texel found is used	*/
 					for (short c = -1; c < 2; ++c)
 					{
 						short offset_y = ((c == -1) && (proj_index.y == 0u)) ? 0u : (((c == 1) && (proj_index.y == (height - 1u))) ? 0u : c);
@@ -3663,14 +3698,18 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 							}
 						}
 					}
+
+					/*	If no suitible texel was found, then this ensures that the value of the current texel is 0	*/
 					df_map_linear[linear_index].value = .0f;
 				}
 			}
 		set_df_map_value:
+
 			df_map[a][b] = df_map_linear[linear_index].value * 255.0f;
 		}
 	}
 
+	/*	Step 4	*/
 	png_code_type png_code(name, df_map, width, height);
 	png_code.write_to_file(dir);
 
