@@ -10,6 +10,6 @@ __pycache__/
 .vscode/
 intermediates/
 lib/Debug/
-lib/df_linux
-lib/df_win
-lib/df_macos
+#lib/df_linux
+#lib/df_win
+#lib/df_macos
