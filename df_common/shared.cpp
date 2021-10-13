@@ -617,7 +617,7 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsign
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const double number, unsigned short bit_size)
 {
 	double double_buffer = number;
-	if (fpclassify(number) == FP_SUBNORMAL)
+	if (std::fpclassify(number) == FP_SUBNORMAL)
 	{
 		double_buffer = .0;
 	}
@@ -635,7 +635,7 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsign
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const float number, unsigned short bit_size)
 {
 	float float_buffer = number;
-	if (fpclassify(number) == FP_SUBNORMAL)
+	if (std::fpclassify(number) == FP_SUBNORMAL)
 	{
 		float_buffer = .0f;
 	}
