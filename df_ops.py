@@ -1272,11 +1272,8 @@ class DF_OT_df_update(bpy.types.Operator):
         expel_nonexistant_ids_python(context, 1)
     
         #Gets current evaluated dependency graph
-        print("getting depsgraph")
-        print("df_times_update_called: ", df.df_times_update_called)
         df.df_times_update_called += 1
         depsgraph = context.evaluated_depsgraph_get()
-        print("depshgraph gotten")
         if (df.df_volume_initialized == True):
             
             """ Creates misc buffers and objects    """
@@ -1417,7 +1414,6 @@ class DF_OT_df_update(bpy.types.Operator):
                     
         incrmt_undo_step(context)
         
-        print ("calling update_recipients")
         """ Calls operator "df_update_recipients"   """
         bpy.ops.df.df_update_recipients()
         if (df.df_stashing_enabled):
@@ -1467,7 +1463,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
 
                 """ Calls pre update recipients function within dynamic library, this is used to do anything that should be done
                     once per update, and not once per object    """
-                df_lib.call_df_pre_update_recipients(ctypes.pointer(dfrs_total), ctypes.c_ulong(dfrs_total_nxt_indx))
+                df_lib.call_df_pre_update_recipients(ctypes.pointer(dfrs_total), ctypes.c_ulong(dfrs_total_nxt_indx), df.df_update_df_maps)
 
                 """ The below for loop iterates through each recipient layer in the scene, then loops through each object within said layer,
                     updating each ones vertex colors or/and vertex groups (depending on which is enabled)   """
@@ -1493,7 +1489,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 in_layer = True
                                 break
                         
-                        print ("testing if in layer")
                         """ If said object exists in scene (which it should as expel nonexistent ids was called in "df_update"), proceeds   """
                         if (in_layer == True):
                             
@@ -1507,7 +1502,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 dfc_layers[dfc_layer_indx] = dfc_layer_name_to_indx(context, dfc_layer.dfc_layer)
                                 dfc_layer_indx += 1
 
-                            print ("testing if update df_map enabled")
                             """ Update DF Map if enabled    """
                             if (df.df_update_df_maps):
 
@@ -1520,9 +1514,8 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                 """ Not using the custom bmesh wrapper as do not need to switch modes (I dont think so at least)  """
                                 obj_bmesh = bmesh.new()
                                 obj_bmesh.from_mesh(mesh_eval)
-                                uv_layer = obj_bmesh.loops.layers.uv.get(dfr_layer.df_map_uvchannel, 0)
+                                uv_layer = obj_bmesh.loops.layers.uv.get(dfr_layer.df_map_uvchannel, None)
 
-                                print ("testing if uv_layer == None")
                                 if (uv_layer != None):
 
                                     bmesh.ops.triangulate(obj_bmesh, faces = obj_bmesh.faces)
@@ -1571,34 +1564,25 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                     df_map_dir_abs = os.path.abspath(df_map_dir_abs)
 
                                     padding = ctypes.c_float(-1 if dfr_layer.df_map_padding_infinite else dfr_layer.df_map_padding)
-                                    print("padding_debug")
-                                    print(dfr_layer.df_map_padding)
-                                    print(padding)
 
                                     """ Adds a trailing slash as the above os module method does not add one    """
                                     df_map_dir_abs = os.path.join(df_map_dir_abs, '')
                                     name = obj.name + "_" + dfr_layer.name + "_df.png"
-                                    time_start = time.time()
-                                    df_lib.call_df_update_recipient_df_map(obj.dfr_id, ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), vert_amount, ctypes.pointer(tris_buffer), ctypes.pointer(tris_uv_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(name, 'utf-8')), padding)
-                                    time_end = time.time()
-                                    print("Update DF Map Time: ", (time_end - time_start))
+                                    df_lib.call_df_update_recipient_df_map(ctypes.c_char_p(bytes(dfr_layer.df_map_uvchannel, 'utf-8')), obj.dfr_id, ctypes.pointer(dfc_layers), ctypes.byref(dfc_layers_nxt_indx), ctypes.pointer(verts_buffer), vert_amount, ctypes.pointer(tris_buffer), ctypes.pointer(tris_uv_buffer), tri_amount, ctypes.c_ushort(dfr_layer.df_map_height), ctypes.c_ushort(dfr_layer.df_map_width), ctypes.c_int(int(df.df_interp_mode)), ctypes.c_float(df.df_gamma), ctypes.c_char_p(bytes(df_map_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(name, 'utf-8')), padding)
                                     image_found = False
                                     for image in bpy.data.images:
 
                                         if (image.name == (name)):
 
-                                            print("RELOADING IMAGE")
                                             image.reload()
                                             image_found = True
                                             break
 
                                     if (not image_found):
 
-                                        print("LOADING IMAGE")
                                         bpy.data.images.load(df_map_dir_abs + name)
                                     
                                     obj_bmesh.free()
-
 
                             # Sets up structures
                             #-------------------------------------------------------------------------------------------------------------#
@@ -1731,7 +1715,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                               
                     dfr_layer_indx += 1
         
-        df_lib.call_df_post_update_recipients()
+        df_lib.call_df_post_update_recipients(df.df_update_df_maps)
         incrmt_undo_step(context)
                             
         return {'FINISHED'}
@@ -2314,8 +2298,6 @@ def df_load_post_handler(dummy):
 
         dfr_layers[0].contents = dfr_ids_type()
         dfr_layers[0].contents[0] = 0
-    
-    print("egg dir: ", df.df_cache_dir)
 
     """ Each time a df is written, it is assigned a unique write id, this id is stored both
         within the cache, and the .blend file to which it belongs. This is used by the
@@ -2339,8 +2321,6 @@ def df_load_post_handler(dummy):
 
     """ Adds a trailing slash as the above os module method does not add one    """
     df_cache_dir_abs = os.path.join(df_cache_dir_abs, '')
-
-    print("egg dir abs: ", df_cache_dir_abs)
 
     """ Calls dynamic library function  """
     return_code = df_lib.call_df_new_blend_handler(ctypes.c_char_p(bytes(df_cache_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(os.path.splitext(bpy.path.basename(bpy.data.filepath))[0], 'utf-8')), ctypes.byref(write_id), ctypes.pointer(dfc_layers), ctypes.pointer(dfr_layers), ctypes.c_bool(df.df_enable_cache))
@@ -2381,7 +2361,6 @@ def df_depsgraph_update_post_handler(dummy):
 
     df = bpy.context.scene.df
 
-    print("from depsgraph")
     """ dfc's and dfr's are verified after every dependency graph update to check for
         object duplication  """
     validate_dfc_dfr_ids()
@@ -2420,8 +2399,6 @@ def df_save_post_handler(dummy):
         
             df_lib.call_df_weak_unstash_volume_local()
             df_lib.call_df_copy_to_buffer()
-            
-        print("egg dir: ", df.df_cache_dir)
 
         """ Ensures cache directory is absolute    """
         """ First Converts to absolute using bpy method for compatibility with blender's relative pathing format   """
@@ -2437,9 +2414,6 @@ def df_save_post_handler(dummy):
 
         """ Adds a trailing slash as the above os module method does not add one    """
         df_cache_dir_abs = os.path.join(df_cache_dir_abs, '')
-
-        print("egg dir abs: ", df_cache_dir_abs)
-            
 
         """ Calls the dynamic library function responsible for writing the cache    """
         df_lib.call_df_write_cache(ctypes.c_char_p(bytes(df_cache_dir_abs, 'utf-8')), ctypes.c_char_p(bytes(os.path.splitext(bpy.path.basename(bpy.data.filepath))[0], 'utf-8')))

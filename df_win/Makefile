@@ -71,6 +71,7 @@ $(INTERMEDIATES_SUBPATH)/deflate.o : $(DF_COMMON_PATH)/deflate.cpp $(DF_COMMON_P
 
 $(INTERMEDIATES_SUBPATH)/png_encoder.o : $(DF_COMMON_PATH)/png_encoder.cpp $(DF_COMMON_PATH)/png_encoder.h
 	$(COMP_ARGS) $(DF_COMMON_PATH)/png_encoder.cpp -o $(INTERMEDIATES_SUBPATH)/png_encoder.o
+	
 #CLEAN
 clean : 
 	rm $(GOAL) $(OBJECTS)

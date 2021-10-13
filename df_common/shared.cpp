@@ -31,9 +31,9 @@
 shared_type::coord_uvw_type shared_type::cartesian_to_barycentric(const shared_type::coord_xyz_type& tri_vertex_0, const shared_type::coord_xyz_type& tri_vertex_1, const shared_type::coord_xyz_type& tri_vertex_2, const shared_type::coord_xyz_type& point, const shared_type::coord_xyz_type& tri_normal)
 {
 	shared_type::coord_uvw_type point_bc;
-	double dert_a = 0;
-	double dert_au = 0;
-	double dert_av = 0;
+	double dert_a = .0;
+	double dert_au = .0;
+	double dert_av = .0;
 
 	/*Performes cramers rule on system matrix A*/
 
@@ -100,7 +100,7 @@ shared_type::coord_uvw_type shared_type::cartesian_to_barycentric(const shared_t
 	point_bc.v = dert_av / dert_a;
 
 	/*w can be derived from u and v*/
-	point_bc.w = 1 - point_bc.u - point_bc.v;
+	point_bc.w = 1.0 - point_bc.u - point_bc.v;
 
 	return point_bc;
 }
@@ -528,11 +528,24 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, unsigned lon
 	/*	If bit_size == 0, gets minimum number of bits needed to represent the spencified value	*/
 	if (bit_size == 0u)
 	{
-		unsigned short optimal_bit_size = std::log2(number) + 1u;
+		/*	Performs integer log2. Does not add 1 (bit size = log2 + 1) as in order to be able to represent
+			the size 64, the value that is actually written is 1 less than the actual size (so 64 would
+			be written as 63, as that is the numeric limit of a 6 bit integer. As a result a size of 0 is
+			not supported, the minimum size is 1). */
+		unsigned short optimal_bit_size = 0u;
+		{
+			unsigned long long  buffer = number;
+			while (buffer >>= 1ull)
+			{
+				++optimal_bit_size;
+			}
+		}
+
 		/*	"sv_meta_size" is a const data member of "shared_type" which defines the set length
 			the size component (is currently set to 6)	*/
 		/*	"bit_size_meta" stores the total bits to be written (including both the size and value components)	*/
-		bit_size_meta = sv_meta_size + optimal_bit_size;
+		bit_size_meta = sv_meta_size + ((unsigned short)optimal_bit_size + 1u);
+
 		std::bitset<8> meta_byte_arr_buffer(optimal_bit_size);
 		number_byte_arr_buffer <<= sv_meta_size;
 		for (unsigned short a = 0u; a < sv_meta_size; ++a)
@@ -603,23 +616,37 @@ void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsign
 
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const double number, unsigned short bit_size)
 {
-	/*	Converts value to an unsigned long long and calls ull overload	*/
-	unsigned long long number_buffer = 0u;
-	std::memcpy(&number_buffer, &number, 8);
-	invert_bit_order(number_buffer);
+	double double_buffer = number;
+	if (fpclassify(number) == FP_SUBNORMAL)
+	{
+		double_buffer = .0;
+	}
+	double_buffer += .0;
 
-	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size);
+	/*	Converts value to an unsigned long long and calls ull overload	*/
+	unsigned long long int_buffer = 0ull;
+	std::memcpy(&int_buffer, &double_buffer, 8);
+	invert_bit_order(int_buffer);
+
+	feed_by_bit(byte_vec, byte_index, int_buffer, bit_size);
 }
 
 
 void shared_type::feed_by_bit(shared_type::byte_vec_type& byte_vec, const unsigned long long byte_index, const float number, unsigned short bit_size)
 {
-	/*	Converts value to an unsigned long long and calls ull overload	*/
-	unsigned long number_buffer = 0u;
-	std::memcpy(&number_buffer, &number, 4);
-	invert_bit_order(number_buffer);
+	float float_buffer = number;
+	if (fpclassify(number) == FP_SUBNORMAL)
+	{
+		float_buffer = .0f;
+	}
+	float_buffer += .0f;
 
-	feed_by_bit(byte_vec, byte_index, number_buffer, bit_size);
+	/*	Converts value to an unsigned long long and calls ull overload	*/
+	unsigned long int_buffer = 0ul;
+	std::memcpy(&int_buffer, &float_buffer, 4);
+	invert_bit_order(int_buffer);
+
+	feed_by_bit(byte_vec, byte_index, int_buffer, bit_size);
 }
 
 

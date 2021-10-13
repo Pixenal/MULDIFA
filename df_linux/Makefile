@@ -27,7 +27,8 @@ COMPILER = clang++
 COMP_ARGS = $(COMPILER) -D LINUX -D EXPORT="" -std=c++2a -stdlib=libc++ -ffast-math -O3 -DNDEBUG -fPIC -c
 LINK_ARGS = $(COMPILER) -shared -pthread
 OBJECTS = $(INTERMEDIATES_SUBPATH)/df_lib.o $(INTERMEDIATES_SUBPATH)/df_loader.o $(INTERMEDIATES_SUBPATH)/df_regions_buffer.o $(INTERMEDIATES_SUBPATH)/df_writer.o \
-$(INTERMEDIATES_SUBPATH)/distance_field.o $(INTERMEDIATES_SUBPATH)/shared.o $(INTERMEDIATES_SUBPATH)/thread_pool.o
+$(INTERMEDIATES_SUBPATH)/distance_field.o $(INTERMEDIATES_SUBPATH)/shared.o $(INTERMEDIATES_SUBPATH)/thread_pool.o $(INTERMEDIATES_SUBPATH)/deflate.o \
+$(INTERMEDIATES_SUBPATH)/png_encoder.o
 
 #PHONY TARGETS
 .PHONY : validate_dir clean
@@ -64,6 +65,12 @@ $(INTERMEDIATES_SUBPATH)/shared.o : $(DF_COMMON_PATH)/shared.cpp $(DF_COMMON_PAT
 
 $(INTERMEDIATES_SUBPATH)/thread_pool.o : $(DF_COMMON_PATH)/thread_pool.cpp $(DF_COMMON_PATH)/thread_pool.h
 	$(COMP_ARGS) $(DF_COMMON_PATH)/thread_pool.cpp -o $(INTERMEDIATES_SUBPATH)/thread_pool.o
+
+$(INTERMEDIATES_SUBPATH)/deflate.o : $(DF_COMMON_PATH)/deflate.cpp $(DF_COMMON_PATH)/deflate.h
+	$(COMP_ARGS) $(DF_COMMON_PATH)/deflate.cpp -o $(INTERMEDIATES_SUBPATH)/deflate.o
+
+$(INTERMEDIATES_SUBPATH)/png_encoder.o : $(DF_COMMON_PATH)/png_encoder.cpp $(DF_COMMON_PATH)/png_encoder.h
+	$(COMP_ARGS) $(DF_COMMON_PATH)/png_encoder.cpp -o $(INTERMEDIATES_SUBPATH)/png_encoder.o
 
 #CLEAN
 clean : 

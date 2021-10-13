@@ -656,6 +656,72 @@ void df_type::regions_buffer_type::prep_dfr_layers(std::vector<shared_type::invr
 	this->dfr_layers.buffer_to_char_vec();
 }
 
+void df_type::regions_buffer_type::prep_dfr_cache_is_valid(update_local_type& update_local)
+{
+	this->dfr_cache_is_valid.clean();
+	this->dfr_cache_is_valid.incrmt();
+	this->dfr_cache_is_valid.byte_buffer[0] = (int)update_local.dfr_cache.is_valid;
+	this->dfr_cache_is_valid.buffer_to_char_vec();
+}
+
+void df_type::regions_buffer_type::prep_dfr_cache(update_local_type& update_local)
+{
+	this->dfr_cache.clean();
+	this->dfr_cache.incrmt();
+
+	if (update_local.dfr_cache.is_valid)
+	{
+		shared.feed_by_bit(this->dfr_cache, 0u, update_local.dfr_cache.dfr_cache->size(), 0u);
+		unsigned long dfr_cache_size = update_local.dfr_cache.dfr_cache->size();
+		for (unsigned long a = 0ul; a < dfr_cache_size; ++a)
+		{
+			shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].id, 0u);
+			shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].tri_cache_size, 0u);
+			for (unsigned long b = 0ul; b < (*update_local.dfr_cache.dfr_cache)[a].tri_cache_size; ++b)
+			{
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].tri_cache[b].uv_vert_0.x, 0u);
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].tri_cache[b].uv_vert_0.y, 0u);
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].tri_cache[b].uv_vert_1.x, 0u);
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].tri_cache[b].uv_vert_1.y, 0u);
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].tri_cache[b].uv_vert_2.x, 0u);
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].tri_cache[b].uv_vert_2.y, 0u);
+			}
+			shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache.size(), 0u);
+			unsigned long texel_cache_size = (*update_local.dfr_cache.dfr_cache)[a].texel_cache.size();
+			for (unsigned long b = 0ul; b < texel_cache_size; ++b)
+			{
+				unsigned short uv_channel_size = (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].uv_channel.size();
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), uv_channel_size, 0u);
+				for (unsigned short c = 0u; c < uv_channel_size; ++c)
+				{
+					shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].uv_channel[c], 8u);
+				}
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].height, 0u);
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].width, 0u);
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache_size, 0u);
+				for (unsigned long c = 0ul; c < (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache_size; ++c)
+				{
+					shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].internal, 1u);
+					if ((*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].internal)
+					{
+						shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].tri_index, 0u);
+						shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].bc_coord.u, 0u);
+						shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].bc_coord.v, 0u);
+						shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].bc_coord.w, 0u);
+					}
+					shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].nearest_proj_point.x, 0u);
+					shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].nearest_proj_point.y, 0u);
+					shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].min_dist_vec.x, 0u);
+					shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].min_dist_vec.y, 0u);
+					shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].cache[c].min_dist_sqr, 0u);
+				}
+				shared.feed_by_bit(this->dfr_cache, (this->dfr_cache.char_vec.size() - 1), (*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].relevant, 1u);
+			}
+		}
+	}
+	this->dfr_cache.buffer_to_char_vec();
+}
+
 
 void df_type::regions_buffer_type::clean()
 {
@@ -684,6 +750,8 @@ void df_type::regions_buffer_type::clean()
 	dfr_ids.clean();
 	dfc_layers.clean();
 	dfr_layers.clean();
+	dfr_cache_is_valid.clean();
+	dfr_cache.clean();
 }
 
 
@@ -756,6 +824,8 @@ df_type::regions_buffer_type::virtual_stream_type::virtual_stream_type(regions_b
 	regions_arr[23] = &regions_buffer.dfr_ids;
 	regions_arr[24] = &regions_buffer.dfc_layers;
 	regions_arr[25] = &regions_buffer.dfr_layers;
+	regions_arr[26] = &regions_buffer.dfr_cache_is_valid;
+	regions_arr[27] = &regions_buffer.dfr_cache;
 
 	current_region_size = regions_arr[0]->char_vec.size();
 }

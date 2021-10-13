@@ -493,7 +493,8 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 		}
 	}
 
-	
+	/*	Uncomment print canonical Huffman codewords to console	*/
+	/*
 	std::cout << "CANONICAL" << std::endl;
 	std::cout << std::endl;
 	std::cout << std::endl;
@@ -507,6 +508,7 @@ int deflate_code_type::get_canonical_huffman_codewords(std::vector<bool>* codewo
 		}
 		std::cout << std::endl;
 	}
+	*/
 	
 	/*	Checks if any prefixes exist within the canonical codewords	*/
 	for (unsigned short a = 0u; a < alphabet_size; ++a)
@@ -740,7 +742,6 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 		{
 			lit_len_indices[a] = a;
 		}
-		std::cout << "Lit Len" << std::endl;
 		this->get_canonical_huffman_codewords(lit_len_codewords, lit_len_lengths, lit_len_freqs, lit_len_indices, 286ul, 15u);
 	}
 
@@ -753,7 +754,6 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 		{
 			distance_indices[a] = a;
 		}
-		std::cout << "Distance" << std::endl;
 		this->get_canonical_huffman_codewords(distance_codewords, distance_lengths, dist_freqs, distance_indices, 30ul, 15u);
 	}
 
@@ -777,8 +777,6 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 		{
 			secondary_len_indices[a] = a;
 		}
-
-		std::cout << "Secondary" << std::endl;
 		this->get_canonical_huffman_codewords(secondary_len_codewords, secondary_len_lengths, secondary_len_freqs, secondary_len_indices, 19ul, 7u);
 	}
 

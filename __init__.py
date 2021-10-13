@@ -20,12 +20,12 @@
 
 
 bl_info = {
-            "name": "DF_Tool",
+            "name": "MULDIFA",
             "description" : "A distance field implementation",
             "author": "Pixenal",
             "version": (1, 0),
             "blender": (2, 93, 0),
-            "location": "View3D > Sidebar > DF_Tool",
+            "location": "View3D > Sidebar > MULDIFA",
             "category": "3D View"
 }
 

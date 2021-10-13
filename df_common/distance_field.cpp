@@ -2611,11 +2611,14 @@ recheck_if_batches_completed:
 }
 
 /*	This function is called before update_recipient is called, it does some prep work, namely cleaning state	*/
-int df_type::pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount)
+int df_type::pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount, const bool df_map_enabled)
 {
 	update_recipients_local.clean();
-	update_local.dfr_cache.move_to_legacy();
-	update_local.dfr_cache.dfr_cache = new std::vector<update_local_type::dfr_cache_type::dfr_cache_entry_type>;
+	if (df_map_enabled)
+	{
+		update_local.dfr_cache.move_to_legacy();
+		update_local.dfr_cache.dfr_cache = new std::vector<update_local_type::dfr_cache_type::dfr_cache_entry_type>;
+	}
 
 	/*	Checks for deleted dfrs	*/
 
@@ -3285,7 +3288,7 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 	if (!args->is_in_sync)
 	{
 		/*	if not recomputes barycentric coord	*/
-		bc_coord_cache = new shared_type::coord_uvw_type[args->tri_amount];
+		bc_coord_cache = new shared_type::coord_uvw_type[args->tri_amount] {};
 		shared_type::coord_xyz_type normal(0, 0, 1.0);
 		for (c; c < args->tri_amount; ++c)
 		{
@@ -3314,6 +3317,8 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 	}
 	else
 	{
+		texel_cache->bc_coord = shared_type::coord_uvw_type();
+
 		/*	If not, then finds nearest texel that lies within a triangle	*/
 		double dist_normed;
 
@@ -3406,7 +3411,7 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 
 
 /*	Updates (or creates) the DF map for the specified DFR	*/
-int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
+int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
 {
 	/*	Determines if cache is in sync	*/
 	bool exists_in_legacy = false;
@@ -3468,7 +3473,9 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 			unsigned short texel_cache_size = (*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.size();
 			for (short a = 0; a < texel_cache_size; ++a)
 			{
-				if (((*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[a].height == height) && ((*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[a].width == width))
+				if	(((*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[a].height == height) &&
+					((*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[a].width == width) &&
+					((*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[a].uv_channel == std::string(uv_channel)))
 				{
 					texel_cache_index = a;
 					(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[a].relevant = true;
@@ -3479,7 +3486,7 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 			{
 				typedef df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_type texel_cache_type;
 				texel_cache_index = (*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.size();
-				(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.push_back(texel_cache_type(width, height));
+				(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.push_back(texel_cache_type(uv_channel, width, height));
 				(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[texel_cache_index].relevant = true;
 				is_in_sync = false;
 			}
@@ -3502,7 +3509,7 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 
 		/*	Add entry to said dfr cache entries texel cache	*/
 		typedef df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_type texel_cache_type;
-		(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.push_back(texel_cache_type(width, height));
+		(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache.push_back(texel_cache_type(uv_channel, width, height));
 		texel_cache_index = 0;
 		(*update_local.dfr_cache.dfr_cache)[cache_index].texel_cache[0].relevant = true;
 	}
@@ -3627,12 +3634,8 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 		}
 	}
 
-	std::cout << "CALLING UPDATE RECIPIENT FROM WITHIN DF MAP" << std::endl;
-
 	/*	Step 2	*/
 	this->update_recipient(dfc_layers, dfc_layers_nxt_indx, df_map_linear, texel_amount_total, interp_mode, gamma);
-
-	std::cout << "UPDATE RECIPIENT FINISHED FROM WITHIN DF MAP" << std::endl;
 
 	/*	Step 3	*/
 	shared_type::coord_xy_type texel_dist(1.0 / (double)width, 1.0 / (double)height);
@@ -3722,27 +3725,31 @@ int df_type::update_recipient_df_map(const unsigned long dfr_id, const unsigned 
 	delete[] df_map;
 	delete[] texel_coord_cache;
 
+	update_local.dfr_cache.is_valid = true;
 	return 0;
 }
 
 
 /*	Currently nop	*/
-int df_type::post_update_recipients()
+int df_type::post_update_recipients(const bool df_map_enabled)
 {
-	update_local.dfr_cache.clean_legacy();
-	unsigned long dfr_cache_size = update_local.dfr_cache.dfr_cache->size();
-	for (unsigned long a = 0u; a < dfr_cache_size; ++a)
+	if (df_map_enabled)
 	{
-		for (unsigned short b = 0u; b < (*update_local.dfr_cache.dfr_cache)[a].texel_cache.size(); ++b)
+		update_local.dfr_cache.clean_legacy();
+		unsigned long dfr_cache_size = update_local.dfr_cache.dfr_cache->size();
+		for (unsigned long a = 0u; a < dfr_cache_size; ++a)
 		{
-			if (!(*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].relevant)
+			for (unsigned short b = 0u; b < (*update_local.dfr_cache.dfr_cache)[a].texel_cache.size(); ++b)
 			{
-				(*update_local.dfr_cache.dfr_cache)[a].texel_cache.erase((*update_local.dfr_cache.dfr_cache)[a].texel_cache.begin() + b);
-				--b;
-			}
-			else
-			{
-				(*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].relevant = false;
+				if (!(*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].relevant)
+				{
+					(*update_local.dfr_cache.dfr_cache)[a].texel_cache.erase((*update_local.dfr_cache.dfr_cache)[a].texel_cache.begin() + b);
+					--b;
+				}
+				else
+				{
+					(*update_local.dfr_cache.dfr_cache)[a].texel_cache[b].relevant = false;
+				}
 			}
 		}
 	}
@@ -4488,6 +4495,9 @@ int df_type::copy_to_buffer()
 	regions_buffer.prep_dfr_ids(update_local);
 	regions_buffer.prep_dfc_layers(dfc_layers);
 	regions_buffer.prep_dfr_layers(dfr_layers);
+	regions_buffer.prep_dfr_cache_is_valid(update_local);
+	regions_buffer.prep_dfr_cache(update_local);
+
 	regions_buffer.is_valid = true;
 
 	return 0;
@@ -5755,6 +5765,13 @@ void df_type::update_local_type::load_from_buffer(buffer_type& buffer)
 	buffer.dfc_ids.clean();
 	dfr_cache.dfr_ids = buffer.dfr_ids;
 	buffer.dfr_ids.clean();
+
+	dfr_cache.is_valid = buffer.dfr_cache_is_valid;
+	if (dfr_cache.is_valid)
+	{
+		dfr_cache.dfr_cache = buffer.dfr_cache;
+		buffer.dfr_cache = nullptr;
+	}
 }
 
 
@@ -6549,6 +6566,7 @@ void df_type::update_local_type::dfr_cache_type::clean()
 		this->dfr_cache = nullptr;
 	}
 	this->clean_legacy();
+	this->is_valid = false;
 }
 
 

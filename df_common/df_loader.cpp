@@ -141,6 +141,8 @@ void df_type::df_loader_type::director_type::load_to_buffer()
 	macro_regions_buffer.buffer_dfr_ids();
 	macro_regions_buffer.buffer_dfc_layers();
 	macro_regions_buffer.buffer_dfr_layers();
+	macro_regions_buffer.buffer_dfr_cache_is_valid();
+	macro_regions_buffer.buffer_dfr_cache();
 }
 
 
@@ -841,6 +843,74 @@ void df_type::df_loader_type::director_type::buffers_type::buffer_dfr_layers()
 }
 
 
+void df_type::df_loader_type::director_type::buffers_type::buffer_dfr_cache_is_valid()
+{	
+	update_local.dfr_cache_is_valid = get_bool();
+	df_loader_ptr->reader.clear_byte_buffer();
+}
+
+void df_type::df_loader_type::director_type::buffers_type::buffer_dfr_cache()
+{
+	if (update_local.dfr_cache_is_valid)
+	{
+		update_local.dfr_cache = new std::vector<update_local_type::dfr_cache_type::dfr_cache_entry_type>;
+		unsigned long dfr_cache_size = get_ulong();
+		for (unsigned long a = 0ul; a < dfr_cache_size; ++a)
+		{
+			unsigned long id = get_ulong();
+			unsigned long tri_cache_size = get_ulong();
+			shared_type::tri_uv_info_type* tri_cache = new shared_type::tri_uv_info_type[tri_cache_size];
+			for (unsigned long b = 0ul; b < tri_cache_size; ++b)
+			{
+				tri_cache[b].uv_vert_0.x = get_double();
+				tri_cache[b].uv_vert_0.y = get_double();
+				tri_cache[b].uv_vert_1.x = get_double();
+				tri_cache[b].uv_vert_1.y = get_double();
+				tri_cache[b].uv_vert_2.x = get_double();
+				tri_cache[b].uv_vert_2.y = get_double();
+			}
+			update_local.dfr_cache->push_back(update_local_type::dfr_cache_type::dfr_cache_entry_type(id, tri_cache, tri_cache_size));
+			unsigned long texel_cache_size = get_ulong();
+			for (unsigned long b = 0ul; b < texel_cache_size; ++b)
+			{
+				typedef update_local_type::dfr_cache_type::dfr_cache_entry_type dfr_cache_entry_type;
+				unsigned long uv_channel_size = get_ulong();
+				char* uv_channel = new char[uv_channel_size + 1ul] {};
+				for (unsigned short c = 0u; c < uv_channel_size; ++c)
+				{
+					uv_channel[c] = get_ulong(8u);
+				}
+				unsigned long height = get_ulong();
+				unsigned long width = get_ulong();
+				(*update_local.dfr_cache)[a].texel_cache.push_back(dfr_cache_entry_type::texel_cache_type(uv_channel, width, height));
+				(*update_local.dfr_cache)[a].texel_cache[b].cache_size = get_ulong();
+				for (unsigned long c = 0u; c < (*update_local.dfr_cache)[a].texel_cache[b].cache_size; ++c)
+				{
+					(*update_local.dfr_cache)[a].texel_cache[b].cache[c].internal = get_bool();
+					if ((*update_local.dfr_cache)[a].texel_cache[b].cache[c].internal)
+					{
+						(*update_local.dfr_cache)[a].texel_cache[b].cache[c].tri_index = get_ulong();
+						(*update_local.dfr_cache)[a].texel_cache[b].cache[c].bc_coord.u = get_double();
+						(*update_local.dfr_cache)[a].texel_cache[b].cache[c].bc_coord.v = get_double();
+						(*update_local.dfr_cache)[a].texel_cache[b].cache[c].bc_coord.w = get_double();
+					}
+					(*update_local.dfr_cache)[a].texel_cache[b].cache[c].nearest_proj_point.x = get_double();
+					(*update_local.dfr_cache)[a].texel_cache[b].cache[c].nearest_proj_point.y = get_double();
+					(*update_local.dfr_cache)[a].texel_cache[b].cache[c].min_dist_vec.x = get_double();
+					(*update_local.dfr_cache)[a].texel_cache[b].cache[c].min_dist_vec.y = get_double();
+					(*update_local.dfr_cache)[a].texel_cache[b].cache[c].min_dist_sqr = get_double();
+				}
+				(*update_local.dfr_cache)[a].texel_cache[b].relevant = get_bool();
+				delete[] uv_channel;
+			}
+
+			delete[] tri_cache;
+		}
+	}
+	df_loader_ptr->reader.clear_byte_buffer();
+}
+
+
 /*df_type::df_loader_type::reader_type*/
 /*-------------------------------------------------------------------------------------------------------------*/
 
@@ -923,7 +993,7 @@ void df_type::df_loader_type::reader_type::read_sv()
 			iterate_byte_buffer();
 		}
 	}
-	bit_size = size_bin_buffer.to_ulong();
+	bit_size = (size_bin_buffer.to_ulong()) + 1ul;
 
 	/*	Now that it's length has been read, reads the value component of the sv	(Note that the result is stored within a buffer data member,
 		this is why there's no return value from the below, or current, function (the "delete"))	*/

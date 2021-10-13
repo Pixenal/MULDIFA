@@ -82,14 +82,14 @@ class df_parent_panel(bpy.types.Panel):
 
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category = "DF Tools"
+    bl_category = "MULDIFA"
 
 
 #Main Distance Field sub Panel
 class DF_PT_df(df_parent_panel, bpy.types.Panel):
 
     bl_idname = "DF_PT_df"
-    bl_label = "Distance Field"
+    bl_label = "MULDIFA"
     
     def draw(self, context):
     

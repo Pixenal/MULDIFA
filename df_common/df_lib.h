@@ -881,6 +881,7 @@ private:
 
 				struct texel_cache_type
 				{
+					std::string uv_channel;
 					unsigned short height = 0u;
 					unsigned short width = 0u;
 					unsigned long cache_size = 0ul;
@@ -892,8 +893,9 @@ private:
 						return;
 					}
 
-					texel_cache_type(const unsigned short width, const unsigned short height)
+					texel_cache_type(const char* uv_channel, const unsigned short width, const unsigned short height)
 					{
+						this->uv_channel = std::string(uv_channel);
 						this->height = height;
 						this->width = width;
 						this->cache_size = height * width;
@@ -931,6 +933,7 @@ private:
 
 			/*Data Members*/
 
+			bool is_valid = false;
 			std::vector<dfr_cache_entry_type>* dfr_cache = nullptr;
 			std::vector<dfr_cache_entry_type>* dfr_cache_legacy = nullptr;
 			shared_type::invrse_jenga_type<dfr_id_indx_type*, unsigned long> dfr_ids;
@@ -972,6 +975,8 @@ private:
 			shared_type::invrse_jenga_type<dfr_id_indx_type*, unsigned long> dfr_ids;
 			std::vector<shared_type::invrse_jenga_type<df_type::dfc_id_indx_type*, unsigned long>> dfc_layers;
 			std::vector<shared_type::invrse_jenga_type<dfr_id_indx_type*, unsigned long>> dfr_layers;
+			bool dfr_cache_is_valid = false;
+			std::vector<dfr_cache_type::dfr_cache_entry_type>* dfr_cache = nullptr;
 
 			void clean();
 			~buffer_type();
@@ -1085,6 +1090,8 @@ private:
 		shared_type::byte_vec_type dfr_ids;
 		shared_type::byte_vec_type dfc_layers;
 		shared_type::byte_vec_type dfr_layers;
+		shared_type::byte_vec_type dfr_cache_is_valid;
+		shared_type::byte_vec_type dfr_cache;
 
 		bool is_valid = false;
 
@@ -1117,6 +1124,8 @@ private:
 		void prep_dfr_ids(update_local_type& update_local);
 		void prep_dfc_layers(std::vector<shared_type::invrse_jenga_type<dfc_id_indx_type*, unsigned long>>& dfc_layers);
 		void prep_dfr_layers(std::vector<shared_type::invrse_jenga_type<dfr_id_indx_type*, unsigned long>>& dfr_layers);
+		void prep_dfr_cache_is_valid(update_local_type& update_local);
+		void prep_dfr_cache(update_local_type& update_local);
 
 	public:
 
@@ -1143,8 +1152,8 @@ private:
 
 			unsigned long long current_region_size = 0u;
 			regions_buffer_type* regions_buffer_ptr = nullptr;
-			const unsigned short regions_size = 26u;
-			shared_type::byte_vec_type* regions_arr[26u] = {};
+			const unsigned short regions_size = 28u;
+			shared_type::byte_vec_type* regions_arr[28u] = {};
 
 			/*Member Functions*/
 
@@ -1267,6 +1276,8 @@ private:
 				void buffer_dfr_ids();
 				void buffer_dfc_layers();
 				void buffer_dfr_layers();
+				void buffer_dfr_cache_is_valid();
+				void buffer_dfr_cache();
 			};
 
 			/*Data Members*/
@@ -1549,7 +1560,7 @@ public:
 	int pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount_total, const unsigned long* ignored_dfcs, const unsigned long ignored_dfcs_nxt_indx);
 	int update_grid_points(void* arg_ptr, unsigned short job_index);
 	int update_per_tri(const unsigned long& dfc_id, const unsigned long& dfc_index);
-	int pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount);
+	int pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount, const bool df_map_enabled);
 	shared_type::coord_xyz_type wrld_space_to_grid_indx_space(const shared_type::coord_xyz_type coord);
 	float get_lerped_point_value(const shared_type::coord_xyz_type& vert_coord, const std::vector<unsigned long>& dfc_ids, const char mode, std::vector<shared_type::ncspline_type>& zaligned_splines, const int local_spline_length);
 	void call_get_lerped_point_value(void* args_ptr, unsigned short job_index);
@@ -1558,8 +1569,8 @@ public:
 	shared_type::index_xyz_type get_enclsing_cmprt_from_indx_space(const shared_type::coord_xyz_type& indx_space_coord);
 	int update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma);
 	int df_map_map_texel(void* args_ptr, unsigned short job_index);
-	int update_recipient_df_map(const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding);
-	int post_update_recipients();
+	int update_recipient_df_map(const char* uv_channel, const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding);
+	int post_update_recipients(const bool df_map_enabled);
 	int clean();
 	int clean_special();
 	int check_volume(const shared_type::coord_xyz_type* volume_verts);
@@ -1628,10 +1639,10 @@ extern "C"
 	EXPORT int call_df_pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount_total, const unsigned long* ignored_dfcs, const unsigned long ignored_dfcs_nxt_indx);
 	EXPORT int call_df_update(const unsigned long& dfc_id, const unsigned long& dfc_index);
 	EXPORT int call_df_add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc);
-	EXPORT int call_df_pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount);
+	EXPORT int call_df_pre_update_recipients(const unsigned long* dfrs, const unsigned long dfr_amount, const bool df_map_enabled);
 	EXPORT int call_df_update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma);
-	EXPORT int call_df_update_recipient_df_map(const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding);
-	EXPORT int call_df_post_update_recipients();
+	EXPORT int call_df_update_recipient_df_map(const char* uv_channel, const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding);
+	EXPORT int call_df_post_update_recipients(const bool df_map_enabled);
 	EXPORT int call_df_check_volume(shared_type::coord_xyz_type* verts_buffer);
 	EXPORT int call_df_defrag_dfc_ids(unsigned long* dfc_ids, const unsigned long& dfc_amount, int& greatest_id);
 	EXPORT int call_df_defrag_dfr_ids(unsigned long* dfr_ids, const unsigned long& dfr_amount, int& greatest_id);
