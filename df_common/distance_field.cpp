@@ -3148,7 +3148,7 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 
 	unsigned long internal_vert_amount = 0ul;
 	/*	Checks if current vert sits outside of the grid	*/
-	for (unsigned long a = 0u; a < vert_amount; ++a)
+	for (unsigned long a = 0ul; a < vert_amount; ++a)
 	{
 		if (grid_bounds_check(verts_buffer[a].coord))
 		{
@@ -3158,6 +3158,14 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 		{
 			verts_buffer[a].value = 2.0f;
 		}
+	}
+	if (internal_vert_amount == 0ul)
+	{
+		for (unsigned long a = 0ul; a < vert_amount; ++a)
+		{
+			verts_buffer[a].value = .0f;
+		}
+		return 0;
 	}
 
 	{
@@ -3187,7 +3195,6 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 			{
 				if (verts_buffer[vert_index].value == 2.0f)
 				{
-					verts_buffer[vert_index].value = .0f;
 					continue;
 				}
 				local_args[b].a = a;
@@ -3237,6 +3244,14 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 			token.unlock();
 		}
 		delete[] args.jobs_completed_table;
+	}
+
+	for (unsigned long a = 0ul; a < vert_amount; ++a)
+	{
+		if (verts_buffer[a].value == 2.0f)
+		{
+			verts_buffer[a].value = .0f;
+		}
 	}
 
 	/*	Resets the "temp_spline_indx" data member in each grid point enclosed within the bounding box to 0	*/
@@ -3385,7 +3400,7 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 
 		/*	Add values for current cache to arrays (these arrays will be used by the calling function
 			(calling via thread pool that is) "update_recipient_df_map")	*/
-		args->extern_texels_proj[local_args->linear_index] = (dist_normed <= args->padding) ? shared_type::index_xy_type(args->width * texel_cache->nearest_proj_point.x, args->height * texel_cache->nearest_proj_point.y) : shared_type::index_xy_type(2u, 2u);
+		args->extern_texels_proj[local_args->linear_index] = ((dist_normed <= args->padding) && (texel_cache->nearest_proj_point.x >= .0) && (texel_cache->nearest_proj_point.y >= .0)) ? shared_type::index_xy_type(args->width * texel_cache->nearest_proj_point.x, args->height * texel_cache->nearest_proj_point.y) : shared_type::index_xy_type(2u, 2u);
 		args->df_map_linear[local_args->linear_index].coord = volume_local.min_grid_coord;
 		args->df_map_linear[local_args->linear_index].coord.x -= 1.0;
 	}
@@ -3656,11 +3671,11 @@ int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long
 					(nearest texel that lies within a triangle)	*/
 
 				/*	The point gotten by projecting the current texel onto the nearest triangle is calculated in step 1.
-					This is just a floating point coordinate, and has yet been truncated to get said points enclosing texel.
+					This is just a floating point coordinate, and is yet to be truncated to get said points enclosing texel.
 					It is commonly the case that the projected points enclosing texel doesn't actually lie within the triangle
 					(as the projected point sits on the edge of the triangle). As such multple tests are performed to try and
 					find the most suitable texel for the current projected point	*/
-				/*	The first step, as seen below, is to simply truncate the point and see if it is internal	*/
+				/*	The first test, as seen below, is to simply truncate the point and see if it is internal	*/
 				shared_type::index_xy_type& proj_index = extern_texels_proj[linear_index];
 				unsigned long proj_linear_index = (proj_index.y * width) + proj_index.x;
 				if (extern_texels_proj[proj_linear_index] == shared_type::index_xy_type(2u, 2u))
