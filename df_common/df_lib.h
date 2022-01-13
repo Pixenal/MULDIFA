@@ -1504,6 +1504,8 @@ private:
 		unsigned long* jobs_completed = nullptr;
 		std::mutex* token = nullptr;
 		unsigned short* jobs_completed_table = nullptr;
+		unsigned long dfr_id = 0ul;
+		std::vector<unsigned long>* invalid_tris = nullptr;
 	};
 
 	struct df_map_map_texel_local_args_type

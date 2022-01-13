@@ -3307,10 +3307,24 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 		shared_type::coord_xyz_type normal(0, 0, 1.0);
 		for (c; c < args->tri_amount; ++c)
 		{
-			bc_coord_cache[c] = shared.cartesian_to_barycentric(args->tris_uv_buffer[c].uv_vert_0, args->tris_uv_buffer[c].uv_vert_1, args->tris_uv_buffer[c].uv_vert_2, local_args->texel_coord, normal);
-			if (((bc_coord_cache[c].u >= 0) && (bc_coord_cache[c].v >= 0) && (bc_coord_cache[c].w >= 0)))
+			/*	At the beginning of the function "update_recipient_df_map", a vector of invalid tris is created (essentially just a list of any tris with 2 or more identical vertices).
+				The below for loop tests if the current tri is on this list, so that it can be skipped if so, as invalid tris can cause problems	*/
+			bool is_valid_tri = true;
+			for (unsigned long d = 0ul; d < args->invalid_tris->size(); ++d)
 			{
-				break;
+				if ((*args->invalid_tris)[d] == c)
+				{
+					is_valid_tri = false;
+					break;
+				}
+			}
+			if (is_valid_tri)
+			{
+				bc_coord_cache[c] = shared.cartesian_to_barycentric(args->tris_uv_buffer[c].uv_vert_0, args->tris_uv_buffer[c].uv_vert_1, args->tris_uv_buffer[c].uv_vert_2, local_args->texel_coord, normal);
+				if (((bc_coord_cache[c].u >= 0) && (bc_coord_cache[c].v >= 0) && (bc_coord_cache[c].w >= 0)))
+				{
+					break;
+				}
 			}
 		}
 		texel_cache->bc_coord = bc_coord_cache[c];
@@ -3345,45 +3359,58 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 			texel_cache->min_dist_sqr = (std::numeric_limits<double>::max)();
 			for (unsigned long d = 0u; d < args->tri_amount; ++d)
 			{
-				shared_type::coord_xyz_type* edge_vert_a = nullptr;
-				shared_type::coord_xyz_type* edge_vert_b = nullptr;
-				if (bc_coord_cache[d].u < .0)
+				/*	Ensures current tri is valid (see the comment in the find enclosing triangle section further up for more info)	*/
+				bool is_valid_tri = true;
+				for (unsigned long e = 0ul; e < args->invalid_tris->size(); ++e)
 				{
-					edge_vert_a = &args->tris_uv_buffer[d].uv_vert_1;
-					edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
+					if ((*args->invalid_tris)[e] == d)
+					{
+						is_valid_tri = false;
+						break;
+					}
 				}
-				else if (bc_coord_cache[d].v < .0)
+				if (is_valid_tri)
 				{
-					edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
-					edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
-				}
-				else if (bc_coord_cache[d].w < .0)
-				{
-					edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
-					edge_vert_b = &args->tris_uv_buffer[d].uv_vert_1;
-				}
-				else
-				{
-					std::cout << "Invalid extern texel" << std::endl;
-				}
-				/*	"at_dist" is the distance vector from edge_vert_a to the current texel	*/
-				shared_type::coord_xy_type at_dist(local_args->texel_coord.x - edge_vert_a->x, local_args->texel_coord.y - edge_vert_a->y);
-				/*	"at_dist" is the distance vector from edge_vert_a to edge_vert_b	*/
-				shared_type::coord_xy_type ab_dist(edge_vert_b->x - edge_vert_a->x, edge_vert_b->y - edge_vert_a->y);
-				double ab_len = std::sqrt((ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y));
-				shared_type::coord_xy_type ab_normal(ab_dist.x / ab_len, ab_dist.y / ab_len);
-				double t = (ab_normal.x * at_dist.x) + (ab_normal.y * at_dist.y);
-				shared_type::coord_xy_type ap_dist(ab_normal.x * t, ab_normal.y * t);
-				double ab_dot_ab = (ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y);
-				double ab_dot_ap = (ab_dist.x * ap_dist.x) + (ab_dist.y * ap_dist.y);
-				shared_type::coord_xyz_type proj_point = (ab_dot_ap < .0) ? *edge_vert_a : ((ab_dot_ap > ab_dot_ab) ? *edge_vert_b : shared_type::coord_xyz_type(edge_vert_a->x + ap_dist.x, edge_vert_a->y + ap_dist.y, .0));
-				shared_type::coord_xy_type pt_dist(local_args->texel_coord.x - proj_point.x, local_args->texel_coord.y - proj_point.y);
-				double dist_sqr = (pt_dist.x * pt_dist.x) + (pt_dist.y * pt_dist.y);
-				if (dist_sqr < texel_cache->min_dist_sqr)
-				{
-					texel_cache->min_dist_vec = pt_dist;
-					texel_cache->min_dist_sqr = dist_sqr;
-					texel_cache->nearest_proj_point = proj_point;
+					shared_type::coord_xyz_type* edge_vert_a = nullptr;
+					shared_type::coord_xyz_type* edge_vert_b = nullptr;
+					if (bc_coord_cache[d].u < .0)
+					{
+						edge_vert_a = &args->tris_uv_buffer[d].uv_vert_1;
+						edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
+					}
+					else if (bc_coord_cache[d].v < .0)
+					{
+						edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
+						edge_vert_b = &args->tris_uv_buffer[d].uv_vert_2;
+					}
+					else if (bc_coord_cache[d].w < .0)
+					{
+						edge_vert_a = &args->tris_uv_buffer[d].uv_vert_0;
+						edge_vert_b = &args->tris_uv_buffer[d].uv_vert_1;
+					}
+					else
+					{
+						std::cout << "Invalid extern texel" << std::endl;
+					}
+					/*	"at_dist" is the distance vector from edge_vert_a to the current texel	*/
+					shared_type::coord_xy_type at_dist(local_args->texel_coord.x - edge_vert_a->x, local_args->texel_coord.y - edge_vert_a->y);
+					/*	"at_dist" is the distance vector from edge_vert_a to edge_vert_b	*/
+					shared_type::coord_xy_type ab_dist(edge_vert_b->x - edge_vert_a->x, edge_vert_b->y - edge_vert_a->y);
+					double ab_len = std::sqrt((ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y));
+					shared_type::coord_xy_type ab_normal(ab_dist.x / ab_len, ab_dist.y / ab_len);
+					double t = (ab_normal.x * at_dist.x) + (ab_normal.y * at_dist.y);
+					shared_type::coord_xy_type ap_dist(ab_normal.x * t, ab_normal.y * t);
+					double ab_dot_ab = (ab_dist.x * ab_dist.x) + (ab_dist.y * ab_dist.y);
+					double ab_dot_ap = (ab_dist.x * ap_dist.x) + (ab_dist.y * ap_dist.y);
+					shared_type::coord_xyz_type proj_point = (ab_dot_ap < .0) ? *edge_vert_a : ((ab_dot_ap > ab_dot_ab) ? *edge_vert_b : shared_type::coord_xyz_type(edge_vert_a->x + ap_dist.x, edge_vert_a->y + ap_dist.y, .0));
+					shared_type::coord_xy_type pt_dist(local_args->texel_coord.x - proj_point.x, local_args->texel_coord.y - proj_point.y);
+					double dist_sqr = (pt_dist.x * pt_dist.x) + (pt_dist.y * pt_dist.y);
+					if (dist_sqr < texel_cache->min_dist_sqr)
+					{
+						texel_cache->min_dist_vec = pt_dist;
+						texel_cache->min_dist_sqr = dist_sqr;
+						texel_cache->nearest_proj_point = proj_point;
+					}
 				}
 			}
 			dist_normed = std::sqrt(texel_cache->min_dist_sqr);
@@ -3428,6 +3455,18 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 /*	Updates (or creates) the DF map for the specified DFR	*/
 int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
 {
+	/*	Creates a list of all invalid tris (any tris with 2 or 3 identical vertices)	*/
+	std::vector<unsigned long> invalid_tris;
+	for (unsigned long a = 0ul; a < tri_amount; ++a)
+	{
+		if (((tris_uv_buffer[a].uv_vert_0.x == tris_uv_buffer[a].uv_vert_1.x) && (tris_uv_buffer[a].uv_vert_0.y == tris_uv_buffer[a].uv_vert_1.y)) ||
+			((tris_uv_buffer[a].uv_vert_0.x == tris_uv_buffer[a].uv_vert_2.x) && (tris_uv_buffer[a].uv_vert_0.y == tris_uv_buffer[a].uv_vert_2.y)) ||
+			((tris_uv_buffer[a].uv_vert_1.x == tris_uv_buffer[a].uv_vert_2.x) && (tris_uv_buffer[a].uv_vert_1.y == tris_uv_buffer[a].uv_vert_2.y)))
+		{
+			invalid_tris.push_back(a);
+		}
+	}
+
 	/*	Determines if cache is in sync	*/
 	bool exists_in_legacy = false;
 	unsigned long legacy_index = 0ul;
@@ -3585,6 +3624,8 @@ int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long
 		arg.tri_amount = tri_amount;
 		arg.verts_buffer = verts_buffer;
 		arg.jobs_completed_table = new unsigned short[height] {};
+		arg.dfr_id = dfr_id;
+		arg.invalid_tris = &invalid_tris;
 
 		/*	Number is based on profiling	*/
 		thread_pool.set_jobs_per_iteration(60u);

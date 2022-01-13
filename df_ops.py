@@ -1538,9 +1538,9 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
                                         verts_buffer[vert.index].x = vert_coord[0]
                                         verts_buffer[vert.index].y = vert_coord[1]
                                         verts_buffer[vert.index].z = vert_coord[2]
-                                    
+
                                     for tri in obj_bmesh.faces:
-                                        
+
                                         tris_buffer[tri.index].vert_0 = tri.loops[0].vert.index
                                         tris_uv_buffer[tri.index].uv_vert_0.x = tri.loops[0][uv_layer].uv.x
                                         tris_uv_buffer[tri.index].uv_vert_0.y = 1.0 - tri.loops[0][uv_layer].uv.y
