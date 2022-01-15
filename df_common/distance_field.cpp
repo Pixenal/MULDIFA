@@ -2089,7 +2089,13 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 
 	/*	Sets objects	*/
 	update_local.dfc_index = update_local.dfc_cache.dfc_id_to_indx(dfc_id, 1);
-	//unsigned long legacy_dfc_id_index = update_local.dfc_cache.dfc_id_to_indx()
+
+	/*	Check if mesh cache is nullptr (this can occur if there is no geo in the current dfc, as no data would have been added when "add_dfc_to_cache" was called)	*/
+	if (dfc_cache.mesh_cache[update_local.dfc_index] == nullptr)
+	{
+		return 1;
+	}
+
 	unsigned long dfc_mesh_cache_y_size = dfc_cache.mesh_cache[update_local.dfc_index]->size();
 
 	/*	Checks if the current dfc is new, that is to say, if it existed when the distance field was last updated	*/
@@ -2937,6 +2943,12 @@ shared_type::index_xyz_type df_type::get_enclsing_cmprt_from_indx_space(const sh
 /*	Updates a recipient, that is to say, projects the distance field values onto a mesh	*/
 int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::shared_type::vert_info_type* verts_buffer, unsigned long& vert_amount, const int interp_mode, const float gamma)
 {
+	/*	Check that current dfr actually has geo	*/
+	if (vert_amount == 0ul)
+	{
+		return 1;
+	}
+
 	/*	The below chunk of code results in a vector containing of all the dfc_id within the dfc_layer passed to the function
 		(at the python level, each dfr_layer only lists the index of the dfc_layer(s) that affect it, so that list of layer indices
 		must now be converted into a list of all the dfc_ids within said layers). This vector of dfc ids is then passed to the
@@ -3455,6 +3467,12 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 /*	Updates (or creates) the DF map for the specified DFR	*/
 int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long dfr_id, const unsigned long* dfc_layers, const unsigned long& dfc_layers_nxt_indx, shared_type::coord_xyz_type* verts_buffer, const unsigned long vert_amount, shared_type::tri_info_type* tris_buffer, shared_type::tri_uv_info_type* tris_uv_buffer, const unsigned long tri_amount, const unsigned short height, const unsigned short width, const int interp_mode, const float gamma, const char* dir, const char* name, float padding)
 {
+	/*	Check that current dfr actually has geo	*/
+	if (tri_amount == 0ul)
+	{
+		return 1;
+	}
+
 	/*	Creates a list of all invalid tris (any tris with 2 or 3 identical vertices)	*/
 	std::vector<unsigned long> invalid_tris;
 	for (unsigned long a = 0ul; a < tri_amount; ++a)
@@ -3716,9 +3734,18 @@ int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long
 					It is commonly the case that the projected points enclosing texel doesn't actually lie within the triangle
 					(as the projected point sits on the edge of the triangle). As such multple tests are performed to try and
 					find the most suitable texel for the current projected point	*/
-				/*	The first test, as seen below, is to simply truncate the point and see if it is internal	*/
+
 				shared_type::index_xy_type& proj_index = extern_texels_proj[linear_index];
 				unsigned long proj_linear_index = (proj_index.y * width) + proj_index.x;
+
+				/*	Before these steps are done however, the projected point is checked to ensure it actually lies within the
+					0-1 UV space. If not, then skips steps and just sets the texel's value to black	*/
+				if ((proj_index.x >= width) || (proj_index.y >= height))
+				{
+					goto set_extern_texel_black;
+				}
+
+				/*	The first test, as seen below, is to simply truncate the point and see if it is internal	*/
 				if (extern_texels_proj[proj_linear_index] == shared_type::index_xy_type(2u, 2u))
 				{
 					df_map_linear[linear_index].value = df_map_linear[proj_linear_index].value;
@@ -3757,6 +3784,7 @@ int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long
 							}
 						}
 					}
+				set_extern_texel_black:
 
 					/*	If no suitible texel was found, then this ensures that the value of the current texel is 0	*/
 					df_map_linear[linear_index].value = .0f;
@@ -4617,7 +4645,7 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 	loader.director.load_to_buffer();
 
 	/*	The purpose of the below if and compound statement is to check if the cache (which has now been loaded to buffer) is in sync
-		with the state on the python (that is to say, that the cache is actually the right cache file). The first step is seen in the
+		with the state on the python side (that is to say, that the cache is actually the right cache file). The first step is seen in the
 		below condition, which checks that the write id on the python side matches that stored within the cache	*/
 	if (write_id == *loader.director.write_id_ptr)
 	{
@@ -4647,7 +4675,7 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 
 					for (int c = 0; c < (*loader.director.dfc_layers_ptr)[a - 1].size; ++c)
 					{
-						if (dfc_layers[a][b] == (*loader.director.dfc_layers_ptr)[a - 1].vector[b - 1]->id)
+						if (dfc_layers[a][b] == (*loader.director.dfc_layers_ptr)[a - 1].vector[c]->id)
 						{
 							goto dfc_exists;
 						}
@@ -4689,7 +4717,7 @@ int df_type::new_blend_handler(const char* dir, const char* file_name, const sha
 
 					for (int c = 0; c < (*loader.director.dfr_layers_ptr)[a - 1].size; ++c)
 					{
-						if (dfr_layers[a][b] == (*loader.director.dfr_layers_ptr)[a - 1].vector[b - 1]->id)
+						if (dfr_layers[a][b] == (*loader.director.dfr_layers_ptr)[a - 1].vector[c]->id)
 						{
 							goto dfr_exists;
 						}
@@ -6052,16 +6080,16 @@ df_type::dfc_id_indx_type* df_type::update_local_type::dfc_cache_type::get_dfc_i
 	"df_type::update_local_type::dfc_cache_type::add_dfc_to_cache")	*/
 void df_type::update_local_type::dfc_cache_type::initialize_cache(const unsigned long* obj_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount)
 {
-	vert_cache = new shared_type::vert_tri_ref_type[vert_amount];
+	vert_cache = new shared_type::vert_tri_ref_type[vert_amount]{};
 	vert_amount_total = vert_amount;
-	tri_cache = new shared_type::tri_info_type * [dfc_amount];
-	tri_cache_size = new unsigned long[dfc_amount];
-	mesh_cache = new std::vector<mesh_info_type*>*[dfc_amount];
+	tri_cache = new shared_type::tri_info_type * [dfc_amount] {};
+	tri_cache_size = new unsigned long[dfc_amount] {};
+	mesh_cache = new std::vector<mesh_info_type*>*[dfc_amount] {};
 	this->dfc_amount = dfc_amount;
 	existing_dfcs = new bool[dfc_amount]();
 
 	/*	Sets up "dfc_id_to_index_table" and creates new "dfc_id_indx_type" objects for new dfc(s)	*/
-	dfc_indx_to_id_table = new dfc_id_indx_type * [dfc_amount];
+	dfc_indx_to_id_table = new dfc_id_indx_type * [dfc_amount] {};
 	for (unsigned long a = 0; a < dfc_amount; ++a)
 	{
 		dfc_ids.calc_size();
@@ -6095,6 +6123,7 @@ void df_type::update_local_type::dfc_cache_type::add_dfc_to_cache(const shared_t
 	{
 		/*	Dynamically allocates array	at the current dfc's entry in the tri cache to store it's verts	*/
 		tri_cache[dfc_index] = new shared_type::tri_info_type[tri_amount];
+
 		/*	Sets the current dfc's entry in the list of tri cache sizes to equal the amount of triangles	*/
 		tri_cache_size[dfc_index] = tri_amount;
 
@@ -6102,7 +6131,6 @@ void df_type::update_local_type::dfc_cache_type::add_dfc_to_cache(const shared_t
 			region within the vert cache (the vertices for all dfc are stored in a single array)	*/
 		unsigned long current_vert_cache_start = vert_cache_next_index;
 		
-		/*		*/
 		for (unsigned long a = 0; a < tri_amount; ++a)
 		{
 			/*	Adds the current tris data to the cache	(this includes the indices of its 3 vertices)	*/
@@ -6115,7 +6143,7 @@ void df_type::update_local_type::dfc_cache_type::add_dfc_to_cache(const shared_t
 			tri_cache[dfc_index][a].vert_2 += vert_cache_next_index;
 		}
 
-		/*	The below for loop iterates through each vertex passed to the function, and both adds each to the vert cache	*/
+		/*	The below for loop iterates through each vertex passed to the function, and adds each to the vert cache	*/
 		for (unsigned long a = 0; a < vert_amount; ++a)
 		{
 			/*	Adds the dfc index and coord of the current vert	*/

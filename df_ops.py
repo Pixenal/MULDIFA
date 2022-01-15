@@ -1336,7 +1336,7 @@ class DF_OT_df_update(bpy.types.Operator):
             for obj in context.scene.objects:
             
                 if (obj.dfc_id > 0):
-                
+
                     """ Checks if the objects current mode is not object mode, if this is the case
                     then the current mode is stored in "original_mode" and the mode is then
                     switched to object mode (the current mode is stored so that it can be switched
@@ -1369,7 +1369,6 @@ class DF_OT_df_update(bpy.types.Operator):
                     #Triangulates mesh so that triangles can be gotten instead of polygons (this is requiried otherwise .loop_triangles will be empty)
                     mesh_eval.calc_loop_triangles()
                     
-                    #Gets amount of triangles in mesh
                     tri_amount = ctypes.c_ulong(len(mesh_eval.loop_triangles))
                     vert_amount = ctypes.c_ulong(len(mesh_eval.vertices))
 
