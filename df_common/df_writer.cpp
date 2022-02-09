@@ -70,8 +70,10 @@ void df_type::df_writer_type::write_to_file()
 	shared.write_byte_vec(regions_buffer->dfr_ids, file, false);
 	shared.write_byte_vec(regions_buffer->dfc_layers, file, false);
 	shared.write_byte_vec(regions_buffer->dfr_layers, file, false);
+#ifdef DFMAPINDFCACHE
 	shared.write_byte_vec(regions_buffer->dfr_cache_is_valid, file, false);
 	shared.write_byte_vec(regions_buffer->dfr_cache, file, false);
+#endif
 }
 
 

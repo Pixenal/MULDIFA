@@ -4579,8 +4579,10 @@ int df_type::copy_to_buffer()
 	regions_buffer.prep_dfr_ids(update_local);
 	regions_buffer.prep_dfc_layers(dfc_layers);
 	regions_buffer.prep_dfr_layers(dfr_layers);
+#ifdef DFMAPINDFCACHE
 	regions_buffer.prep_dfr_cache_is_valid(update_local);
 	regions_buffer.prep_dfr_cache(update_local);
+#endif
 
 	regions_buffer.is_valid = true;
 
@@ -5850,12 +5852,14 @@ void df_type::update_local_type::load_from_buffer(buffer_type& buffer)
 	dfr_cache.dfr_ids = buffer.dfr_ids;
 	buffer.dfr_ids.clean();
 
+#ifdef DFMAPINDFCACHE
 	dfr_cache.is_valid = buffer.dfr_cache_is_valid;
 	if (dfr_cache.is_valid)
 	{
 		dfr_cache.dfr_cache = buffer.dfr_cache;
 		buffer.dfr_cache = nullptr;
 	}
+#endif
 }
 
 

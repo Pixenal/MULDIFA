@@ -20,13 +20,10 @@
 -------------------------------------------------------------------------------------------------------------
 """
 
-
 import sys
-import os
 import bpy.types
 import bpy.props
 import bpy.utils
-
 
 current_platform = sys.platform
 
@@ -37,7 +34,138 @@ current_platform = sys.platform
 # Handler Functions
 #-------------------------------------------------------------------------------------------------------------#
 
-""" No handler functions currently  """
+#Cant use funcions within these handlers due to the risk of exceeding maximum recursion depth, this is why duplicate code is present here
+
+def df_dfc_layer_name_handler(self, context):
+
+    if (self.enable_name_handler):
+
+        self.enable_name_handler = False
+        max_dup_num = -2
+        no_exact_equal = True
+        for element in context.scene.df_dfc_layers:
+            if (self == element):
+
+                continue
+
+            if (self.name == element.name):
+                if (max_dup_num < 0):
+                    max_dup_num = -1
+                no_exact_equal = False
+
+            elif ((self.name)in(element.name)):
+                name_len = len(element.name)
+                num = ""
+                
+                index_counter = name_len - 1
+                while(index_counter >= 0):
+                    if (element.name[index_counter].isdigit()):
+                        num = "".join((element.name[index_counter], num))
+                    
+                    elif((element.name[index_counter] == ".") and (index_counter == len(self.name))):
+                        if (int(num) > max_dup_num):
+                            max_dup_num = int(num)
+                        index_counter = 0
+
+                    else:
+                        index_counter = 0
+                    
+                    index_counter -= 1
+
+        max_dup_num += 1
+                
+        if ((max_dup_num > 0) and (not(no_exact_equal))):
+        
+            if (max_dup_num < 10):
+            
+                layer_name = ".00" + str(max_dup_num)
+                
+            elif (max_dup_num < 100):
+            
+                layer_name = ".0" + str(max_dup_num)
+                
+            else:
+            
+                layer_name = "." + str(max_dup_num)
+                
+            self.name += layer_name
+        
+        elif ((max_dup_num == 0) and (not(no_exact_equal))):
+        
+            self.name += ".001"
+
+
+        for dfr_layer in context.scene.df_dfr_layers:
+
+            for dfc_layer in dfr_layer.dfc_layers:
+
+                if (dfc_layer.dfc_layer == self.name_legacy):
+
+                    dfc_layer.dfc_layer = self.name
+
+        self.name_legacy = self.name
+        self.enable_name_handler = True
+
+
+def df_dfr_layer_name_handler(self, context):
+
+    if (self.enable_name_handler):
+
+        self.enable_name_handler = False
+        max_dup_num = -2
+        no_exact_equal = True
+        for element in context.scene.df_dfr_layers:
+            if (self == element):
+
+                continue
+
+            if (self.name == element.name):
+                if (max_dup_num < 0):
+                    max_dup_num = -1
+                no_exact_equal = False
+
+            elif ((self.name)in(element.name)):
+                name_len = len(element.name)
+                num = ""
+                
+                index_counter = name_len - 1
+                while(index_counter >= 0):
+                    if (element.name[index_counter].isdigit()):
+                        num = "".join((element.name[index_counter], num))
+                    
+                    elif((element.name[index_counter] == ".") and (index_counter == len(self.name))):
+                        if (int(num) > max_dup_num):
+                            max_dup_num = int(num)
+                        index_counter = 0
+
+                    else:
+                        index_counter = 0
+                    
+                    index_counter -= 1
+
+        max_dup_num += 1
+                
+        if ((max_dup_num > 0) and (not(no_exact_equal))):
+        
+            if (max_dup_num < 10):
+            
+                layer_name = ".00" + str(max_dup_num)
+                
+            elif (max_dup_num < 100):
+            
+                layer_name = ".0" + str(max_dup_num)
+                
+            else:
+            
+                layer_name = "." + str(max_dup_num)
+                
+            self.name += layer_name
+        
+        elif ((max_dup_num == 0) and (not(no_exact_equal))):
+        
+            self.name += ".001"
+        self.enable_name_handler = True
+
 
 # PROPERTY GROUP
 #-------------------------------------------------------------------------------------------------------------#
@@ -55,7 +183,9 @@ class df_dfr_id(bpy.types.PropertyGroup):
 
 class df_dfc_layer_properties(bpy.types.PropertyGroup):
 
-    name : bpy.props.StringProperty(default = "New Layer")
+    name : bpy.props.StringProperty(default = "New Layer", update = df_dfc_layer_name_handler)
+    enable_name_handler : bpy.props.BoolProperty(default = True)
+    name_legacy : bpy.props.StringProperty(default = "New Layer")
     dfc_ids_indx : bpy.props.IntProperty(default = 0)
     
 class df_dfr_layer_dfc_layer_properties(bpy.types.PropertyGroup):
@@ -64,7 +194,8 @@ class df_dfr_layer_dfc_layer_properties(bpy.types.PropertyGroup):
     
 class df_dfr_layer_properties(bpy.types.PropertyGroup):
 
-    name : bpy.props.StringProperty(default = "New Layer")
+    name : bpy.props.StringProperty(default = "New Layer", update = df_dfr_layer_name_handler)
+    enable_name_handler : bpy.props.BoolProperty(default = True)
     dfr_ids_indx : bpy.props.IntProperty(default = 0)
     dfc_layers_indx : bpy.props.IntProperty(default = 0)
     df_map_height : bpy.props.IntProperty(default = 512, name = "Height")
@@ -112,7 +243,7 @@ of the distance field; greatly affects compute times for both updating of the di
     df_state_stashed : bpy.props.BoolProperty(name = "State Stashed", default = False)
     df_stashing_enabled : bpy.props.BoolProperty(name = "Enable Stashing", default = False)
     df_init_returned_error : bpy.props.BoolProperty(default = False)
-    df_interp_mode : bpy.props.EnumProperty(name = "Interpolation Mode", description = "Interpolation mode to use when sampling from distance field",default = 0, items = [('0', 'TriCubic', ''), ('1', 'TriLinear', ''), ('2', 'Nearest', '')])
+    df_interp_mode : bpy.props.EnumProperty(name = "Interpolation Mode", description = "Interpolation mode to use when sampling from distance field", items = [('0', 'TriCubic', ''), ('1', 'TriLinear', ''), ('2', 'Nearest', '')])
     df_gamma : bpy.props.FloatProperty(name = "Gamma", description = "Gamme to apply when sampling from distance field. Is linear by default", default = 1.0)
     df_update_on_frame : bpy.props.BoolProperty(name = "Update on Frame Change", description = "Toggles updating of the distance field on frame change; intended use is for allowing animated objects to interact \
 with the distance field during rendering", default = False)

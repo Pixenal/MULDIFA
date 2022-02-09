@@ -141,8 +141,10 @@ void df_type::df_loader_type::director_type::load_to_buffer()
 	macro_regions_buffer.buffer_dfr_ids();
 	macro_regions_buffer.buffer_dfc_layers();
 	macro_regions_buffer.buffer_dfr_layers();
+#ifdef DFMAPINDFCACHE
 	macro_regions_buffer.buffer_dfr_cache_is_valid();
 	macro_regions_buffer.buffer_dfr_cache();
+#endif
 }
 
 

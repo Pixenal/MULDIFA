@@ -25,12 +25,9 @@ import sys
 import os.path
 import bpy
 import ctypes
-import time
 import bmesh
-import mathutils
 import numpy
 from bpy.app.handlers import persistent
-import atexit
     
 current_platform = sys.platform
 
@@ -71,6 +68,8 @@ elif (current_platform == "darwin"):
 df_lib = ctypes.cdll.LoadLibrary(current_dir + lib_file_name)
 df_lib.pass_lib_dir(ctypes.c_char_p(bytes(current_dir, 'utf-8')))
 
+#MiscGlobalObject
+load_post_handler_has_run = False
 
 # Classes
 #-------------------------------------------------------------------------------------------------------------#
@@ -354,6 +353,13 @@ class write_id_type(ctypes.Structure):
     in a general way (they were previously seperated into 2 sets of functions before being merged).  """
 
 
+def ensure_load_post_handler_has_run():
+
+    if (not(load_post_handler_has_run)):
+
+        df_load_post_handler(0)
+
+
 def add_new_id_layer(context, id_type):
 
     df = context.scene.df
@@ -365,6 +371,9 @@ def add_new_id_layer(context, id_type):
     """ Adds layer to layers collection on the python side  """
     id_abstractor.layers_col_indx = len(id_abstractor.layers_col);             
     new_layer = id_abstractor.layers_col.add()
+    if (id_type == 0):
+
+        new_layer.name_legacy = layer_name
     new_layer.name = layer_name
     
     if (df.df_state_stashed):
@@ -383,7 +392,6 @@ def add_new_id_layer(context, id_type):
 def remove_id_layer(context, id_type):
 
     df = context.scene.df
-
     id_abstractor = id_abstractor_type(context, id_type)
 
     """ Removes layer from layers collection"""
@@ -1047,7 +1055,6 @@ def dfc_layer_name_to_indx(context, dfc_layer_name):
 def validate_undo_step(context, delete_further_steps = True):
 
     df = context.scene.df
-
     df_lib.call_df_validate_undo_step(ctypes.c_int(df.df_undo_index), ctypes.c_bool(delete_further_steps))
 
 
@@ -1056,7 +1063,6 @@ def validate_undo_step(context, delete_further_steps = True):
 def incrmt_undo_step(context):
 
     df = context.scene.df
-    
     df.df_undo_index += 1
     df_lib.call_df_incrmt_undo_step(ctypes.c_int(df.df_undo_index))
 
@@ -1072,6 +1078,8 @@ class DF_OT_df_create_volume(bpy.types.Operator):
     
     def execute(self, context):
         
+        ensure_load_post_handler_has_run()
+
         #Checks if a volume exists in the scene
         
         volume_exists = False
@@ -1098,8 +1106,9 @@ class DF_OT_df_toggle_init_returned_error(bpy.types.Operator):
     
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
+
         df = context.scene.df
-    
         if (df.df_init_returned_error == False):
         
             df.df_init_returned_error = True
@@ -1119,9 +1128,10 @@ class DF_OT_df_initialize(bpy.types.Operator):
     
     def execute(self, context):
         
+        ensure_load_post_handler_has_run()
+
         #Creates alias
         df = context.scene.df
-        
         validate_undo_step(context)
         
         """ The below for loop checks how many volumes are current in scene """
@@ -1255,15 +1265,15 @@ class DF_OT_df_update(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-    
-        df = context.scene.df
 
+        df = context.scene.df
         return (df.df_volume_initialized)
     
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
+
         df = context.scene.df
-        
         validate_undo_step(context)
 
         """ Validates ids, and expels non-existant  """
@@ -1432,8 +1442,9 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
     
     def execute (self, context):
     
+        ensure_load_post_handler_has_run()
+
         df = context.scene.df
-        
         validate_undo_step(context)
         
         if (df.df_volume_initialized == True):
@@ -1726,17 +1737,16 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
 class  DF_OT_df_add_dfc_layer(bpy.types.Operator):
     """Adds a new layer"""
     bl_idname = "df.df_add_dfc_layer"
-    bl_label = "Add Layer"
+    bl_label = "Add DFC Layer"
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
+
         df = context.scene.df
-        
         validate_undo_step(context)
-        
         add_new_id_layer(context, 0)
-            
         incrmt_undo_step(context)
         
         return {'FINISHED'}
@@ -1750,19 +1760,16 @@ class DF_OT_df_remove_dfc_layer(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        
+
         df = bpy.context.scene.df
-        
         return (len(context.scene.df_dfc_layers) > 0)
 
     def execute(self, context):
     
-        df = context.scene.df
-        
+        ensure_load_post_handler_has_run()
+        df = context.scene.df     
         validate_undo_step(context)
-    
-        remove_id_layer(context, 0)
-            
+        remove_id_layer(context, 0)  
         incrmt_undo_step(context)
         
         return {'FINISHED'}
@@ -1778,17 +1785,16 @@ class DF_OT_df_assign_dfcs_to_dfc_layer(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        
+
         df = bpy.context.scene.df
-        
         return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers))
         
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
+
         df = context.scene.df
-        
-        validate_undo_step(context)
-        
+        validate_undo_step(context)     
         objects = context.selected_objects
         assign_ids_to_layer(context, objects, self.dfc_layer_indx, 0)
     
@@ -1806,20 +1812,17 @@ class DF_OT_df_remove_dfcs_from_dfc_layer(bpy.types.Operator):
        
     @classmethod
     def poll(cls, context):
-        
+
         df = bpy.context.scene.df
-        
         return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers))
         
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         df = context.scene.df
-
         validate_undo_step(context)
-
         objects = context.selected_objects
         remove_ids_from_layer(context, objects, self.dfc_layer_indx, 0)
-
         incrmt_undo_step(context)
         
         return {'FINISHED'}
@@ -1831,13 +1834,13 @@ class DF_OT_df_select_dfcs_in_dfc_layer(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        
+
         df = bpy.context.scene.df
-        
         return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers))
     
     def execute(self, context):
 
+        ensure_load_post_handler_has_run()
         select_ids_in_layer(context, 0)
     
         return {'FINISHED'}
@@ -1850,13 +1853,13 @@ class DF_OT_df_deselect_dfcs_in_dfc_layer(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        
+
         df = bpy.context.scene.df
-        
         return (context.scene.df_dfc_layers_indx < len(context.scene.df_dfc_layers))
     
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         deselect_ids_in_layer(context, 0)
     
         return {'FINISHED'}
@@ -1870,12 +1873,10 @@ class DF_OT_df_add_dfr_layer(bpy.types.Operator):
     
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         df = context.scene.df
-        
         validate_undo_step(context)
-        
         add_new_id_layer(context, 1)
-            
         incrmt_undo_step(context)
         
         return {'FINISHED'}
@@ -1889,15 +1890,14 @@ class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        
+
         df = bpy.context.scene.df
-        
         return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
         
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         df = context.scene.df
-        
         validate_undo_step(context)
 
         """ The below block of code removes vertex color and group layers, beloning to the recipient layer to be deleted, from any dfrs contained within said
@@ -1947,18 +1947,15 @@ class DF_OT_df_assign_dfrs_to_dfr_layer(bpy.types.Operator):
     def poll(cls, context):
         
         df = bpy.context.scene.df
-        
         return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
         
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         df = context.scene.df
-        
         validate_undo_step(context)
-        
         objects = context.selected_objects
         assign_ids_to_layer(context, objects, self.dfr_layer_indx, 1)
-            
         incrmt_undo_step(context)
     
         return {'FINISHED'}
@@ -1975,18 +1972,15 @@ class DF_OT_df_remove_dfrs_from_dfr_layer(bpy.types.Operator):
     def poll(cls, context):
         
         df = bpy.context.scene.df
-        
         return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
         
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         df = context.scene.df
-        
         validate_undo_step(context)
-        
         objects = context.selected_objects
         remove_ids_from_layer(context, objects, self.dfr_layer_indx, 1)
-        
         incrmt_undo_step(context)
         
         return {'FINISHED'}
@@ -2000,11 +1994,11 @@ class DF_OT_df_select_dfrs_in_dfr_layer(bpy.types.Operator):
     def poll(cls, context):
     
         df = bpy.context.scene.df
-        
         return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
     
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         select_ids_in_layer(context, 1)
     
         return {'FINISHED'}
@@ -2019,11 +2013,11 @@ class DF_OT_df_deselect_dfrs_in_dfr_layer(bpy.types.Operator):
     def poll(cls, context):
     
         df = bpy.context.scene.df
-        
         return (context.scene.df_dfr_layers_indx < len(context.scene.df_dfr_layers))
     
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         deselect_ids_in_layer(context, 1)
     
         return {'FINISHED'}
@@ -2039,8 +2033,8 @@ class DF_OT_df_add_dfr_layer_dfc_layer(bpy.types.Operator):
     
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         df = context.scene.df
-        
         dfr_layer_dfc_layers = context.scene.df_dfr_layers[self.dfr_layer_indx].dfc_layers
         dfr_layer_dfc_layers_indx = context.scene.df_dfr_layers[self.dfr_layer_indx].dfc_layers_indx
         
@@ -2065,6 +2059,8 @@ class DF_OT_df_remove_dfr_layer_dfc_layer(bpy.types.Operator):
         
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
+
         if (context.scene.df_dfr_layers[self.dfr_layer_indx].dfc_layers_indx < len(context.scene.df_dfr_layers[self.dfr_layer_indx].dfc_layers)):
         
             context.scene.df_dfr_layers[self.dfr_layer_indx].dfc_layers.remove(self.dfr_layer_dfc_layer_indx)
@@ -2081,13 +2077,12 @@ class DF_OT_df_make_df_cache_dir_rel(bpy.types.Operator):
     def poll(cls, context):
     
         df = context.scene.df
-        
         return (df.df_enable_cache and bpy.data.is_saved)
         
     def execute(self, context):
     
+        ensure_load_post_handler_has_run()
         df = context.scene.df
-        
         df.df_cache_dir = bpy.path.relpath(df.df_cache_dir)
             
         return {'FINISHED'}
@@ -2100,6 +2095,8 @@ class DF_OT_df_make_df_cache_dir_rel(bpy.types.Operator):
 """ Periodically checks if the volume exists, as well as if the positions of it's vertices are different from
     what they were when the volume was initialized """
 def periodical_volume_check():
+
+    ensure_load_post_handler_has_run()
 
     #Creates alias
     df = bpy.context.scene.df   
@@ -2189,8 +2186,8 @@ def periodical_volume_check():
 @persistent    
 def frame_change_post_handler(dummy):
 
+    ensure_load_post_handler_has_run()
     df = bpy.context.scene.df
-
     if ((bpy.ops.df.df_update.poll()) and (df.df_update_on_frame)):
 
         bpy.ops.df.df_update(enable_non_object_modes = False)
@@ -2201,8 +2198,10 @@ def frame_change_post_handler(dummy):
 @persistent
 def df_load_pre_handler(dummy):
 
+    ensure_load_post_handler_has_run()
     df = bpy.context.scene.df
-    
+    global load_post_handler_has_run
+    load_post_handler_has_run = False
     #Calls function "call_df_clean_memory" in df_lib 
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
@@ -2219,7 +2218,8 @@ def df_load_pre_handler(dummy):
 def df_load_post_handler(dummy):
     
     df = bpy.context.scene.df
-    
+    global load_post_handler_has_run
+    load_post_handler_has_run = True
     """ Sets undo step to 0 as undo history is local to each session    """
     df.df_undo_index = 0
 
@@ -2361,6 +2361,7 @@ def df_load_post_handler(dummy):
 @persistent
 def df_depsgraph_update_post_handler(dummy):
 
+    ensure_load_post_handler_has_run()
     df = bpy.context.scene.df
 
     """ dfc's and dfr's are verified after every dependency graph update to check for
@@ -2371,6 +2372,7 @@ def df_depsgraph_update_post_handler(dummy):
 @persistent
 def df_save_pre_handler(dummy):
 
+    ensure_load_post_handler_has_run()
     df = bpy.context.scene.df
     
     """ Little is done prior to the saving of the .blend file, so as to reduce
@@ -2390,8 +2392,8 @@ def df_save_pre_handler(dummy):
 @persistent
 def df_save_post_handler(dummy):
 
+    ensure_load_post_handler_has_run()
     df = bpy.context.scene.df
-    
     validate_undo_step(bpy.context, False)
     
     """ Writes df cache if enabled  """
@@ -2458,7 +2460,7 @@ def register():
     	(current_platform == "linux") or
     	(current_platform == "linux2") or
         (current_platform == "darwin")):
-    
+
         for cls in classes:
         
             bpy.utils.register_class(cls)

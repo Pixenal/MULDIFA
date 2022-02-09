@@ -31,6 +31,8 @@
 #include <random>
 #include <memory>
 #include <cstring>
+/*	Uncomment to enable saving dfmap cache to dfcache file	*/
+//#define DFMAPINDFCACHE
 
 class shared_type
 {

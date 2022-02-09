@@ -21,10 +21,10 @@
 
 bl_info = {
             "name": "MULDIFA",
-            "description" : "A distance field implementation",
+            "description" : "A distance field addon",
             "author": "Pixenal",
             "version": (1, 0),
-            "blender": (2, 93, 0),
+            "blender": (2, 83, 0),
             "location": "View3D > Sidebar > MULDIFA",
             "category": "3D View"
 }
@@ -42,9 +42,6 @@ else:
     from . import df_props
     from . import df_ops
     from . import df_ui
-    
-import bpy
-
 
 #Register
 def register():
@@ -56,6 +53,6 @@ def register():
 #Unregister
 def unregister():
 
-    df_props.unregister()
     df_ops.unregister()
+    df_props.unregister()
     df_ui.unregister()
