@@ -1737,7 +1737,7 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
 class  DF_OT_df_add_dfc_layer(bpy.types.Operator):
     """Adds a new layer"""
     bl_idname = "df.df_add_dfc_layer"
-    bl_label = "Add DFC Layer"
+    bl_label = "Add Layer"
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
@@ -1868,7 +1868,7 @@ class DF_OT_df_deselect_dfcs_in_dfc_layer(bpy.types.Operator):
 class DF_OT_df_add_dfr_layer(bpy.types.Operator):
     """Adds a new layer"""
     bl_idname = "df.df_add_dfr_layer"
-    bl_label = "Add DFR Layer"
+    bl_label = "Add Layer"
     bl_options = {'REGISTER', 'UNDO'}
     
     def execute(self, context):
@@ -1885,7 +1885,7 @@ class DF_OT_df_add_dfr_layer(bpy.types.Operator):
 class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
     """Removes the current layer"""
     bl_idname = "df.df_remove_dfr_layer"
-    bl_label = "Remove DFR Layer"
+    bl_label = "Remove Layer"
     bl_options = {'REGISTER', 'UNDO'}
     
     @classmethod
@@ -2069,7 +2069,7 @@ class DF_OT_df_remove_dfr_layer_dfc_layer(bpy.types.Operator):
         
         
 class DF_OT_df_make_df_cache_dir_rel(bpy.types.Operator):
-    """Makes df cache director relative (can only do so if the directory is on the same drive as the current .blend file)"""
+    """Makes df cache directory relative (can only do so if the directory is on the same drive as the current .blend file)"""
     bl_idname = "df.df_make_df_cache_dir_rel"
     bl_label = "Make Path Relative"
     
