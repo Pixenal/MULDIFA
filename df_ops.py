@@ -2026,7 +2026,7 @@ class DF_OT_df_deselect_dfrs_in_dfr_layer(bpy.types.Operator):
 class DF_OT_df_add_dfr_layer_dfc_layer(bpy.types.Operator):
     """Assigns a contributor layer to the current recipient layer; these contributor layers will effect the current recipient layer when the distance field is updated"""
     bl_idname = "df.df_add_dfr_layer_dfc_layer"
-    bl_label = "Add DFR Layer DFC layer"
+    bl_label = "Assign layer"
     bl_options = {'REGISTER', 'UNDO'}
     
     dfr_layer_indx : bpy.props.IntProperty()
@@ -2049,9 +2049,9 @@ class DF_OT_df_add_dfr_layer_dfc_layer(bpy.types.Operator):
         
         
 class DF_OT_df_remove_dfr_layer_dfc_layer(bpy.types.Operator):
-    """Removes contributor layer from the current recipient layer"""
+    """Unassigns contributor layer from the current recipient layer"""
     bl_idname = "df.df_remove_dfr_layer_dfc_layer"
-    bl_label = "Remove DFR Layer DFC layer"
+    bl_label = "Unassign layer"
     bl_options = {'REGISTER', 'UNDO'}
     
     dfr_layer_indx : bpy.props.IntProperty()
