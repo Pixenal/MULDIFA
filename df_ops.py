@@ -357,6 +357,7 @@ def ensure_load_post_handler_has_run():
 
     if (not(load_post_handler_has_run)):
 
+        df_load_pre_handler(0)
         df_load_post_handler(0)
 
 
@@ -2198,11 +2199,9 @@ def frame_change_post_handler(dummy):
 @persistent
 def df_load_pre_handler(dummy):
 
-    ensure_load_post_handler_has_run()
     df = bpy.context.scene.df
     global load_post_handler_has_run
     load_post_handler_has_run = False
-    #Calls function "call_df_clean_memory" in df_lib 
     if (df.df_state_stashed):
         df_lib.call_df_unstash_state()
         df.df_state_stashed = False
@@ -2498,4 +2497,7 @@ def unregister():
         bpy.app.timers.unregister(periodical_volume_check)
         bpy.app.handlers.save_post.remove(df_save_post_handler)
         bpy.app.handlers.save_pre.remove(df_save_pre_handler)
+
+        global load_post_handler_has_run
+        load_post_handler_has_run = False
     

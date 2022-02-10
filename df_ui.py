@@ -470,39 +470,40 @@ class DF_PT_df_memory(df_parent_panel, bpy.types.Panel):
 # Registration and Unregistration
 #-------------------------------------------------------------------------------------------------------------#
 
-           
-if 	((current_platform == "win32") or
-	(current_platform == "linux") or
-	(current_platform == "linux2") or
-    (current_platform == "darwin")):
 
-    classes = [ DF_PT_df,
-                DF_PT_df_layers,
-                DF_UL_df_dfc_layers,
-                DF_UL_df_dfr_layer_dfc_layers,
-                DF_UL_df_dfr_layers,
-                DF_PT_dfr_layer_options,
-                DF_PT_df_volume,
-                DF_PT_df_cache]
-                
-           
-else:
-    
-    classes = [df_PT_df]
-    
+classes = [ DF_PT_df,
+            DF_PT_df_layers,
+            DF_UL_df_dfc_layers,
+            DF_UL_df_dfr_layer_dfc_layers,
+            DF_UL_df_dfr_layers,
+            DF_PT_dfr_layer_options,
+            DF_PT_df_volume,
+            DF_PT_df_cache]
+
+            
 #Register
 def register():
 
-    for cls in classes:
-    
-        bpy.utils.register_class(cls)
+    if 	((current_platform == "win32") or
+        (current_platform == "linux") or
+        (current_platform == "linux2") or
+        (current_platform == "darwin")):
+
+        for cls in classes:
+        
+            bpy.utils.register_class(cls)
         
 
 #Unregister
 def unregister():
 
-    for cls in classes:
-    
-        bpy.utils.unregister_class(cls)
+    if 	((current_platform == "win32") or
+        (current_platform == "linux") or
+        (current_platform == "linux2") or
+        (current_platform == "darwin")):
+
+        for cls in classes:
+        
+            bpy.utils.unregister_class(cls)
     
     
