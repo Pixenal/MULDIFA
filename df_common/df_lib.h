@@ -927,6 +927,16 @@ private:
 					this->id = id;
 				}
 
+				dfr_cache_entry_type(const dfr_cache_entry_type& other)
+				{
+					this->tri_cache = other.tri_cache;
+					this->tri_cache_size = other.tri_cache_size;
+					this->texel_cache = other.texel_cache;
+					this->id = other.id;
+					this->moved_from_legacy = other.moved_from_legacy;
+					this->cache_index = other.cache_index;
+				}
+
 				void clean()
 				{
 					return;
@@ -1824,5 +1834,7 @@ inline void df_type::remove_deleted_element_from_layer_system(T& layer_system, i
 		{
 			(this->*removal_function)(a, expelled_dfcs, expelled_dfcs_nxt_indx, true);
 		}
+
+		delete[] expelled_dfcs;
 	}
 }

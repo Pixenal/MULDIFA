@@ -166,6 +166,11 @@ png_code_type::png_code_type(const std::string& name, unsigned char** image, con
 				data_byte_vec.char_vec.push_back(this->filtered_image[a][b]);
 			}
 		}
+		for (unsigned short a = 0u; a < height; ++a)
+		{
+			delete[] this->filtered_image[a];
+		}
+		delete[] this->filtered_image;
 
 		/*	Compresses filtered images using DEFLATE compression	*/
 		deflate_code_type deflated_data(data_byte_vec);

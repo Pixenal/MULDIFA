@@ -1444,7 +1444,6 @@ class DF_OT_df_update_recipients(bpy.types.Operator):
     def execute (self, context):
     
         ensure_load_post_handler_has_run()
-
         df = context.scene.df
         validate_undo_step(context)
         
@@ -1793,7 +1792,6 @@ class DF_OT_df_assign_dfcs_to_dfc_layer(bpy.types.Operator):
     def execute(self, context):
     
         ensure_load_post_handler_has_run()
-
         df = context.scene.df
         validate_undo_step(context)     
         objects = context.selected_objects
@@ -1930,7 +1928,6 @@ class DF_OT_df_remove_dfr_layer(bpy.types.Operator):
                             obj.vertex_groups.remove(vert_group)
     
         remove_id_layer(context, 1)
-            
         incrmt_undo_step(context)
     
         return {'FINISHED'}
@@ -2061,7 +2058,6 @@ class DF_OT_df_remove_dfr_layer_dfc_layer(bpy.types.Operator):
     def execute(self, context):
     
         ensure_load_post_handler_has_run()
-
         if (context.scene.df_dfr_layers[self.dfr_layer_indx].dfc_layers_indx < len(context.scene.df_dfr_layers[self.dfr_layer_indx].dfc_layers)):
         
             context.scene.df_dfr_layers[self.dfr_layer_indx].dfc_layers.remove(self.dfr_layer_dfc_layer_indx)

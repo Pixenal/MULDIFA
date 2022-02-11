@@ -1490,87 +1490,13 @@ has_changed:
 		}
 	}
 
-	
-	/*Cleans up dynamically allocated memory structures*/
-	volume_local_type::delete_rlvncy_buffers_shared_local_type delete_rlvncy_buffers_shared_local;
+	delete[] cmprt_rlvncy_table_buffer_x_dims;
+	delete[] rlvncy_sphere_octant;
+	for (unsigned long a = 0ul; a < volume_local.cmprt_amount_total; ++a)
 	{
-		delete_rlvncy_buffers_shared_local.args = new volume_local_type::delete_rlvncy_buffers_local_type * [thread_pool.thread_count];
-		unsigned long min_cmprts_per_thread = (volume_local.cmprt_amount_total / thread_pool.thread_count);
-		for (unsigned long a = 0u; a < thread_pool.thread_count; ++a)
-		{
-			delete_rlvncy_buffers_shared_local.args[a] = new volume_local_type::delete_rlvncy_buffers_local_type();
-			delete_rlvncy_buffers_shared_local.args[a]->vector_arr = cmprt_rlvncy_table_buffer;
-
-			delete_rlvncy_buffers_shared_local.args[a]->start_index = min_cmprts_per_thread * a;
-			if (a < (thread_pool.thread_count - 1))
-			{
-				delete_rlvncy_buffers_shared_local.args[a]->end_next_index = min_cmprts_per_thread * (a + 1);
-			}
-			else
-			{
-				delete_rlvncy_buffers_shared_local.args[a]->end_next_index = volume_local.cmprt_amount_total;
-			}
-		}
-
-		typedef void (*jobs)(void*, unsigned short);
-		jobs jobs_ptr = &call_delete_rlvncy_buffers;
-
-		bool add_jobs_success = false;
-		bool do_once = true;
-		/*Attempts to sends batch of jobs to thread pool*/
-		thread_pool.set_jobs_per_iteration(1u);
-	attempt_to_add_job_batch:
-		add_jobs_success = thread_pool.add_jobs(jobs_ptr, thread_pool.thread_count, &delete_rlvncy_buffers_shared_local);
-
-		if (do_once)
-		{
-			delete[] cmprt_rlvncy_table_buffer_x_dims;
-			delete[] rlvncy_sphere_octant;
-			do_once = false;
-		}
-
-		/*Checks if attempt to add jobs was successfull*/
-		if (add_jobs_success == true)
-		{
-			goto batch_sent;
-		}
-		else
-		{
-			goto wait_for_space_in_job_stack;
-		}
-
-	wait_for_space_in_job_stack:
-		while (true)
-		{
-			std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
-
-			if (thread_pool.job_amount < 10)
-			{
-				goto attempt_to_add_job_batch;
-			}
-		}
-
-
-	batch_sent:
-
-
-		while (true)
-		{
-			delete_rlvncy_buffers_shared_local.token.lock();
-			if (delete_rlvncy_buffers_shared_local.jobs_completed >= thread_pool.thread_count)
-			{
-				delete_rlvncy_buffers_shared_local.token.unlock();
-				goto jobs_completed;
-			}
-			delete_rlvncy_buffers_shared_local.token.unlock();
-			std::this_thread::sleep_for(std::chrono::nanoseconds(100000));
-		}
-	jobs_completed:
-
-		delete[] delete_rlvncy_buffers_shared_local.args;
-
+		delete cmprt_rlvncy_table_buffer[a];
 	}
-
+	delete[] cmprt_rlvncy_table_buffer;
 
 	return 0;
 }
@@ -2876,7 +2802,8 @@ float df_type::get_lerped_point_value(const shared_type::coord_xyz_type& vert_co
 
 void df_type::call_get_lerped_point_value(void* args_ptr, unsigned short job_index)
 {
-	get_lerped_point_value_local_args_type* local_args = &((get_lerped_point_value_local_args_type*)args_ptr)[job_index];
+	get_lerped_point_value_local_args_type* args_ptr_convrtd = (get_lerped_point_value_local_args_type*)args_ptr;
+	get_lerped_point_value_local_args_type* local_args = &args_ptr_convrtd[job_index];
 	get_lerped_point_value_args_type* args = local_args->args;
 	*local_args->value = this->get_lerped_point_value(*local_args->vert_coord, *args->dfc_ids, args->mode, *args->zaligned_splines, args->local_spline_length);
 	if (args->gamma != 1.0f)
@@ -2888,7 +2815,7 @@ void df_type::call_get_lerped_point_value(void* args_ptr, unsigned short job_ind
 	++args->jobs_completed_table[local_args->a];
 	if (args->jobs_completed_table[local_args->a] == local_args->current_batch_size)
 	{
-		delete[] args_ptr;
+		delete[] args_ptr_convrtd;
 	}
 	args->token->unlock();
 }
@@ -3002,6 +2929,7 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 		skip_a:
 			continue;
 		}
+		delete[] calced_dfc_layers;
 	}
 
 	std::vector<shared_type::ncspline_type> zaligned_splines;
@@ -3455,7 +3383,7 @@ int df_type::df_map_map_texel(void* args_ptr, unsigned short job_index)
 	if (args->jobs_completed_table[local_args->a] == args->width)
 	{
 		args->token->unlock();
-		delete[] args_ptr;
+		delete[] args_ptr_convrtd;
 		return 0;
 	}
 	args->token->unlock();
@@ -3706,6 +3634,8 @@ int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long
 			}
 			token.unlock();
 		}
+
+		delete[] arg.jobs_completed_table;
 	}
 
 	/*	Step 2	*/
@@ -3802,6 +3732,7 @@ int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long
 
 	/*	Deallocate dynamically allocated objects	*/
 	delete[] df_map_linear;
+	delete[] extern_texels_proj;
 	for (unsigned short a = 0u; a < height; ++a)
 	{
 		delete[] df_map[a];
@@ -3814,7 +3745,6 @@ int df_type::update_recipient_df_map(const char* uv_channel, const unsigned long
 }
 
 
-/*	Currently nop	*/
 int df_type::post_update_recipients(const bool df_map_enabled)
 {
 	if (df_map_enabled)
@@ -4870,6 +4800,7 @@ int df_type::delete_rlvncy_buffers(void* args_ptr, unsigned short job_index)
 	args_ptr_casted->token.lock();
 	++args_ptr_casted->jobs_completed;
 	args_ptr_casted->token.unlock();
+	delete &local_state;
 	return 0;
 }
 

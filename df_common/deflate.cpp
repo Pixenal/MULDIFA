@@ -927,6 +927,10 @@ int deflate_code_type::encode(const shared_type::byte_vec_type& message)
 		this->code.buffer_to_char_vec();
 	}
 
+	delete[] lit_len_codewords;
+	delete[] distance_codewords;
+	delete[] secondary_len_codewords;
+
 	return 0;
 }
 
