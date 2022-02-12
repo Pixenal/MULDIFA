@@ -197,6 +197,7 @@ int thread_pool_type::set_jobs_per_iteration(const unsigned short amount)
 /*thread_pool_type::job_stack_type*/
 /*-------------------------------------------------------------------------------------------------------------*/
 
+
 /* Pushes the specified job onto the job stack */
 bool thread_pool_type::job_stack_type::push(void(*job)(void*, unsigned short), void* arg_ptr, const unsigned short& job_index)
 {

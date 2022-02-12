@@ -38,6 +38,12 @@ extern std::string lib_dir;
 /*-------------------------------------------------------------------------------------------------------------*/
 
 
+df_type::df_type()
+{
+	return;
+}
+
+
 /*	Contains logic specific to the function in this this function was created to be called within, either mark this as being specific to that function, or make it more generalized*/
 /*	Converts world space coordinates to compartment index space*/
 shared_type::coord_xyz_type df_type::wrld_space_to_cmprt_indx_space(const shared_type::coord_xyz_type& coordinates)
@@ -6544,6 +6550,59 @@ void df_type::update_local_type::dfc_cache_type::deep_clean_dfc_ids()
 }
 
 
+/*df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::dfr_cache_entry_type(const unsigned long id, shared_type::tri_uv_info_type* tri_uv_cache, const unsigned long tri_uv_cache_size)
+{
+	this->tri_cache.resize(tri_uv_cache_size);
+	for (unsigned long a = 0ul; a < tri_uv_cache_size; ++a)
+	{
+		this->tri_cache[a] = tri_uv_cache[a];
+	}
+	this->tri_cache_size = tri_uv_cache_size;
+	this->id = id;
+}
+
+
+df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::dfr_cache_entry_type(const dfr_cache_entry_type& other)
+{
+	this->tri_cache = other.tri_cache;
+	this->tri_cache_size = other.tri_cache_size;
+	this->texel_cache = other.texel_cache;
+	this->id = other.id;
+	this->moved_from_legacy = other.moved_from_legacy;
+	this->cache_index = other.cache_index;
+}
+
+
+void df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::clean()
+{
+	return;
+}
+
+
+/*df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_type::texel_cache_type(const char* uv_channel, const unsigned short width, const unsigned short height)
+{
+	this->uv_channel = std::string(uv_channel);
+	this->height = height;
+	this->width = width;
+	this->cache_size = height * width;
+	this->cache.resize(this->cache_size);
+}
+
+
+void df_type::update_local_type::dfr_cache_type::dfr_cache_entry_type::texel_cache_type::clean()
+{
+	return;
+}
+
+
 /*df_type::update_local_type::dfc_cache_type::mesh_info_type*/
 /*-------------------------------------------------------------------------------------------------------------*/
 
@@ -6575,6 +6634,20 @@ df_type::update_local_type::dfc_cache_type::mesh_info_type::~mesh_info_type()
 
 /*df_type::update_local_type::dfr_cache_type*/
 /*-------------------------------------------------------------------------------------------------------------*/
+
+
+void df_type::update_local_type::dfr_cache_type::move_to_legacy()
+{
+	if (this->dfr_cache != nullptr)
+	{
+		this->dfr_cache_legacy = this->dfr_cache;
+		this->dfr_cache = nullptr;
+	}
+	else
+	{
+		this->dfr_cache_legacy = new std::vector<dfr_cache_entry_type>;
+	}
+}
 
 
 void df_type::update_local_type::dfr_cache_type::clean()

@@ -201,19 +201,8 @@ public:
 
 		/*Member Functions*/
 
+		bool operator==(const index_xyz_type& operand);
 		void clean();
-
-		bool operator==(const index_xyz_type& operand)
-		{
-			if (this->x != operand.x || this->y != operand.y || this->z != operand.z)
-			{
-				return false;
-			}
-			else
-			{
-				return true;
-			}
-		}
 	};
 
 
@@ -295,17 +284,8 @@ public:
 		int index = 0u;
 		int rand = 0u;
 
-		write_id_type(const int index, const int rand)
-		{
-			this->index = index;
-			this->rand = rand;
-		}
-
-		write_id_type()
-		{
-
-		}
-
+		write_id_type(const int index, const int rand);
+		write_id_type();
 		bool operator==(const write_id_type& write_id);
 	};
 
@@ -321,52 +301,11 @@ public:
 
 		/*Member Functions*/
 
-		byte_arr_type(const unsigned short& size)
-		{
-			arr = new std::bitset<8>*[size];
-			this->size = size;
-		}
-
-		byte_arr_type()
-		{
-
-		}
-
-		~byte_arr_type()
-		{
-			clean();
-		}
-
-		void initialize(const unsigned short& size)
-		{
-			arr = new std::bitset<8>*[size];
-			this->size = size;
-
-			for (unsigned short a = 0u; a < size; ++a)
-			{
-				arr[a] = nullptr;
-			}
-		}
-
-		void clean()
-		{
-			if (arr != nullptr)
-			{
-				for (unsigned long long a = 0u; a < size; ++a)
-				{
-					if (arr[a] != nullptr)
-					{
-						delete arr[a];
-					}
-				}
-
-				delete[] arr;
-			}
-
-			size = 0u;
-			next_bit_index = 0u;
-			next_byte_index = 0u;
-		}
+		byte_arr_type(const unsigned short& size);
+		byte_arr_type();
+		~byte_arr_type();
+		void initialize(const unsigned short& size);
+		void clean();
 	};
 
 
@@ -385,56 +324,12 @@ public:
 
 		/*Member Functions*/
 
-		byte_vec_type()
-		{
-
-		}
-
-		~byte_vec_type()
-		{
-			clean();
-		}
-
-		void incrmt()
-		{
-			unsigned long long size = char_vec.size();
-			if (size > 0)
-			{
-				char_vec[size - 1] = (char)byte_buffer.to_ulong();
-			}
-			
-			char_vec.push_back(0);
-			byte_buffer.reset();
-		}
-		void buffer_to_char_vec()
-		{
-			unsigned long long size = char_vec.size();
-			char_vec[size - 1] = (char)byte_buffer.to_ulong();
-		}
-		int buffer_char(const unsigned long long& index)
-		{
-			if (index < char_vec.size())
-			{
-				byte_buffer = std::bitset<8>(char_vec[index]);
-				return 0;
-			}
-			else
-			{
-				return 1;
-			}
-		}
-		void clean()
-		{
-			byte_buffer.reset();
-
-			if (char_vec.capacity() > 0)
-			{
-				std::vector<char>().swap(char_vec);
-			}
-
-			next_bit_index = 0u;
-			next_byte_index = 0u;
-		}
+		byte_vec_type();
+		~byte_vec_type();
+		void incrmt();
+		void buffer_to_char_vec();
+		int buffer_char(const unsigned long long& index);
+		void clean();
 	};
 
 
@@ -890,19 +785,8 @@ private:
 					std::vector<texel_cache_texel_type> cache;
 					bool relevant = false;
 
-					void clean()
-					{
-						return;
-					}
-
-					texel_cache_type(const char* uv_channel, const unsigned short width, const unsigned short height)
-					{
-						this->uv_channel = std::string(uv_channel);
-						this->height = height;
-						this->width = width;
-						this->cache_size = height * width;
-						this->cache.resize(this->cache_size);
-					}
+					texel_cache_type(const char* uv_channel, const unsigned short width, const unsigned short height);
+					void clean();
 				};
 
 				/*	Data Members	*/
@@ -916,31 +800,10 @@ private:
 
 				/*	Member Functions	*/
 
-				dfr_cache_entry_type(const unsigned long id, shared_type::tri_uv_info_type* tri_uv_cache, const unsigned long tri_uv_cache_size)
-				{
-					this->tri_cache.resize(tri_uv_cache_size);
-					for (unsigned long a = 0ul; a < tri_uv_cache_size; ++a)
-					{
-						this->tri_cache[a] = tri_uv_cache[a];
-					}
-					this->tri_cache_size = tri_uv_cache_size;
-					this->id = id;
-				}
+				dfr_cache_entry_type(const unsigned long id, shared_type::tri_uv_info_type* tri_uv_cache, const unsigned long tri_uv_cache_size);
+				dfr_cache_entry_type(const dfr_cache_entry_type& other);
+				void clean();
 
-				dfr_cache_entry_type(const dfr_cache_entry_type& other)
-				{
-					this->tri_cache = other.tri_cache;
-					this->tri_cache_size = other.tri_cache_size;
-					this->texel_cache = other.texel_cache;
-					this->id = other.id;
-					this->moved_from_legacy = other.moved_from_legacy;
-					this->cache_index = other.cache_index;
-				}
-
-				void clean()
-				{
-					return;
-				}
 			};
 
 			/*Data Members*/
@@ -952,18 +815,7 @@ private:
 
 			/*Member Functions*/
 
-			void move_to_legacy()
-			{
-				if (this->dfr_cache != nullptr)
-				{
-					this->dfr_cache_legacy = this->dfr_cache;
-					this->dfr_cache = nullptr;
-				}
-				else
-				{
-					this->dfr_cache_legacy = new std::vector<dfr_cache_entry_type>;
-				}
-			}
+			void move_to_legacy();
 			dfr_id_indx_type* get_dfr_id(const unsigned long& dfr_id);
 			void clean_dfr_ids();
 			void deep_clean_dfr_ids();
@@ -1564,11 +1416,7 @@ public:
 
 	/*Member functions*/
 
-	df_type()
-	{
-
-	}
-
+	df_type();
 	int add_dfc_to_cache(const shared_type::coord_xyz_type* verts, const unsigned long& vert_amount, const shared_type::tri_info_type* tris, const unsigned long& tri_amount, const unsigned long& dfc_index, const bool& split_dfc);
 	int initialize_volume(const shared_type::coord_xyz_type* volume_verts, const float& df_distance, const unsigned short& df_cmprt_size, const double& grid_spacing, const bool skip_sync_check);
 	int pre_update(const unsigned long* dfc_ids, const unsigned long& dfc_amount, const unsigned long& vert_amount_total, const unsigned long* ignored_dfcs, const unsigned long ignored_dfcs_nxt_indx);

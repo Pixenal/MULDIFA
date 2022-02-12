@@ -371,6 +371,19 @@ void shared_type::index_xyzw_type::clean()
 /*-------------------------------------------------------------------------------------------------------------*/
 
 
+bool shared_type::index_xyz_type::operator==(const index_xyz_type& operand)
+{
+	if (this->x != operand.x || this->y != operand.y || this->z != operand.z)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+
 void shared_type::index_xyz_type::clean()
 {
 	x = 0;
@@ -461,10 +474,418 @@ void shared_type::amount_xy_type::clean()
 }
 
 
+/*shared_type::write_id_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+shared_type::write_id_type::write_id_type(const int index, const int rand)
+{
+	this->index = index;
+	this->rand = rand;
+}
+
+
+shared_type::write_id_type::write_id_type()
+{
+	return;
+}
+
+
+bool shared_type::write_id_type::operator==(const write_id_type& write_id)
+{
+	return (write_id.index == this->index) && (write_id.rand == this->rand);
+}
+
+
+/*shared_type::byte_arr_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+shared_type::byte_arr_type::byte_arr_type(const unsigned short& size)
+{
+	arr = new std::bitset<8>*[size];
+	this->size = size;
+}
+
+
+shared_type::byte_arr_type::byte_arr_type()
+{
+	return;
+}
+
+
+shared_type::byte_arr_type::~byte_arr_type()
+{
+	clean();
+}
+
+
+void shared_type::byte_arr_type::initialize(const unsigned short& size)
+{
+	arr = new std::bitset<8>*[size];
+	this->size = size;
+
+	for (unsigned short a = 0u; a < size; ++a)
+	{
+		arr[a] = nullptr;
+	}
+}
+
+
+void shared_type::byte_arr_type::clean()
+{
+	if (arr != nullptr)
+	{
+		for (unsigned long long a = 0u; a < size; ++a)
+		{
+			if (arr[a] != nullptr)
+			{
+				delete arr[a];
+			}
+		}
+
+		delete[] arr;
+	}
+
+	size = 0u;
+	next_bit_index = 0u;
+	next_byte_index = 0u;
+}
+
+
+/*shared_type::byte_vec_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+shared_type::byte_vec_type::byte_vec_type()
+{
+	return;
+}
+
+
+shared_type::byte_vec_type::~byte_vec_type()
+{
+	clean();
+}
+
+
+void shared_type::byte_vec_type::incrmt()
+{
+	unsigned long long size = char_vec.size();
+	if (size > 0)
+	{
+		char_vec[size - 1] = (char)byte_buffer.to_ulong();
+	}
+
+	char_vec.push_back(0);
+	byte_buffer.reset();
+}
+
+
+void shared_type::byte_vec_type::buffer_to_char_vec()
+{
+	unsigned long long size = char_vec.size();
+	char_vec[size - 1] = (char)byte_buffer.to_ulong();
+}
+
+
+int shared_type::byte_vec_type::buffer_char(const unsigned long long& index)
+{
+	if (index < char_vec.size())
+	{
+		byte_buffer = std::bitset<8>(char_vec[index]);
+		return 0;
+	}
+	else
+	{
+		return 1;
+	}
+}
+
+
+void shared_type::byte_vec_type::clean()
+{
+	byte_buffer.reset();
+
+	if (char_vec.capacity() > 0)
+	{
+		std::vector<char>().swap(char_vec);
+	}
+
+	next_bit_index = 0u;
+	next_byte_index = 0u;
+}
+
+
+/*	shared_type::ncspline_type	*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+/*	Creates spline, ie, computes and/ or stores unknowns neccessary to sample spline	*/
+void shared_type::ncspline_type::init_spline(const double* knott_values, const unsigned short knott_values_nxt_indx, const index_xy_type& spline_prpndclr_coord)
+{
+	/*	The main computation done in this function is calculating the double derivative at each knott. At a high level, this is done
+		through solving a system of linear equations, where each equation represents an internal knott, and its respective unknown is
+		the double derivative at said knott (for the 2 polynomials that pass through it). As mentioned above, only the internal knotts
+		have unknowns, as the double derivatives at the 2 end knotts are already known (0 for both, as this is a natural spline). This
+		results in (n - 2) unknowns/ equations for n knotts. The equation used is:
+
+		hi-1 * zi-1 + 2 * (hi-1 + h1) * zi + hi * zi+1 = 6 * (bi - bi-1)    Where the h expressions are the coefficients,
+																			the the z's the unknowns.
+
+																			And where:  hi = (xi+1 - xi),
+																			and:        bi = (yi+1 - yi) / hi  (where y = the passed values)
+
+		This is represented in tridiagonal matrix form as:
+		 __                                                            __   _  _     __           __
+		| 2*(h0 + h1)    h1                                              | | z1 |   |   6*(b1-b0)   |
+		|     h1     2*(h1+h2)    h2                                     | | z2 |   |   6*(b2-b1)   |
+		|               h2    2*(h2+h3)    h3                            | | z3 |   |   6*(b3-b2)   |
+		|                .         .         .                           | |  . | = |       .       |
+		|                   .          .         .                       | |  . |   |       .       |
+		|                    hn-3    2(hn-3+hn-2)    hn-2                | |zn-1|   | 6*(bn-2-bn-3) |
+		|__                              hn-2     2(hn-2 + hn-1)    hn-1_| |zn-2|   |_6*(bn-1-bn-2)_|
+
+		The system is solved using TDMA/ Thomas Algorithm. It should be noted that the x coordinates (again, where y = the passed values)
+		are aligned to the indices of the parameter array "knott_values", and as such are equally spaced. Because of this, all h's
+		are equal to 1, and thus all diagonals in the coeffient matrix are constants (with hi = 1, and 2*(hi-1+hi) = 4), simplifying the
+		computation.	*/
+
+		/*	First the values of b are computed for each knott and stored in an array	*/
+	const unsigned short knott_b_values_nxt_indx = knott_values_nxt_indx - 1u;
+	double* knott_b_values = new double[knott_b_values_nxt_indx];
+	for (unsigned short a = 0u; a < knott_b_values_nxt_indx; ++a)
+	{
+		knott_b_values[a] = knott_values[a + 1u] - knott_values[a];
+	}
+
+	/*	TDMA/ thomas algorithm	*/
+
+
+	/*	 Forward Sweep	*/
+
+	/*	Constant representing the values in the principle diagonal (remember that all elements in the coefficient matrix are constants)	*/
+	const double princple_diag = 4.0f;
+
+
+	/*	Calculates the new values for the upper diagonal elements of the coefficient matrix	*/
+	const unsigned short coeff_matrix_upper_nxt_indx = knott_values_nxt_indx - 3u;
+	double* coeff_matrix_upper = new double[coeff_matrix_upper_nxt_indx];
+
+	/*	Sets first upper diagonal element:	upper_diag_0_new = upper_diag_0 / princple_diag_0
+		after subbing constants:			upper_diag_0_new = 1 / 4	*/
+	coeff_matrix_upper[0] = .25f;
+
+	/*	Computes all other upper diagonal elements:	upper_diag_i_new = upper_diag_i / (princple_diag_i - (lower_diag_i * upper_diag_i-1_new))
+		after subbing constants and simplifying:	upper_diag_i_new = 1 / (4 - upper_diag_i-1_new)*/
+	for (unsigned short a = 1u; a < coeff_matrix_upper_nxt_indx; ++a)
+	{
+		coeff_matrix_upper[a] = 1.0f / (princple_diag - coeff_matrix_upper[a - 1u]);
+	}
+
+	/*	Calculates the new values for the elements within the constant matrix	*/
+	const unsigned short const_matrix_nxt_indx = knott_values_nxt_indx - 2u;
+	double* const_matrix = new double[knott_values_nxt_indx - 2u];
+
+	/*  Calculates first element ("constant_0 refering to the
+		element in the constant matrix,not the coeff matrix constants"):    constant_0_new = constant_0 / princple_diag_0
+		After subbing constants:                                            constant_0_new = constant_0 / 4
+		Note that the equation for the elements of the constant matrix are inlined below (6 * (bi - bi-1))	*/
+	const_matrix[0] = (6 * (knott_b_values[1] - knott_b_values[0])) / princple_diag;
+
+	/*  Calculates all other elements within the constnat matrix:    constant_i_new = (constant_i - (lower_diag_i * constant_i-1_new)) /
+																					  (princple_diag_i - (lower_diag_i * upper_diag_i-1_new))
+		After subbing constants and simplifying:                     constant_i_new = (constant_i - constant_i-1_new) /
+																					  (4 - upper_diag_i-1_new)	*/
+	for (unsigned short a = 1u; a < const_matrix_nxt_indx; ++a)
+	{
+		unsigned short original_indx = a + 1u;
+		const_matrix[a] = ((6 * (knott_b_values[original_indx] - knott_b_values[original_indx - 1u])) - const_matrix[a - 1u]) / (princple_diag - coeff_matrix_upper[a - 1u]);
+	}
+
+
+	/*	Back Substitution	*/
+
+	knott_z_values = new double[knott_values_nxt_indx];
+
+	/*  Sets the double derivative of knotts 0 and (n - 1) to = 0    (natural spline)    (also am using (n - 1) to represent the last knott
+		instead of n as 0 is being used to represent the first knott)	*/
+	knott_z_values[0] = .0f;
+	knott_z_values[knott_values_nxt_indx - 1u] = .0f;
+
+	/*  Calculates last element in variable matrix (finds double derivative of knott (n - 2)):  var_n-1 (where n = size of var matrix) = constant_n-1_new	*/
+	knott_z_values[knott_values_nxt_indx - 2u] = const_matrix[const_matrix_nxt_indx - 1u];
+
+	/*  Calculates all remaining elements in the variable matrix: var_i = constant_i_new - (upper_diag_i_new * var_i+1)	*/
+	const unsigned short start_indx = knott_values_nxt_indx - 3u;
+	for (unsigned short a = start_indx; a > 0; --a)
+	{
+		const unsigned short matrix_indx = a - 1u;
+		knott_z_values[a] = const_matrix[matrix_indx] - (coeff_matrix_upper[matrix_indx] * knott_z_values[a + 1u]);
+	}
+
+	/*	Deletes dynamically allocated memory	*/
+	this->knott_values = new double[knott_values_nxt_indx];
+	for (unsigned short a = 0u; a < knott_values_nxt_indx; ++a)
+	{
+		this->knott_values[a] = knott_values[a];
+	}
+	delete[] const_matrix;
+	delete[] coeff_matrix_upper;
+	delete[] knott_b_values;
+
+	/*	Sets misc objects	*/
+
+	knott_amount = knott_values_nxt_indx;
+
+	/*	Marks that the current object contains a computed spline (thus it can be sampled). Is more so mean't to be used externally	*/
+	intern_is_valid = true;
+
+	/*	Stores the coord of the first knott in the spline internally (only storeing the x and y coordinates, where the z coord
+		is the axis in which the spline is aligned, note that these x and y coords are not the same as the indices and values passed
+		in "knott_values" (in practice this coord represents the splines location within the distance field)).	*/
+	this->spline_prpndclr_coord = spline_prpndclr_coord;
+}
+
+
+/*	This constructor overload initializes the spline	*/
+shared_type::ncspline_type::ncspline_type(const double* knott_values, const unsigned short knott_values_nxt_indx, const index_xy_type& spline_prpndclr_coord)
+{
+	init_spline(knott_values, knott_values_nxt_indx, spline_prpndclr_coord);
+}
+
+
+/*	This constructor does not initialize the spline (in practice this is used if one wishes to delay spline initialization)	*/
+shared_type::ncspline_type::ncspline_type(const index_xy_type& spline_prpndclr_coord)
+{
+	this->spline_prpndclr_coord = spline_prpndclr_coord;
+}
+
+
+/*	Copy Constructor	*/
+shared_type::ncspline_type::ncspline_type(const ncspline_type& ncspline)
+{
+	knott_amount = ncspline.knott_amount;
+	if ((ncspline.knott_z_values != nullptr) && (ncspline.knott_values != nullptr))
+	{
+		knott_z_values = new double[ncspline.knott_amount];
+		knott_values = new double[ncspline.knott_amount];
+		for (unsigned short a = 0u; a < ncspline.knott_amount; ++a)
+		{
+			knott_z_values[a] = ncspline.knott_z_values[a];
+			knott_values[a] = ncspline.knott_values[a];
+		}
+		intern_is_valid = true;
+	}
+	else
+	{
+		intern_is_valid = false;
+	}
+	spline_prpndclr_coord = ncspline.spline_prpndclr_coord;
+}
+
+
+/*	Copy Assignment Operator Overload	*/
+shared_type::ncspline_type shared_type::ncspline_type::operator=(const ncspline_type& ncspline)
+{
+	if (this != &ncspline)
+	{
+		if (knott_z_values != nullptr)
+		{
+			delete[] knott_z_values;
+			knott_z_values = nullptr;
+		}
+		if (knott_values != nullptr)
+		{
+			delete[] knott_values;
+			knott_values = nullptr;
+		}
+		ncspline_type copy(ncspline);
+		knott_z_values = copy.knott_z_values;
+		copy.knott_z_values = nullptr;
+		knott_values = copy.knott_values;
+		copy.knott_values = nullptr;
+		knott_amount = copy.knott_amount;
+		spline_prpndclr_coord = copy.spline_prpndclr_coord;
+		intern_is_valid = copy.intern_is_valid;
+	}
+
+	return *this;
+}
+
+
+/*	Destructor	*/
+shared_type::ncspline_type::~ncspline_type()
+{
+	if (knott_z_values != nullptr)
+	{
+		delete[] knott_z_values;
+		knott_z_values = nullptr;
+	}
+
+	if (knott_values != nullptr)
+	{
+		delete[] knott_values;
+		knott_values = nullptr;
+	}
+}
+
+
+/*	Default Constructor	*/
+shared_type::ncspline_type::ncspline_type()
+{
+
+}
+
+
+/*	Samples spline at specified coord, returns .0 if spline has not yet been initialized	*/
+double shared_type::ncspline_type::sample(const double indx_coord)
+{
+	/*	Checks if spline has been computed/ initialized	*/
+	if (knott_z_values != nullptr)
+	{
+		/*	As the spline is a piecewise function, the below objects are set to represent the values of the
+			2 knotts enclosing the specified x coord	*/
+		const unsigned short knott_indx = (unsigned short)indx_coord;
+		const unsigned short knott_indx_p1 = (unsigned short)indx_coord + 1u;
+		const double zi = knott_z_values[knott_indx];
+		const double zip1 = knott_z_values[knott_indx + 1u];
+
+		/*	Calculates value at specified coord using a simplified form of the function:
+		*
+			f(x) =  ((zi+1 / (6 * hi)) * (x - xi)^3) -
+					((zi / (6 * hi)) * (x - xi+1)^3) +
+					(((yi+1 / hi) - ((hi / 6) * zi+1)) * (x - xi)) -
+					(((yi / hi) - ((hi / 6) * zi)) * (x - xi+1)),
+
+					Where {xi < 0 < xi+1}
+
+			(simplified as all h's = 1)	*/
+
+		return	((zip1 / 6.0f) * ((indx_coord - knott_indx) * (indx_coord - knott_indx) * (indx_coord - knott_indx))) -
+			((zi / 6) * ((indx_coord - knott_indx_p1) * (indx_coord - knott_indx_p1) * (indx_coord - knott_indx_p1))) +
+			((knott_values[knott_indx_p1] - (.166666f * zip1)) * (indx_coord - knott_indx)) -
+			((knott_values[knott_indx] - (.166666f * zi)) * (indx_coord - knott_indx_p1));
+	}
+	else
+	{
+		return .0;
+	}
+}
+
+
+/*shared_type::overflow_integral_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
 /*shared_type::invrse_jenga_type*/
 /*-------------------------------------------------------------------------------------------------------------*/
 
-/*Member function definitions are in seperate implementation file as invrse_jenga_type is a class template*/
+/*Member function definitions are in the header file as invrse_jenga_type is a class template*/
+
+
+/*shared_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
 
 
 void shared_type::invert_bit_order(unsigned long long& number)
@@ -693,264 +1114,3 @@ void shared_type::write_byte_vec(shared_type::byte_vec_type& byte_vec, std::ofst
 }
 
 
-bool shared_type::write_id_type::operator==(const write_id_type& write_id)
-{
-	return (write_id.index == this->index) && (write_id.rand == this->rand);
-}
-
-
-/*	shared_type::ncspline_type	*/
-/*-------------------------------------------------------------------------------------------------------------*/
-
-
-/*	Creates spline, ie, computes and/ or stores unknowns neccessary to sample spline	*/
-void shared_type::ncspline_type::init_spline(const double* knott_values, const unsigned short knott_values_nxt_indx, const index_xy_type& spline_prpndclr_coord)
-{
-	/*	The main computation done in this function is calculating the double derivative at each knott. At a high level, this is done
-		through solving a system of linear equations, where each equation represents an internal knott, and its respective unknown is
-		the double derivative at said knott (for the 2 polynomials that pass through it). As mentioned above, only the internal knotts
-		have unknowns, as the double derivatives at the 2 end knotts are already known (0 for both, as this is a natural spline). This 
-		results in (n - 2) unknowns/ equations for n knotts. The equation used is:
-		
-		hi-1 * zi-1 + 2 * (hi-1 + h1) * zi + hi * zi+1 = 6 * (bi - bi-1)    Where the h expressions are the coefficients,
-		                                                                    the the z's the unknowns.
-
-		                                                                    And where:  hi = (xi+1 - xi),
-		                                                                    and:        bi = (yi+1 - yi) / hi  (where y = the passed values)
-
-		This is represented in tridiagonal matrix form as:
-		 __                                                            __   _  _     __           __
-		| 2*(h0 + h1)    h1                                              | | z1 |   |   6*(b1-b0)   |
-		|     h1     2*(h1+h2)    h2                                     | | z2 |   |   6*(b2-b1)   |
-		|               h2    2*(h2+h3)    h3                            | | z3 |   |   6*(b3-b2)   |
-		|                .         .         .                           | |  . | = |       .       |
-		|                   .          .         .                       | |  . |   |       .       |
-		|                    hn-3    2(hn-3+hn-2)    hn-2                | |zn-1|   | 6*(bn-2-bn-3) |
-		|__                              hn-2     2(hn-2 + hn-1)    hn-1_| |zn-2|   |_6*(bn-1-bn-2)_|
-		
-		The system is solved using TDMA/ Thomas Algorithm. It should be noted that the x coordinates (again, where y = the passed values)
-		are aligned to the indices of the parameter array "knott_values", and as such are equally spaced. Because of this, all h's
-		are equal to 1, and thus all diagonals in the coeffient matrix are constants (with hi = 1, and 2*(hi-1+hi) = 4), simplifying the
-		computation.	*/
-
-	/*	First the values of b are computed for each knott and stored in an array	*/
-	const unsigned short knott_b_values_nxt_indx = knott_values_nxt_indx - 1u;
-	double* knott_b_values = new double[knott_b_values_nxt_indx];
-	for (unsigned short a = 0u; a < knott_b_values_nxt_indx; ++a)
-	{
-		knott_b_values[a] = knott_values[a + 1u] - knott_values[a];
-	}
-
-	/*	TDMA/ thomas algorithm	*/
-
-
-	/*	 Forward Sweep	*/
-
-	/*	Constant representing the values in the principle diagonal (remember that all elements in the coefficient matrix are constants)	*/
-	const double princple_diag = 4.0f;
-
-
-	/*	Calculates the new values for the upper diagonal elements of the coefficient matrix	*/
-	const unsigned short coeff_matrix_upper_nxt_indx = knott_values_nxt_indx - 3u;
-	double* coeff_matrix_upper = new double[coeff_matrix_upper_nxt_indx];
-
-	/*	Sets first upper diagonal element:	upper_diag_0_new = upper_diag_0 / princple_diag_0
-		after subbing constants:			upper_diag_0_new = 1 / 4	*/
-	coeff_matrix_upper[0] = .25f;
-
-	/*	Computes all other upper diagonal elements:	upper_diag_i_new = upper_diag_i / (princple_diag_i - (lower_diag_i * upper_diag_i-1_new))
-		after subbing constants and simplifying:	upper_diag_i_new = 1 / (4 - upper_diag_i-1_new)*/
-	for (unsigned short a = 1u; a < coeff_matrix_upper_nxt_indx; ++a)
-	{
-		coeff_matrix_upper[a] = 1.0f / (princple_diag - coeff_matrix_upper[a - 1u]);
-	}
-
-	/*	Calculates the new values for the elements within the constant matrix	*/
-	const unsigned short const_matrix_nxt_indx = knott_values_nxt_indx - 2u;
-	double* const_matrix = new double[knott_values_nxt_indx - 2u];
-
-	/*  Calculates first element ("constant_0 refering to the
-	    element in the constant matrix,not the coeff matrix constants"):    constant_0_new = constant_0 / princple_diag_0
-	    After subbing constants:                                            constant_0_new = constant_0 / 4
-	    Note that the equation for the elements of the constant matrix are inlined below (6 * (bi - bi-1))	*/
-	const_matrix[0] = (6 * (knott_b_values[1] - knott_b_values[0])) / princple_diag;
-
-	/*  Calculates all other elements within the constnat matrix:    constant_i_new = (constant_i - (lower_diag_i * constant_i-1_new)) /
-	                                                                                  (princple_diag_i - (lower_diag_i * upper_diag_i-1_new))
-	    After subbing constants and simplifying:                     constant_i_new = (constant_i - constant_i-1_new) / 
-	                                                                                  (4 - upper_diag_i-1_new)	*/
-	for (unsigned short a = 1u; a < const_matrix_nxt_indx; ++a)
-	{
-		unsigned short original_indx = a + 1u;
-		const_matrix[a] = ((6 * (knott_b_values[original_indx] - knott_b_values[original_indx - 1u])) - const_matrix[a - 1u]) / (princple_diag - coeff_matrix_upper[a - 1u]);
-	}
-
-	
-	/*	Back Substitution	*/
-
-	knott_z_values = new double[knott_values_nxt_indx];
-
-	/*  Sets the double derivative of knotts 0 and (n - 1) to = 0    (natural spline)    (also am using (n - 1) to represent the last knott
-	    instead of n as 0 is being used to represent the first knott)	*/
-	knott_z_values[0] = .0f;
-	knott_z_values[knott_values_nxt_indx - 1u] = .0f;
-
-	/*  Calculates last element in variable matrix (finds double derivative of knott (n - 2)):  var_n-1 (where n = size of var matrix) = constant_n-1_new	*/
-	knott_z_values[knott_values_nxt_indx - 2u] = const_matrix[const_matrix_nxt_indx - 1u];
-
-	/*  Calculates all remaining elements in the variable matrix: var_i = constant_i_new - (upper_diag_i_new * var_i+1)	*/
-	const unsigned short start_indx = knott_values_nxt_indx - 3u;
-	for (unsigned short a = start_indx; a > 0; --a)
-	{
-		const unsigned short matrix_indx = a - 1u;
-		knott_z_values[a] = const_matrix[matrix_indx] - (coeff_matrix_upper[matrix_indx] * knott_z_values[a + 1u]);
-	}
-
-	/*	Deletes dynamically allocated memory	*/
-	this->knott_values = new double[knott_values_nxt_indx];
-	for (unsigned short a = 0u; a < knott_values_nxt_indx; ++a)
-	{
-		this->knott_values[a] = knott_values[a];
-	}
-	delete[] const_matrix;
-	delete[] coeff_matrix_upper;
-	delete[] knott_b_values;
-
-	/*	Sets misc objects	*/
-
-	knott_amount = knott_values_nxt_indx;
-
-	/*	Marks that the current object contains a computed spline (thus it can be sampled). Is more so mean't to be used externally	*/	
-	intern_is_valid = true;
-
-	/*	Stores the coord of the first knott in the spline internally (only storeing the x and y coordinates, where the z coord
-		is the axis in which the spline is aligned, note that these x and y coords are not the same as the indices and values passed
-		in "knott_values" (in practice this coord represents the splines location within the distance field)).	*/
-	this->spline_prpndclr_coord = spline_prpndclr_coord;
-}
-
-
-/*	This constructor overload initializes the spline	*/
-shared_type::ncspline_type::ncspline_type(const double* knott_values, const unsigned short knott_values_nxt_indx, const index_xy_type& spline_prpndclr_coord)
-{
-	init_spline(knott_values, knott_values_nxt_indx, spline_prpndclr_coord);
-}
-
-
-/*	This constructor does not initialize the spline (in practice this is used if one wishes to delay spline initialization)	*/
-shared_type::ncspline_type::ncspline_type(const index_xy_type& spline_prpndclr_coord)
-{
-	this->spline_prpndclr_coord = spline_prpndclr_coord;
-}
-
-
-/*	Copy Constructor	*/
-shared_type::ncspline_type::ncspline_type(const ncspline_type& ncspline)
-{
-	knott_amount = ncspline.knott_amount;
-	if ((ncspline.knott_z_values != nullptr) && (ncspline.knott_values != nullptr))
-	{
-		knott_z_values = new double[ncspline.knott_amount];
-		knott_values = new double[ncspline.knott_amount];
-		for (unsigned short a = 0u; a < ncspline.knott_amount; ++a)
-		{
-			knott_z_values[a] = ncspline.knott_z_values[a];
-			knott_values[a] = ncspline.knott_values[a];
-		}
-		intern_is_valid = true;
-	}
-	else
-	{
-		intern_is_valid = false;
-	}
-	spline_prpndclr_coord = ncspline.spline_prpndclr_coord;
-}
-
-
-/*	Copy Assignment Operator Overload	*/
-shared_type::ncspline_type shared_type::ncspline_type::operator=(const ncspline_type& ncspline)
-{
-	if (this != &ncspline)
-	{
-		if (knott_z_values != nullptr)
-		{
-			delete[] knott_z_values;
-			knott_z_values = nullptr;
-		}
-		if (knott_values != nullptr)
-		{
-			delete[] knott_values;
-			knott_values = nullptr;
-		}
-		ncspline_type copy(ncspline);
-		knott_z_values = copy.knott_z_values;
-		copy.knott_z_values = nullptr;
-		knott_values = copy.knott_values;
-		copy.knott_values = nullptr;
-		knott_amount = copy.knott_amount;
-		spline_prpndclr_coord = copy.spline_prpndclr_coord;
-		intern_is_valid = copy.intern_is_valid;
-	}
-
-	return *this;
-}
-
-
-/*	Destructor	*/
-shared_type::ncspline_type::~ncspline_type()
-{
-	if (knott_z_values != nullptr)
-	{
-		delete[] knott_z_values;
-		knott_z_values = nullptr;
-	}
-
-	if (knott_values != nullptr)
-	{
-		delete[] knott_values;
-		knott_values = nullptr;
-	}
-}
-
-
-/*	Default Constructor	*/
-shared_type::ncspline_type::ncspline_type()
-{
-
-}
-
-
-/*	Samples spline at specified coord, returns .0 if spline has not yet been initialized	*/
-double shared_type::ncspline_type::sample(const double indx_coord)
-{
-	/*	Checks if spline has been computed/ initialized	*/
-	if (knott_z_values != nullptr)
-	{
-		/*	As the spline is a piecewise function, the below objects are set to represent the values of the
-			2 knotts enclosing the specified x coord	*/
-		const unsigned short knott_indx = (unsigned short)indx_coord;
-		const unsigned short knott_indx_p1 = (unsigned short)indx_coord + 1u;
-		const double zi = knott_z_values[knott_indx];
-		const double zip1 = knott_z_values[knott_indx + 1u];
-
-		/*	Calculates value at specified coord using a simplified form of the function:
-		* 
-		    f(x) =  ((zi+1 / (6 * hi)) * (x - xi)^3) -
-		            ((zi / (6 * hi)) * (x - xi+1)^3) + 
-		            (((yi+1 / hi) - ((hi / 6) * zi+1)) * (x - xi)) -
-		            (((yi / hi) - ((hi / 6) * zi)) * (x - xi+1)),
-
-		            Where {xi < 0 < xi+1}
-
-		    (simplified as all h's = 1)	*/
-
-		return	((zip1 / 6.0f) * ((indx_coord - knott_indx) * (indx_coord - knott_indx) * (indx_coord - knott_indx))) -
-				((zi / 6) * ((indx_coord - knott_indx_p1) * (indx_coord - knott_indx_p1) * (indx_coord - knott_indx_p1))) +
-				((knott_values[knott_indx_p1] - (.166666f * zip1)) * (indx_coord - knott_indx)) -
-				((knott_values[knott_indx] - (.166666f * zi)) * (indx_coord - knott_indx_p1));
-	}
-	else
-	{
-		return .0;
-	}
-}

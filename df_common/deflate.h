@@ -41,15 +41,8 @@ class deflate_code_type
 
 			/*	Member Functions	*/
 
-			dual_index_type(const unsigned short index, const bool array)
-			{
-				this->index = index;
-				this->array = array;
-			}
-			dual_index_type()
-			{
-
-			}
+			dual_index_type(const unsigned short index, const bool array);
+			dual_index_type();
 		};
 
 	public:
@@ -65,10 +58,7 @@ class deflate_code_type
 
 			/*	Member Functions	*/
 
-			virtual ~node_type()
-			{
-
-			}
+			virtual ~node_type();
 		};
 
 		class intern_node_type : public node_type
@@ -81,14 +71,8 @@ class deflate_code_type
 
 			/*	Member Functions	*/
 
-			intern_node_type()
-			{
-				this->extern_node = false;
-			}
-			virtual ~intern_node_type()
-			{
-
-			}
+			intern_node_type();
+			virtual ~intern_node_type();
 		};
 
 		class extern_node_type : public node_type
@@ -101,19 +85,9 @@ class deflate_code_type
 
 			/*	Member Functions	*/
 
-			extern_node_type(const unsigned short symbol)
-			{
-				this->symbol = symbol;
-				this->extern_node = true;
-			}
-			extern_node_type()
-			{
-				this->extern_node = true;
-			}
-			virtual ~extern_node_type()
-			{
-
-			}
+			extern_node_type(const unsigned short symbol);
+			extern_node_type();
+			virtual ~extern_node_type();
 		};
 
 	private:

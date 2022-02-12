@@ -27,6 +27,11 @@
 
 inline shared_type shared;
 
+
+/*deflate_code_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
 /*	Returns Adler32 checksum
 	(this is uesd in the zlib specification)	*/
 unsigned long deflate_code_type::calc_adler32(const shared_type::byte_vec_type& message)
@@ -939,6 +944,76 @@ deflate_code_type::deflate_code_type(const shared_type::byte_vec_type& message)
 {
 	this->encode(message);
 }
+
+
+/*deflate_code_type::huffman_tree_type::dual_index_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+deflate_code_type::huffman_tree_type::dual_index_type::dual_index_type(const unsigned short index, const bool array)
+{
+	this->index = index;
+	this->array = array;
+}
+
+
+deflate_code_type::huffman_tree_type::dual_index_type::dual_index_type()
+{
+	return;
+}
+
+
+/*deflate_code_type::huffman_tree_type::node_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+deflate_code_type::huffman_tree_type::node_type::~node_type()
+{
+	return;
+}
+
+
+/*deflate_code_type::huffman_tree_type::intern_node_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+deflate_code_type::huffman_tree_type::intern_node_type::intern_node_type()
+{
+	this->extern_node = false;
+}
+
+
+deflate_code_type::huffman_tree_type::intern_node_type::~intern_node_type()
+{
+	return;
+}
+
+
+/*deflate_code_type::huffman_tree_type::extern_node_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+deflate_code_type::huffman_tree_type::extern_node_type::extern_node_type(const unsigned short symbol)
+{
+	this->symbol = symbol;
+	this->extern_node = true;
+}
+
+
+deflate_code_type::huffman_tree_type::extern_node_type::extern_node_type()
+{
+	this->extern_node = true;
+}
+
+
+deflate_code_type::huffman_tree_type::extern_node_type::~extern_node_type()
+{
+	return;
+}
+
+
+/*deflate_code_type::huffman_tree_type*/
+/*-------------------------------------------------------------------------------------------------------------*/
 
 
 /*	huffman_tree_type constructor*/
