@@ -477,8 +477,7 @@ classes = [ DF_PT_df,
             DF_UL_df_dfr_layer_dfc_layers,
             DF_UL_df_dfr_layers,
             DF_PT_dfr_layer_options,
-            DF_PT_df_volume,
-            DF_PT_df_cache]
+            DF_PT_df_volume]
 
             
 #Register
