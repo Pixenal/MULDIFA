@@ -1,7 +1,7 @@
 # MULDIFA
 
 MULDIFA is an addon for Blender (2.83+) which implements a distance field. It adds the ability to create a field within a scene, and allows one to interact with it.
-One can set which objects influence and sample from the distance field, in addition, MULDIFA is multi-layered, meaning that one can control which influencing objects affect which sampling objects, allowing for isolation. Sampling is done in the form of baking to a png texture, there is also an option for writing to vertex colours or groups.
+One can set which objects influence and sample from the distance field, as well as this, MULDIFA is multi-layered, meaning that one can control which influencing objects affect which sampling objects, allowing for isolation. Sampling is done in the form of baking to a png texture, there is also an option for writing to vertex colours or groups.
 
 Notice:
 
@@ -12,7 +12,6 @@ On top of this, I must state that the creation of this addon was first and forem
 Platforms:
 
 MULDIFA supports use on 64bit versions of Windows, Linux, and MacOS.
-
 (I've not yet tested the addon on an ARM platform (such as M1 MacOS), so I cannot guarantee that it will work on these systems).
 
 Contact:
