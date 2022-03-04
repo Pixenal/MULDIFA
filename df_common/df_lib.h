@@ -1390,7 +1390,8 @@ private:
 
 	shared_type::coord_xyz_type wrld_space_to_cmprt_indx_space(const shared_type::coord_xyz_type& coordinates);
 	double trunc_to_pnt_five_incrmts(const double& value);
-	void rasterize_on_axis(shared_type::index_xyz_type* enclosing_cmprts, unsigned short& enclosing_cmprts_next_index, const shared_type::coord_xyz_type& max_vert, const shared_type::coord_xyz_type& mid_vert, const shared_type::coord_xyz_type& min_vert, const char& axis);
+	void rasterize_on_axis(std::vector<shared_type::index_xyz_type>& enclosing_cmprts, const shared_type::coord_xyz_type& max_vert, const shared_type::coord_xyz_type& mid_vert, const shared_type::coord_xyz_type& min_vert, const char& axis, bool connecting = false);
+	int add_enclosing_cmprt_to_vec(std::vector<shared_type::index_xyz_type>& enclosing_cmprts, shared_type::index_xyz_type cmprt_to_add);
 	void sort_on_axis(shared_type::coord_xyz_type& max_write_obj, shared_type::coord_xyz_type& mid_write_obj, shared_type::coord_xyz_type& min_write_obj, const shared_type::coord_xyz_type& coord_0, const shared_type::coord_xyz_type& coord_1, const shared_type::coord_xyz_type& coord_2, const char& axis);
 	float lerp_btwn_grid_points_values(const unsigned short& min_grid_point_coord, const float& min_grid_point_value, const unsigned short& max_grid_point_coord, const float& max_grid_point_value, double lerp_alpha);
 	dfc_id_indx_type* get_dfc_in_dfc_layer(unsigned long& return_dfc_indx, const unsigned long& layer_indx, const unsigned long& dfc_id);
@@ -1462,7 +1463,7 @@ public:
 	int get_write_id_rand();
 	int stash_write_id();
 	int new_blend_handler(const char* dir, const char* file_name, const shared_type::write_id_type& write_id, const int** dfc_layers, const int** dfr_layers, const bool df_cache_enabled);
-	int  write_cache(const char* dir, const char* file_name);
+	int write_cache(const char* dir, const char* file_name);
 	int stash_state();
 	int unstash_state();
 	int weak_stash_volume_local();

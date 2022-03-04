@@ -114,7 +114,7 @@ double df_type::trunc_to_pnt_five_incrmts(const double& value)
 }
 
 
-void df_type::rasterize_on_axis(shared_type::index_xyz_type* enclosing_cmprts, unsigned short& enclosing_cmprts_next_index, const shared_type::coord_xyz_type& vert_0_indx_space, const shared_type::coord_xyz_type& vert_1_indx_space, const shared_type::coord_xyz_type& vert_2_indx_space, const char& axis)
+void df_type::rasterize_on_axis(std::vector<shared_type::index_xyz_type>& enclosing_cmprts, const shared_type::coord_xyz_type& vert_0_indx_space, const shared_type::coord_xyz_type& vert_1_indx_space, const shared_type::coord_xyz_type& vert_2_indx_space, const char& axis, bool connecting)
 {
 	/*Note: the switch statemtns in this function are for adapting the function to whichever axis is specified in the parameter "axis" */
 
@@ -205,76 +205,91 @@ void df_type::rasterize_on_axis(shared_type::index_xyz_type* enclosing_cmprts, u
 			case 'x':
 			{
 				/*	Gets the compartment that encloses the current point of intersection on hypotenuse of the current triangle	*/
-
-				cmprt_to_add.x = (unsigned short)current_coord;
-
+				shared_type::coord_xyz_type hypot_intersection;
+				hypot_intersection.x = current_coord;
+				cmprt_to_add.x = (unsigned short)hypot_intersection.x;
 				t = (current_coord - max_vert.x) / min_minus_max_x;
-
-				cmprt_to_add.y = (unsigned short)(max_vert.y + (t * min_minus_max_y));
-				cmprt_to_add.z = (unsigned short)(max_vert.z + (t * min_minus_max_z));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				hypot_intersection.y = (max_vert.y + (t * min_minus_max_y));
+				hypot_intersection.z = (max_vert.z + (t * min_minus_max_z));
+				cmprt_to_add.y = (unsigned short)hypot_intersection.y;
+				cmprt_to_add.z = (unsigned short)hypot_intersection.z;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
 				/*	Gets the compartment that encloses the current point of intersection on mid max edge of the current triangle	*/
-
+				shared_type::coord_xyz_type maxmid_intersection;
+				maxmid_intersection.x = current_coord;
 				t = (current_coord - max_vert.x) / mid_minus_max_x;
+				maxmid_intersection.y = (max_vert.y + (t * mid_minus_max_y));
+				maxmid_intersection.z = (max_vert.z + (t * mid_minus_max_z));
+				cmprt_to_add.y = (unsigned short)maxmid_intersection.y;
+				cmprt_to_add.z = (unsigned short)maxmid_intersection.z;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
-				cmprt_to_add.y = (unsigned short)(max_vert.y + (t * mid_minus_max_y));
-				cmprt_to_add.z = (unsigned short)(max_vert.z + (t * mid_minus_max_z));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				if (!connecting)
+				{
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, max_vert, maxmid_intersection, 'y', true);
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, max_vert, maxmid_intersection, 'z', true);
+				}
 				break;
 			}
 			case 'y':
 			{
 				/*	Gets the compartment that encloses the current point of intersection on hypotenuse of the current triangle	*/
-
-				cmprt_to_add.y = (unsigned short)current_coord;
-
+				shared_type::coord_xyz_type hypot_intersection;
+				hypot_intersection.y = current_coord;
+				cmprt_to_add.y = (unsigned short)hypot_intersection.y;
 				t = (current_coord - max_vert.y) / min_minus_max_y;
-
-				cmprt_to_add.x = (unsigned short)(max_vert.x + (t * min_minus_max_x));
-				cmprt_to_add.z = (unsigned short)(max_vert.z + (t * min_minus_max_z));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				hypot_intersection.x = (max_vert.x + (t * min_minus_max_x));
+				hypot_intersection.z = (max_vert.z + (t * min_minus_max_z));
+				cmprt_to_add.x = (unsigned short)hypot_intersection.x;
+				cmprt_to_add.z = (unsigned short)hypot_intersection.z;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
 				/*	Gets the compartment that encloses the current point of intersection on mid max edge of the current triangle	*/
-
+				shared_type::coord_xyz_type maxmid_intersection;
+				maxmid_intersection.y = current_coord;
 				t = (current_coord - max_vert.y) / mid_minus_max_y;
+				maxmid_intersection.x = (max_vert.x + (t * mid_minus_max_x));
+				maxmid_intersection.z = (max_vert.z + (t * mid_minus_max_z));
+				cmprt_to_add.x = (unsigned short)maxmid_intersection.x;
+				cmprt_to_add.z = (unsigned short)maxmid_intersection.z;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
-				cmprt_to_add.x = (unsigned short)(max_vert.x + (t * mid_minus_max_x));
-				cmprt_to_add.z = (unsigned short)(max_vert.z + (t * mid_minus_max_z));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				if (!connecting)
+				{
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, max_vert, maxmid_intersection, 'x', true);
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, max_vert, maxmid_intersection, 'z', true);
+				}
 				break;
 			}
 			case 'z':
 			{
 				/*	Gets the compartment that encloses the current point of intersection on hypotenuse of the current triangle	*/
-
-				cmprt_to_add.z = (unsigned short)current_coord;
-
+				shared_type::coord_xyz_type hypot_intersection;
+				hypot_intersection.z = current_coord;
+				cmprt_to_add.z = (unsigned short)hypot_intersection.z;
 				t = (current_coord - max_vert.z) / min_minus_max_z;
-
-				cmprt_to_add.x = (unsigned short)(max_vert.x + (t * min_minus_max_x));
-				cmprt_to_add.y = (unsigned short)(max_vert.y + (t * min_minus_max_y));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				hypot_intersection.x = (max_vert.x + (t * min_minus_max_x));
+				hypot_intersection.y = (max_vert.y + (t * min_minus_max_y));
+				cmprt_to_add.x = (unsigned short)hypot_intersection.x;
+				cmprt_to_add.y = (unsigned short)hypot_intersection.y;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
 				/*	Gets the compartment that encloses the current point of intersection on mid max edge of the current triangle	*/
-
+				shared_type::coord_xyz_type maxmid_intersection;
+				maxmid_intersection.z = current_coord;
 				t = (current_coord - max_vert.z) / mid_minus_max_z;
+				maxmid_intersection.x = (max_vert.x + (t * mid_minus_max_x));
+				maxmid_intersection.y = (max_vert.y + (t * mid_minus_max_y));
+				cmprt_to_add.x = (unsigned short)maxmid_intersection.x;
+				cmprt_to_add.y = (unsigned short)maxmid_intersection.y;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
-				cmprt_to_add.x = (unsigned short)(max_vert.x + (t * mid_minus_max_x));
-				cmprt_to_add.y = (unsigned short)(max_vert.y + (t * mid_minus_max_y));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				if (!connecting)
+				{
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, max_vert, maxmid_intersection, 'x', true);
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, max_vert, maxmid_intersection, 'y', true);
+				}
 				break;
 			}
 			default:
@@ -296,83 +311,92 @@ void df_type::rasterize_on_axis(shared_type::index_xyz_type* enclosing_cmprts, u
 			{
 			case 'x':
 			{
-
 				/*	Gets the compartment that encloses the current point of intersection on hypotenuse of the current triangle	*/
-
-				cmprt_to_add.x = (unsigned short)current_coord;
-
+				shared_type::coord_xyz_type hypot_intersection;
+				hypot_intersection.x = current_coord;
+				cmprt_to_add.x = (unsigned short)hypot_intersection.x;
 				t = (current_coord - max_vert.x) / min_minus_max_x;
-
-				cmprt_to_add.y = (unsigned short)(max_vert.y + (t * min_minus_max_y));
-				cmprt_to_add.z = (unsigned short)(max_vert.z + (t * min_minus_max_z));
-
-
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
-
+				hypot_intersection.y = (max_vert.y + (t * min_minus_max_y));
+				hypot_intersection.z = (max_vert.z + (t * min_minus_max_z));
+				cmprt_to_add.y = (unsigned short)hypot_intersection.y;
+				cmprt_to_add.z = (unsigned short)hypot_intersection.z;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
 				/*	Gets the compartment that encloses the current point of intersection on mid min edge of the current triangle	*/
-
+				shared_type::coord_xyz_type midmin_intersection;
+				midmin_intersection.x = current_coord;
 				t = (current_coord - mid_vert.x) / min_minus_mid_x;
+				midmin_intersection.y = (mid_vert.y + (t * min_minus_mid_y));
+				midmin_intersection.z = (mid_vert.z + (t * min_minus_mid_z));
+				cmprt_to_add.y = (unsigned short)midmin_intersection.y;
+				cmprt_to_add.z = (unsigned short)midmin_intersection.z;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
-				cmprt_to_add.y = (unsigned short)(mid_vert.y + (t * min_minus_mid_y));
-				cmprt_to_add.z = (unsigned short)(mid_vert.z + (t * min_minus_mid_z));
-
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
-
+				if (!connecting)
+				{
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, min_vert, midmin_intersection, 'y', true);
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, min_vert, midmin_intersection, 'z', true);
+				}
 				break;
 			}
 			case 'y':
 			{
 				/*	Gets the compartment that encloses the current point of intersection on hypotenuse of the current triangle	*/
-
-				cmprt_to_add.y = (unsigned short)current_coord;
-
+				shared_type::coord_xyz_type hypot_intersection;
+				hypot_intersection.y = current_coord;
+				cmprt_to_add.y = (unsigned short)hypot_intersection.y;
 				t = (current_coord - max_vert.y) / min_minus_max_y;
-
-				cmprt_to_add.x = (unsigned short)(max_vert.x + (t * min_minus_max_x));
-				cmprt_to_add.z = (unsigned short)(max_vert.z + (t * min_minus_max_z));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				hypot_intersection.x = (max_vert.x + (t * min_minus_max_x));
+				hypot_intersection.z = (max_vert.z + (t * min_minus_max_z));
+				cmprt_to_add.x = (unsigned short)hypot_intersection.x;
+				cmprt_to_add.z = (unsigned short)hypot_intersection.z;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
 				/*	Gets the compartment that encloses the current point of intersection on mid min edge of the current triangle	*/
-
+				shared_type::coord_xyz_type midmin_intersection;
+				midmin_intersection.y = current_coord;
 				t = (current_coord - mid_vert.y) / min_minus_mid_y;
+				midmin_intersection.x = (mid_vert.x + (t * min_minus_mid_x));
+				midmin_intersection.z = (mid_vert.z + (t * min_minus_mid_z));
+				cmprt_to_add.x = (unsigned short)midmin_intersection.x;
+				cmprt_to_add.z = (unsigned short)midmin_intersection.z;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
-				cmprt_to_add.x = (unsigned short)(mid_vert.x + (t * min_minus_mid_x));
-				cmprt_to_add.z = (unsigned short)(mid_vert.z + (t * min_minus_mid_z));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				if (!connecting)
+				{
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, min_vert, midmin_intersection, 'x', true);
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, min_vert, midmin_intersection, 'z', true);
+				}
 				break;
 			}
 			case 'z':
 			{
 				/*	Gets the compartment that encloses the current point of intersection on hypotenuse of the current triangle	*/
-
-				cmprt_to_add.z = (unsigned short)current_coord;
-
+				shared_type::coord_xyz_type hypot_intersection;
+				hypot_intersection.z = current_coord;
+				cmprt_to_add.z = (unsigned short)hypot_intersection.z;
 				t = (current_coord - max_vert.z) / min_minus_max_z;
-
-				cmprt_to_add.x = (unsigned short)(max_vert.x + (t * min_minus_max_x));
-				cmprt_to_add.y = (unsigned short)(max_vert.y + (t * min_minus_max_y));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				hypot_intersection.x = (max_vert.x + (t * min_minus_max_x));
+				hypot_intersection.y = (max_vert.y + (t * min_minus_max_y));
+				cmprt_to_add.x = (unsigned short)hypot_intersection.x;
+				cmprt_to_add.y = (unsigned short)hypot_intersection.y;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
 				/*	Gets the compartment that encloses the current point of intersection on mid min edge of the current triangle	*/
-
+				shared_type::coord_xyz_type midmin_intersection;
+				midmin_intersection.z = current_coord;
 				t = (current_coord - mid_vert.z) / min_minus_mid_z;
+				midmin_intersection.x = (mid_vert.x + (t * min_minus_mid_x));
+				midmin_intersection.y = (mid_vert.y + (t * min_minus_mid_y));
+				cmprt_to_add.x = (unsigned short)midmin_intersection.x;
+				cmprt_to_add.y = (unsigned short)midmin_intersection.y;
+				add_enclosing_cmprt_to_vec(enclosing_cmprts, cmprt_to_add);
 
-				cmprt_to_add.x = (unsigned short)(mid_vert.x + (t * min_minus_mid_x));
-				cmprt_to_add.y = (unsigned short)(mid_vert.y + (t * min_minus_mid_y));
-
-				enclosing_cmprts[enclosing_cmprts_next_index] = cmprt_to_add;
-				enclosing_cmprts_next_index += 1;
+				if (!connecting)
+				{
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, min_vert, midmin_intersection, 'x', true);
+					rasterize_on_axis(enclosing_cmprts, hypot_intersection, min_vert, midmin_intersection, 'y', true);
+				}
 				break;
 			}
 			default:
@@ -382,6 +406,21 @@ void df_type::rasterize_on_axis(shared_type::index_xyz_type* enclosing_cmprts, u
 			}
 		}
 	}
+}
+
+
+int df_type::add_enclosing_cmprt_to_vec(std::vector<shared_type::index_xyz_type>& enclosing_cmprts, shared_type::index_xyz_type cmprt_to_add)
+{
+	unsigned long size = enclosing_cmprts.size();
+	for (unsigned long a = 0ul; a < size; ++a)
+	{
+		if (enclosing_cmprts[a] == cmprt_to_add)
+		{
+			return 1;
+		}
+	}
+	enclosing_cmprts.push_back(cmprt_to_add);
+	return 0;
 }
 
 
@@ -2182,7 +2221,7 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 			  in compartment index space, then you can find which compartment it lies in by just truncating the coords.
 
 			  After the coords are converted, the compartments enclosing the 3 vertices of the triangle are gotten (by truncating the vertices coords), and are added to the list of
-			  enclosing compartments. Once this is done, the rasterize_on_axis function is called 3 times (once for each axis). What this function does is, for the axis passes to it,
+			  enclosing compartments. Once this is done, the rasterize_on_axis function is called 3 times (once for each axis). What this function does is, for the axis passed to it,
 			  first sorts the 3 vertices along that axis, into min, mid, and max (lowest number, mid number, and highest number). It essentially then calculates the amount of times
 			  it will take to scan (in intervals of 0.5) from the max vertex to the mid vertex (along the axis passed to the function), then it calculates the same for the distance
 			  between the mid vertex and the min vertex. The function will then perform 2 loop statements, one that scans from max to mid, and the other from mid to min:
@@ -2198,14 +2237,14 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 			     <------------------------     |
 			            |                      |
 			            |       The first loop statement scans from max to mid, only taking
-			            |       into account the first part of the hyptenuse, and the line
+			            |       into account the first part of the hypotenuse, and the line
 			            |       between max and mid
 			            |
 			            |
 				The second loop statement scans from mid to min
 				(obviously, starting where the first loop statement
 				left off), and only takes into account the last part
-				of the hypotenus, and the line between mid and min
+				of the hypotenuse, and the line between mid and min
 
 			  At each increment in the scanning process (that is to say, in each loop iteration), the coordinates on the 2 axis other than the one being scanned (eg, if scanning across
 			  the x axis, then only the y and z coordinates) is gotten at the points where the current scan axis coordinates (6.5, 6, 5.5, 5, etc) intersects the 2 lines being taken
@@ -2238,7 +2277,7 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 			shared_type::index_xyz_type vert_2_enclosing_cmprt = get_enclsing_cmprt_from_indx_space(vert_2_indx_space);
 
 			/*Defines array that enclosing compartments will be added to, current temp max is 400*/
-			unsigned long enclosing_cmprts_linear[400] = {};
+			unsigned long* enclosing_cmprts_linear = nullptr;
 			unsigned short enclosing_cmprts_linear_next_index = 0;
 
 			/*Checks all 3 verts are in the same cmprt*/
@@ -2247,6 +2286,7 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 			{
 				/*If they're in the same cmprt*/
 
+				enclosing_cmprts_linear = new unsigned long[2];
 				enclosing_cmprts_linear[0] = (vert_0_enclosing_cmprt.z + (volume_local.cmprt_amount.z * vert_0_enclosing_cmprt.y)) + ((volume_local.cmprt_amount.z * volume_local.cmprt_amount.y) * vert_0_enclosing_cmprt.x);
 				enclosing_cmprts_linear_next_index = 1;
 			}
@@ -2254,45 +2294,27 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 			{
 				/*If they're in different cmprts*/
 
-				shared_type::index_xyz_type enclosing_cmprts[400];
-
-				enclosing_cmprts[0] = vert_0_enclosing_cmprt;
-				enclosing_cmprts[1] = vert_1_enclosing_cmprt;
-				enclosing_cmprts[2] = vert_2_enclosing_cmprt;
-
-				unsigned short enclosing_cmprts_next_index = 3;
+				std::vector<shared_type::index_xyz_type> enclosing_cmprts;
+				enclosing_cmprts.push_back(vert_0_enclosing_cmprt);
+				enclosing_cmprts.push_back(vert_1_enclosing_cmprt);
+				enclosing_cmprts.push_back(vert_2_enclosing_cmprt);
 
 				/*Calls funcrtion rasterize_on_axis 3 times, once for each axis, such that the process will scan through each axis*/
-				rasterize_on_axis(enclosing_cmprts, enclosing_cmprts_next_index, vert_0_indx_space, vert_1_indx_space, vert_2_indx_space, 'x');
-				rasterize_on_axis(enclosing_cmprts, enclosing_cmprts_next_index, vert_0_indx_space, vert_1_indx_space, vert_2_indx_space, 'y');
-				rasterize_on_axis(enclosing_cmprts, enclosing_cmprts_next_index, vert_0_indx_space, vert_1_indx_space, vert_2_indx_space, 'z');
-
+				rasterize_on_axis(enclosing_cmprts, vert_0_indx_space, vert_1_indx_space, vert_2_indx_space, 'x');
+				rasterize_on_axis(enclosing_cmprts, vert_0_indx_space, vert_1_indx_space, vert_2_indx_space, 'y');
+				rasterize_on_axis(enclosing_cmprts, vert_0_indx_space, vert_1_indx_space, vert_2_indx_space, 'z');
 
 				/*Converts the 3D indices of the compartments contained within the array enclosing_cmprts into linear/ 1D indices*/
-
-
-
-				for (unsigned short c = 0; c < enclosing_cmprts_next_index; ++c)
+				unsigned long enclosing_cmprts_size = enclosing_cmprts.size();
+				enclosing_cmprts_linear = new unsigned long[enclosing_cmprts_size];
+				for (unsigned short c = 0; c < enclosing_cmprts_size; ++c)
 				{
 					unsigned long current_cmprt_linear = (enclosing_cmprts[c].z + (volume_local.cmprt_amount.z * enclosing_cmprts[c].y)) + ((volume_local.cmprt_amount.z * volume_local.cmprt_amount.y) * enclosing_cmprts[c].x);
 
-					for (unsigned short d = 0; d < enclosing_cmprts_linear_next_index; ++d)
-					{
-						if (current_cmprt_linear == enclosing_cmprts_linear[d])
-						{
-							goto is_dup;
-						}
-					}
-
 					enclosing_cmprts_linear[enclosing_cmprts_linear_next_index] = current_cmprt_linear;
 					enclosing_cmprts_linear_next_index += 1;
-
-
-				is_dup:
-					continue;
 				}
 			}
-
 
 			/*Calculates update_local.unit/direction vector of each edge on the triangle*/
 			/*-------------------------------------------------------------------------------------------------------------*/
@@ -2385,13 +2407,13 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 			/*Loops through each enclosing compartment*/
 			for (unsigned short c = 0; c < enclosing_cmprts_linear_next_index; ++c)
 			{
-				unsigned long& current_enclosing_cmprt = enclosing_cmprts_linear[c];
+				unsigned long current_enclosing_cmprt = enclosing_cmprts_linear[c];
 
 				/*Loops through each compartment relevent to the current enclosing compartment*/
 				for (unsigned long d = 0; d < volume_local.cmprt_meta[current_enclosing_cmprt].rlvncy_table_size; ++d)
 				{
-					unsigned long& current_rlvnt_cmprt = volume_local.cmprt_rlvncy_table[current_enclosing_cmprt][d];
-					unsigned long& current_rlvnt_cmprt_size = volume_local.cmprt_meta[current_rlvnt_cmprt].size;
+					unsigned long current_rlvnt_cmprt = volume_local.cmprt_rlvncy_table[current_enclosing_cmprt][d];
+					unsigned long current_rlvnt_cmprt_size = volume_local.cmprt_meta[current_rlvnt_cmprt].size;
 
 					bool cmprt_already_calced = false;
 
@@ -2447,6 +2469,7 @@ int df_type::update_per_tri(const unsigned long& dfc_id, const unsigned long& df
 					tri_local->job_cmprt_table_next_index_y += 1;
 				}
 			}
+			delete[] enclosing_cmprts_linear;
 
 			tri_local->job_cmprt_table_cropped = new unsigned long* [tri_local->job_cmprt_table_next_index_y];
 			for (unsigned long c = 0; c < tri_local->job_cmprt_table_next_index_y; ++c)
@@ -2888,7 +2911,7 @@ int df_type::update_recipient(const unsigned long* dfc_layers, const unsigned lo
 		"get_lerped_point_value" function when it is called (once for each vert) so that it knows which dfc ids should affect the
 		return value for that call	*/
 
-		/*	vector containing dfc ids	*/
+	/*	vector containing dfc ids	*/
 	std::vector<unsigned long> dfc_ids;
 	{
 		/*	Objects used to keep track of which dfc layers have already been added/ calced	*/
